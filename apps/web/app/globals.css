@@ -1,54 +1,709 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
-  --bg-primary: #0a0d14;
-  --bg-card: #111622;
-  --border-subtle: #1e2638;
-  --text-primary: #f0f4f8;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --accent-blue: #3b82f6;
-  --accent-blue-soft: rgba(59, 130, 246, 0.12);
-  --badge-border: rgba(59, 130, 246, 0.3);
+  /* Colors */
+  --color-bg: #090d16;
+  --color-surface: #0f1523;
+  --color-surface-hover: #151c2e;
+  --color-surface-muted: #131a29;
+  --color-surface-card: #0d1320;
+  
+  --color-border: #1e2638;
+  --color-border-subtle: #162030;
+  --color-border-hover: #2d3b55;
+  --color-border-active: #0ea5e9;
+
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-text-dim: #475569;
+
+  --color-accent: #0ea5e9;
+  --color-accent-hover: #38bdf8;
+  --color-accent-soft: rgba(14, 165, 233, 0.12);
+  --color-accent-border: rgba(14, 165, 233, 0.28);
+
+  --color-success: #10b981;
+  --color-success-soft: rgba(16, 185, 129, 0.12);
+  --color-success-border: rgba(16, 185, 129, 0.28);
+
+  --color-warning: #f59e0b;
+  --color-warning-soft: rgba(245, 158, 11, 0.12);
+  --color-warning-border: rgba(245, 158, 11, 0.28);
+
+  --color-danger: #ef4444;
+  --color-danger-soft: rgba(239, 68, 68, 0.12);
+  --color-danger-border: rgba(239, 68, 68, 0.28);
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Restrained Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Subtle Shadows & Elevation */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
+  --shadow-glow: 0 0 12px rgba(14, 165, 233, 0.15);
+
+  /* Fonts */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-* {
+/* Base Reset & Typography */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+html, body {
+  height: 100%;
+}
+
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  font-size: 0.875rem;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Accessible focus indicators */
+*:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Typography Hierarchy Tokens */
+.edos-type-display {
+  font-size: 2rem;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-text-primary);
+}
+
+.edos-type-page-title {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+}
+
+.edos-type-section-title {
+  font-size: 1.125rem;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+}
+
+.edos-type-card-title {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.edos-type-body {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.edos-type-metadata {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+.edos-type-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   Application Shell Layout
+   ========================================================================== */
+
+.edos-shell {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  background-color: var(--color-bg);
+}
+
+.edos-shell__body {
+  display: flex;
+  flex: 1;
+  min-height: calc(100vh - 56px);
+  position: relative;
+}
+
+.edos-shell__workspace {
+  flex: 1;
+  min-width: 0;
+  background-color: var(--color-bg);
+  overflow-y: auto;
+}
+
+.edos-shell__content-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--space-8);
+}
+
+/* ==========================================================================
+   Header Component
+   ========================================================================== */
+
+.edos-header {
+  height: 56px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.edos-header__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.edos-header__toggle-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.edos-header__toggle-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
+.edos-header__brand-context {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+}
+
+.edos-header__brand-tag {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--color-accent);
+}
+
+.edos-header__separator {
+  color: var(--color-text-dim);
+}
+
+.edos-header__section-title {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.edos-header__center {
+  flex: 1;
+  max-width: 440px;
+  margin: 0 var(--space-6);
+}
+
+.edos-header__search-placeholder {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: 6px var(--space-3);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.edos-header__search-icon {
+  color: var(--color-text-dim);
+  flex-shrink: 0;
+}
+
+.edos-header__search-text {
+  flex: 1;
+}
+
+.edos-header__search-shortcut {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  padding: 2px 6px;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+}
+
+.edos-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.edos-header__status {
+  display: flex;
+  align-items: center;
+}
+
+.edos-header__user-placeholder {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-card);
+}
+
+.edos-header__user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.edos-header__user-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+/* ==========================================================================
+   Sidebar Component
+   ========================================================================== */
+
+.edos-sidebar {
+  width: 260px;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.edos-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.edos-sidebar__brand-mark {
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+}
+
+.edos-sidebar__brand-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.edos-sidebar__brand-name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+}
+
+.edos-sidebar__brand-sub {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.edos-sidebar__brand-badge {
+  font-size: 0.6875rem;
+}
+
+.edos-sidebar__nav {
+  flex: 1;
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  overflow-y: auto;
+}
+
+.edos-sidebar__section {
+  display: flex;
+  flex-direction: column;
+}
+
+.edos-sidebar__section-title {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  padding: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.edos-sidebar__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.edos-sidebar__item {
+  width: 100%;
+}
+
+.edos-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.edos-sidebar__link:hover:not(.edos-sidebar__link--disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-subtle);
+}
+
+.edos-sidebar__link--active {
+  background: var(--color-surface-muted);
+  color: var(--color-accent);
+  border-color: var(--color-accent-border);
+  font-weight: 600;
+}
+
+.edos-sidebar__link--active .edos-sidebar__icon-slot {
+  color: var(--color-accent);
+}
+
+.edos-sidebar__link--disabled {
+  color: var(--color-text-dim);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.edos-sidebar__icon-slot {
   display: flex;
   align-items: center;
   justify-content: center;
-  -webkit-font-smoothing: antialiased;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
 }
 
-.shell-container {
-  width: 100%;
-  max-width: 640px;
-  padding: 24px;
+.edos-sidebar__link--disabled .edos-sidebar__icon-slot {
+  color: var(--color-text-dim);
 }
 
-.shell-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 40px 36px;
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+.edos-sidebar__item-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.badge-row {
+.edos-sidebar__item-tag {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.edos-sidebar__item-badge {
+  font-size: 0.6875rem;
+  padding: 1px 6px;
+}
+
+.edos-sidebar__footer {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-card);
   display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
+.edos-sidebar__footer-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.6875rem;
+}
+
+.edos-sidebar__footer-label {
+  color: var(--color-text-dim);
+}
+
+.edos-sidebar__footer-value {
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.edos-sidebar__footer-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.edos-sidebar__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  box-shadow: 0 0 6px var(--color-accent);
+}
+
+.edos-sidebar__backdrop {
+  display: none;
+}
+
+/* ==========================================================================
+   UI Primitive: Button
+   ========================================================================== */
+
+.edos-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.edos-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Sizes */
+.edos-btn--sm {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}
+
+.edos-btn--md {
+  padding: 8px 16px;
+  font-size: 0.8125rem;
+}
+
+.edos-btn--lg {
+  padding: 10px 20px;
+  font-size: 0.875rem;
+}
+
+/* Variants */
+.edos-btn--primary {
+  background: var(--color-accent);
+  color: #06101e;
+  font-weight: 600;
+  border-color: transparent;
+}
+
+.edos-btn--primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  box-shadow: var(--shadow-glow);
+}
+
+.edos-btn--secondary {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.edos-btn--secondary:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border-hover);
+}
+
+.edos-btn--ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: transparent;
+}
+
+.edos-btn--ghost:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+/* ==========================================================================
+   UI Primitive: Card
+   ========================================================================== */
+
+.edos-card {
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.edos-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-6) var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.edos-card__titles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.edos-card__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.edos-card__description {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.edos-card__action {
+  flex-shrink: 0;
+}
+
+.edos-card__content {
+  padding: var(--space-6);
+}
+
+.edos-card__footer {
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   UI Primitive: Badge
+   ========================================================================== */
+
+.edos-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.edos-badge--default {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border-color: var(--color-accent-border);
+}
+
+.edos-badge--success {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  border-color: var(--color-success-border);
+}
+
+.edos-badge--warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border-color: var(--color-warning-border);
+}
+
+.edos-badge--danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
+}
+
+.edos-badge--neutral {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+/* Compatibility aliases with Day 1 */
 .badge {
   font-size: 0.75rem;
   font-weight: 600;
@@ -56,64 +711,356 @@ body {
   text-transform: uppercase;
   padding: 4px 10px;
   border-radius: 6px;
-  background: var(--accent-blue-soft);
-  color: var(--accent-blue);
-  border: 1px solid var(--badge-border);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-border);
 }
 
 .badge-muted {
   background: rgba(148, 163, 184, 0.08);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-subtle);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
 
-.shell-title {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-}
+/* ==========================================================================
+   UI Primitive: Status Indicator
+   ========================================================================== */
 
-.shell-subtitle {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  margin-bottom: 18px;
-}
-
-.shell-description {
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: var(--text-muted);
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 20px;
-  margin-top: 20px;
-}
-
-.status-footer {
-  margin-top: 32px;
-  padding-top: 16px;
-  border-top: 1px dashed var(--border-subtle);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.status-indicator {
+.edos-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: #10b981;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
   font-weight: 500;
 }
 
-.status-dot {
+.edos-status__dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #10b981;
-  box-shadow: 0 0 8px #10b981;
+  flex-shrink: 0;
+}
+
+.edos-status--ready {
+  color: var(--color-success);
+}
+.edos-status--ready .edos-status__dot {
+  background-color: var(--color-success);
+  box-shadow: 0 0 8px var(--color-success);
+}
+
+.edos-status--active {
+  color: var(--color-accent);
+}
+.edos-status--active .edos-status__dot {
+  background-color: var(--color-accent);
+  box-shadow: 0 0 8px var(--color-accent);
+}
+
+.edos-status--warning {
+  color: var(--color-warning);
+}
+.edos-status--warning .edos-status__dot {
+  background-color: var(--color-warning);
+  box-shadow: 0 0 8px var(--color-warning);
+}
+
+.edos-status--danger {
+  color: var(--color-danger);
+}
+.edos-status--danger .edos-status__dot {
+  background-color: var(--color-danger);
+  box-shadow: 0 0 8px var(--color-danger);
+}
+
+.edos-status--neutral {
+  color: var(--color-text-muted);
+}
+.edos-status--neutral .edos-status__dot {
+  background-color: var(--color-text-dim);
+}
+
+@keyframes edos-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.92);
+  }
+}
+
+.edos-status__dot--pulse {
+  animation: edos-pulse 2.5s infinite ease-in-out;
+}
+
+/* ==========================================================================
+   Overview Page Layout & Views
+   ========================================================================== */
+
+.edos-overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.edos-overview__hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.edos-overview__hero-pre {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.edos-overview__hero-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-text-primary);
+}
+
+.edos-overview__hero-subtitle {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-accent);
+}
+
+.edos-overview__hero-description {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  max-width: 680px;
+  line-height: 1.6;
+}
+
+/* Operational Metric/Status Grid */
+.edos-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.edos-metric-card {
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 120px;
+}
+
+.edos-metric-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.edos-metric-card__label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.edos-metric-card__value {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+.edos-metric-card__note {
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+}
+
+/* Sections */
+.edos-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.edos-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.edos-section__title {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+}
+
+.edos-section__tag {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-text-dim);
+}
+
+/* Intentional Empty State */
+.edos-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: rgba(15, 21, 35, 0.4);
+}
+
+.edos-empty-state__icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-4);
+}
+
+.edos-empty-state__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.edos-empty-state__description {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  max-width: 460px;
+  line-height: 1.6;
+  margin-bottom: var(--space-4);
+}
+
+.edos-empty-state__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+/* Pipeline Architecture Visualizer Card */
+.edos-pipeline-card {
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.edos-pipeline-flow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.edos-pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.edos-pipeline-step__num {
+  color: var(--color-accent);
+  font-size: 0.6875rem;
+}
+
+.edos-pipeline-arrow {
+  color: var(--color-text-dim);
+  font-size: 0.75rem;
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .edos-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .edos-header__center {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .edos-header__toggle-btn {
+    display: inline-flex;
+  }
+
+  .edos-sidebar {
+    position: fixed;
+    top: 56px;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  }
+
+  .edos-sidebar--open {
+    transform: translateX(0);
+  }
+
+  .edos-sidebar__backdrop {
+    display: block;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(2px);
+    z-index: 45;
+  }
+
+  .edos-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .edos-shell__content-container {
+    padding: var(--space-4);
+  }
+
+  .edos-header {
+    padding: 0 var(--space-4);
+  }
 }

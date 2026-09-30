@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AppShell } from "../components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "EDOS — Enterprise Decision Operating System",
-  description: "Decision intelligence for operational systems.",
+  description: "Operational decision intelligence platform for enterprise systems.",
 };
 
 export default function RootLayout({
@@ -13,7 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppShell>
+          {children}
+        </AppShell>
+      </body>
     </html>
   );
 }
