@@ -1,0 +1,296 @@
+# EDOS Architecture Specification
+**Enterprise Decision Operating System**
+
+---
+
+## 1. System Vision & Core Philosophy
+
+### 1.1 What is EDOS?
+**EDOS (Enterprise Decision Operating System)** is an explainable, reproducible, and auditable operational decision platform. In high-stakes business environments—such as supply chain management, logistics, and resource allocation—enterprises frequently suffer from fragmented heuristics, opaque spreadsheet models, and unreliable "black box" automated tools. 
+
+EDOS bridges this gap by structuring operational events into a deterministic decision pipeline, computing verifiable outcomes, maintaining forensic audit trails, and leveraging generative AI strictly to articulate natural-language justifications for human operators to review and authorize.
+
+### 1.2 Core Principle
+> **"The system calculates. AI explains. Humans approve."**
+
+* **The system calculates**: Numerical projections, candidate evaluations, optimization trade-offs, and constraint enforcement are executed strictly via deterministic code and mathematical formulas. AI is never used as an unconstrained calculator or a source of truth for numerical decisions.
+* **AI explains**: Large Language Models (LLMs) synthesize structured outputs, citations, and risk matrices into lucid, concise operational narratives tailored for human understanding.
+* **Humans approve**: EDOS provides governed human-in-the-loop (HITL) workflows. Critical decisions are submitted to authorized decision-makers who can accept, reject, modify, or escalate recommendations with recorded rationale.
+
+### 1.3 V1 Philosophy
+* **One End-to-End Decision Workflow**: EDOS V1 intentionally eschews generic dashboard sprawl or free-form chatbots in favor of one deeply engineered, high-confidence decision workflow (focused initially on inventory stockouts and supply-chain intervention).
+* **Modular Monolith**: Zero distributed systems complexity, message queues, or premature microservices until validated domain boundaries necessitate them.
+
+---
+
+## 2. End-to-End Operational Decision Pipeline
+
+Every decision managed by EDOS proceeds sequentially through a 10-stage pipeline:
+
+```mermaid
+flowchart LR
+    A[1. Situation] --> B[2. Context]
+    B --> C[3. Actions]
+    C --> D[4. Validation]
+    D --> E[5. Scenarios]
+    E --> F[6. Result]
+    F --> G[7. Evidence]
+    G --> H[8. Provenance]
+    H --> I[9. AI Explanation]
+    I --> J[10. Human Approval]
+```
+
+| # | Pipeline Stage | Description & Responsibility |
+|---|----------------|------------------------------|
+| **01** | **Situation** | Ingestion, identification, and normalization of the operational event or triggering anomaly (e.g., supplier delay, projected stockout, demand surge). |
+| **02** | **Context** | Aggregation of business state, current inventory positions, lead times, cost matrices, contracts, and operational SLAs relevant to the situation. |
+| **03** | **Actions** | Identification and generation of candidate operational interventions (e.g., expedited freight, alternative supplier purchase, order split, buffer drawdown). |
+| **04** | **Validation** | Hard-constraint screening against business rules, regulatory policies, budget ceilings, and contract minimums to eliminate invalid actions. |
+| **05** | **Scenarios** | Deterministic simulation and impact modeling across surviving actions, evaluating trade-offs (e.g., unit cost vs. delivery speed vs. stockout risk). |
+| **06** | **Result** | Selection and scoring of the optimal recommended action alongside ranked alternative options. |
+| **07** | **Evidence** | Mathematical proof sheets, intermediate equations, parameter tables, and direct citations backing up every scoring metric. |
+| **08** | **Provenance** | Immutable metadata capturing data snapshots, rule engine versions, code hashes, and execution timestamps for forensic reproducibility. |
+| **09** | **AI Explanation** | Natural-language executive summary and trade-off justification synthesized from the deterministic calculations and evidence artifacts. |
+| **10** | **Human Approval** | Final governed sign-off interface empowering the human operator to approve, reject, annotate, or escalate the recommendation. |
+
+---
+
+## 3. High-Level Architecture Topology
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Next.js 14 Web UI                               │
+│  - App Router, TypeScript, React 18, Enterprise CSS System             │
+│  - Layout Shell: Collapsible Sidebar, Header, Breadcrumbs, System Status│
+│  - Screens: Overview Dashboard, Pipeline Visualizer, Decision Views    │
+└────────────────────────────────────┬───────────────────────────────────┘
+                                     │ HTTP / REST (Port 3000 -> 8000)
+┌────────────────────────────────────▼───────────────────────────────────┐
+│                        FastAPI Backend Gateway                         │
+│  - Python 3.11+, Typed Pydantic Settings, Uvicorn Server              │
+│  - Health Checks, API Routing, Error Handling                          │
+└────────────────────────────────────┬───────────────────────────────────┘
+                                     │ In-Process Modular Monolith Calls
+┌────────────────────────────────────▼───────────────────────────────────┐
+│                        Core Decision Runtime                           │
+│  ┌───────────────────────┐  ┌───────────────────────┐                  │
+│  │    Context Engine     │  │    Decision Engine    │                  │
+│  │ (Ingestion & State)   │  │ (Candidate Generation)│                  │
+│  └───────────┬───────────┘  └───────────┬───────────┘                  │
+│  ┌───────────▼───────────┐  ┌───────────▼───────────┐                  │
+│  │   Validation Engine   │  │    Scenario Engine    │                  │
+│  │ (Policies/Constraints)│  │ (Impact Projections)  │                  │
+│  └───────────┬───────────┘  └───────────┬───────────┘                  │
+│  ┌───────────▼──────────────────────────▼───────────┐                  │
+│  │             Evidence & Provenance Engine         │                  │
+│  │   (Calculations, Formula Auditing & Lineage)     │                  │
+│  └───────────────────────┬──────────────────────────┘                  │
+│  ┌───────────────────────▼──────────────────────────┐                  │
+│  │                AI Explanation Layer              │                  │
+│  │  (Constrained Narrative Synthesis from Evidence) │                  │
+│  └───────────────────────┬──────────────────────────┘                  │
+│  ┌───────────────────────▼──────────────────────────┐                  │
+│  │             Governance & Approval State          │                  │
+│  │  (Human Sign-off, Audit Trail & State Machine)   │                  │
+│  └──────────────────────────────────────────────────┘                  │
+└────────────────────────────────────┬───────────────────────────────────┘
+                                     │
+┌────────────────────────────────────▼───────────────────────────────────┐
+│                           Data & Schemas                               │
+│  - data/raw: Raw source records and historical datasets                │
+│  - data/processed: Normalized operational snapshots                    │
+│  - data/schemas: Data fixtures, JSON schemas, and entity contracts     │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 4. Current Implementation Status ("What We Have Done So Far")
+
+The repository is structured according to a phased 30-day plan. Here is a detailed account of what has been implemented to date:
+
+### 4.1 Day 1: System Foundation
+* **Repository Architecture**: Monorepo layout structured into `apps/api`, `apps/web`, `data/`, and `docs/`.
+* **FastAPI Backend (`apps/api`)**:
+  - Initialized with Python 3.11+ packaging using `pyproject.toml` and `setuptools`.
+  - Configured typed application settings in `app/config.py` supporting environment variable overrides (`ENVIRONMENT`, `API_HOST`, `API_PORT`).
+  - Implemented `/health` endpoint in `app/main.py` responding with service status.
+  - Automated unit test suite via `pytest` and `httpx` in `tests/test_health.py`.
+* **Web Foundation (`apps/web`)**:
+  - Initialized Next.js 14 with TypeScript, App Router (`app/`), and modern configuration.
+* **Infrastructure & Automation**:
+  - `docker-compose.yml` orchestrating containerized builds for both API and Web frontend with environment wiring.
+  - Top-level `Makefile` for developer workflow (`make install`, `make dev-api`, `make dev-web`, `make test`, `make lint`).
+  - `.env.example` defining default port configurations and endpoints.
+* **Core Documentation**:
+  - `README.md` defining project vision, core principle, target architecture, and 30-day roadmap.
+  - `docs/architecture/system-overview.md` codifying the 7 architectural principles and V1 pipeline stages.
+  - `data/README.md` detailing the file-based data ingestion structure.
+
+### 4.2 Day 2: Enterprise UI Foundation & Application Shell
+* **Comprehensive Design System (`apps/web/app/globals.css`)**:
+  - Built a bespoke, 1,000+ line enterprise CSS design system with CSS custom properties (variables) for theme tokens.
+  - Dark-tinted slate neutral palette, calibrated contrast ratios, glassmorphic header accents, and crisp card borders.
+  - Cohesive typography scale, flexible spacing units, and subtle micro-interactions (pulse states, hover elevation).
+* **Application Shell & Layout (`apps/web/components/layout/`)**:
+  - `app-shell.tsx`: Root responsive shell uniting the sidebar and header around main content.
+  - `header.tsx`: Global top-bar with breadcrumb trail, real-time live system status indicator ("READY - SYSTEM OPERATIONAL"), global quick search input (`Ctrl+K`), notifications bell trigger, and user profile avatar.
+  - `sidebar.tsx`: Collapsible navigation drawer featuring brand identity, status badge, structured domain navigation, active route highlighting, and quick keyboard shortcut badge (`[`).
+* **Reusable UI Primitives (`apps/web/components/ui/`)**:
+  - `badge.tsx`: Multi-tone badges (`default`, `neutral`, `success`, `warning`, `danger`, `outline`).
+  - `card.tsx`: Surface containers supporting headers, subheaders, and actions.
+  - `button.tsx`: Variant-driven buttons (`primary`, `secondary`, `outline`, `ghost`, `danger`) with sizing options.
+  - `status-indicator.tsx`: Semantic status indicator with animated ping/pulse rings for operational readiness.
+* **Overview Screen (`apps/web/app/page.tsx`)**:
+  - Hero header introducing the Foundation Phase and system purpose.
+  - Operational KPI cards: **Active Decisions**, **Pending Reviews**, and **System Status** (tied to real-time ready state).
+  - Empty state activity viewer showing audit readiness for incoming operational triggers.
+  - Visual **Operational Decision Pipeline** step-flow component showcasing the standard 9-stage sequence.
+### 4.3 Day 3: Enterprise Design System (Light Theme Migration)
+* **Light Enterprise Theme Transition (`apps/web/app/globals.css`)**:
+  - Pivoted from dark theme to an information-dense, high-contrast, technical **Light Enterprise Theme** ("enterprise command center" aesthetic).
+  - Established semantic tokens: `--background` (`#f8fafc`), `--surface` (`#ffffff`), `--surface-subtle` (`#f1f5f9`), `--surface-elevated`, `--border` (`#e2e8f0`), `--border-strong` (`#cbd5e1`), `--text-primary` (`#0f172a`), `--text-secondary` (`#475569`), `--text-muted` (`#64748b`), `--text-disabled` (`#94a3b8`), `--accent` (`#0284c7`), `--success`, `--warning`, `--danger`, `--info`.
+  - Comprehensive typography scale: Display, Page Title, Section Title, Card Title, Body, Body Small, Metadata, Caption, and Monospace.
+  - Strict 8-step spacing system: 4, 8, 12, 16, 24, 32, 48, 64px.
+* **Component Primitives Suite (`apps/web/components/ui/`)**:
+  - `button.tsx`: 5 variants (`primary`, `secondary`, `outline`, `ghost`, `danger`) across 3 sizes (`sm`, `md`, `lg`).
+  - `card.tsx`: Consistent borders, subtle elevation support, header titles, descriptions, and action slots.
+  - `badge.tsx`: Semantic variants (`default`, `neutral`, `success`, `warning`, `danger`, `info`, `outline`).
+  - `status-indicator.tsx`: Semantic states (`READY`, `ACTIVE`, `PROCESSING`, `PENDING`, `WARNING`, `ERROR`, `NEUTRAL`) with restrained pulse.
+  - `decision-badge.tsx`: Visual design tokens for all 8 EDOS decision states (`Detected`, `Processing`, `Validated`, `Recommended`, `Pending Review`, `Approved`, `Rejected`, `Escalated`).
+  - `input.tsx` & `select.tsx`: Fully accessible form controls with helper text, error states, and icon slots.
+  - `tabs.tsx`: Accessible border-bottom tab switcher with badges.
+  - `tooltip.tsx`: Lightweight directional tooltips (`top`, `bottom`, `left`, `right`).
+  - `metric.tsx`: Reusable KPI card foundation with labels, prominent values, notes, and status badges.
+  - `data-table.tsx`: Enterprise table with numeric alignment, hover states, selection states, and compact/comfortable density toggle.
+  - `key-value.tsx`: Structured operational attribute layout (multi-column, monospace values).
+  - `timeline.tsx`: Vertical operational stage timeline with completed, active in-progress, upcoming, and error step nodes.
+  - `empty-state.tsx`, `loading-state.tsx`, `error-state.tsx`: Enterprise operational state containers.
+* **Design System Showcase (`apps/web/app/design-system/page.tsx`)**:
+  - Dedicated living catalog at `/design-system` demonstrating all 15 component families, typography, colors, and interactive behaviors.
+* **Overview Migration (`apps/web/app/page.tsx`)**:
+  - Refactored overview screen to use the new light theme, `Metric`, `EmptyState`, `Card`, and `Badge` primitives.
+
+---
+
+## 5. Technology Stack & Directory Structure
+
+### 5.1 Tech Stack Summary
+| Layer | Technology | Version / Details | Purpose |
+|-------|------------|-------------------|---------|
+| **Frontend** | Next.js (App Router) | 14.2.15 | UI rendering & application shell |
+| | React | 18.3.1 | Component model |
+| | TypeScript | 5.6.3 | Type safety across web clients |
+| | Vanilla CSS System | CSS Custom Properties | Custom enterprise theme tokens |
+| **Backend** | FastAPI | >= 0.110.0 | High-performance Python async API |
+| | Uvicorn | >= 0.28.0 | ASGI web server |
+| | Python | >= 3.11 | Deterministic business logic & math |
+| | Pytest / Httpx | >= 8.0.0 / 0.27.0 | Backend unit & integration testing |
+| **DevOps** | Docker & Compose | 3.8 Spec | Multi-container local orchestration |
+| | Make | GNU Make | Uniform developer commands |
+
+### 5.2 Directory Map
+```text
+edos-decision-system/
+├── .env.example                       # Reference environment variables
+├── .gitignore                         # Version control exclusions
+├── LICENSE                            # MIT License
+├── Makefile                           # Developer CLI commands
+├── README.md                          # Project introduction and quickstart
+├── architecture.md                    # THIS FILE: Comprehensive architecture spec
+├── docker-compose.yml                 # Container orchestration for Web & API
+├── apps/
+│   ├── api/                           # FastAPI backend service
+│   │   ├── Dockerfile                 # API container definition
+│   │   ├── pyproject.toml             # Python package dependencies & pytest config
+│   │   ├── app/
+│   │   │   ├── config.py              # Environment configuration & settings class
+│   │   │   └── main.py                # FastAPI app initialization & /health route
+│   │   └── tests/
+│   │       └── test_health.py         # Pytest health check test
+│   └── web/                           # Next.js web frontend service
+│       ├── Dockerfile                 # Web container definition
+│       ├── package.json               # Node.js dependencies & scripts
+│       ├── tsconfig.json              # TypeScript configuration
+│       ├── app/
+│       │   ├── globals.css            # Complete enterprise design token system
+│       │   ├── layout.tsx             # Root React layout wrapping AppShell
+│       │   └── page.tsx               # Overview dashboard & pipeline diagram
+│       ├── components/
+│       │   ├── layout/
+│       │   │   ├── app-shell.tsx      # Main layout grid container
+│       │   │   ├── header.tsx         # Header bar with system status & search
+│       │   │   └── sidebar.tsx        # Navigation sidebar with collapse support
+│       │   └── ui/
+│       │       ├── badge.tsx          # Status & category badges
+│       │       ├── button.tsx         # Interactive button primitives
+│       │       ├── card.tsx           # Content containers
+│       │       └── status-indicator.tsx # Live pulse status dot
+│       └── lib/
+│           └── navigation.ts          # Navigation links and domain sections
+├── data/                              # Data persistence & fixture directories
+│   ├── raw/                           # Raw input datasets
+│   ├── processed/                     # Sanitized operational data
+│   ├── schemas/                       # JSON Schemas and fixture mocks
+│   └── README.md                      # Data guidelines and structure explanation
+└── docs/                              # Project documentation
+    └── architecture/
+        └── system-overview.md         # Foundation architecture principles
+```
+
+---
+
+## 6. Architectural Principles
+
+1. **Modular Monolith First**:
+   All core engines (Context, Decision, Scenario, Validation, Evidence) run in-process as modular components. Distributed services and queues will only be evaluated when scaling demands or team structures require them.
+2. **Strictly Deterministic Decision Logic**:
+   Calculations, scoring criteria, and candidate ranking are deterministic and reproducible. Given identical inputs and configuration, the system produces the exact same numerical result every time.
+3. **AI Explains, Never Calculates**:
+   AI does not guess numbers or invent scenarios. It translates structured decision results, constraint audits, and trade-off matrices into clear executive summaries.
+4. **End-to-End Auditability & Provenance**:
+   Every decision output retains complete lineage: input snapshots, configuration rule versions, execution timestamps, and intermediate mathematical formulas.
+5. **Human-in-the-Loop (HITL) by Default**:
+   Autonomous execution is restricted. Real-world changes require review, comment, and explicit authorization by human operators.
+6. **Zero-Ad-Hoc Design System**:
+   Frontend development relies on centralized design tokens and reusable UI primitives rather than scattered inline styles or uncoordinated CSS utilities.
+
+---
+
+## 7. 30-Day Execution Roadmap
+
+```text
+┌─────────────────┬─────────────────────────────────────────────────────────┐
+│ Phase           │ Primary Deliverables                                    │
+├─────────────────┼─────────────────────────────────────────────────────────┤
+│ Days 1–5        │ Foundation (Completed: Days 1 & 2)                      │
+│                 │ - Monorepo, FastAPI health check, Docker orchestration  │
+│                 │ - Next.js 14 App Shell, design tokens, Overview UI      │
+│                 │ - Pydantic domain models & decision runtime scaffolding │
+├─────────────────┼─────────────────────────────────────────────────────────┤
+│ Days 6–10       │ Understand the Situation                                │
+│                 │ - Supply chain situation schema (Stockout/Delay event)  │
+│                 │ - Context engine & data ingestion pipelines             │
+│                 │ - Situation detail & operational state views            │
+├─────────────────┼─────────────────────────────────────────────────────────┤
+│ Days 11–15      │ Model the Decision                                      │
+│                 │ - Candidate action generation (Expedite, Split, Source) │
+│                 │ - Rule-based policy validation & hard-constraint checks │
+│                 │ - Counterfactual simulation & scenario impact engine    │
+├─────────────────┼─────────────────────────────────────────────────────────┤
+│ Days 16–20      │ Make the Decision                                       │
+│                 │ - Deterministic scoring & decision ranking runtime      │
+│                 │ - Trade-off comparison matrix                           │
+│                 │ - Human-in-the-loop approval & rejection state machine  │
+├─────────────────┼─────────────────────────────────────────────────────────┤
+│ Days 21–25      │ Trust the Decision                                      │
+│                 │ - Evidence sheets & formula proof calculation views     │
+│                 │ - Full lineage provenance tracking & audit log viewer   │
+│                 │ - Decision replay & reproducibility tests               │
+├─────────────────┼─────────────────────────────────────────────────────────┤
+│ Days 26–30      │ AI + Product Finish                                     │
+│                 │ - Constrained AI explanation generator (LLM narrative)  │
+│                 │ - Interactive operator Q&A on decision rationale        │
+│                 │ - End-to-end integration polish & final demo scenarios │
+└─────────────────┴─────────────────────────────────────────────────────────┘
+```

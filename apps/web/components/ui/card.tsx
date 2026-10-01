@@ -7,6 +7,7 @@ export interface CardProps
   headerAction?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  elevated?: boolean;
 }
 
 export function Card({
@@ -15,13 +16,15 @@ export function Card({
   headerAction,
   children,
   footer,
+  elevated = false,
   className = "",
   ...props
 }: CardProps) {
   const hasHeader = Boolean(title || description || headerAction);
+  const elevationClass = elevated ? "edos-card--elevated" : "";
 
   return (
-    <div className={`edos-card ${className}`.trim()} {...props}>
+    <div className={`edos-card ${elevationClass} ${className}`.trim()} {...props}>
       {hasHeader && (
         <div className="edos-card__header">
           <div className="edos-card__titles">

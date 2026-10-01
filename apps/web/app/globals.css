@@ -1,41 +1,54 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
+/* ==========================================================================
+   EDOS Design System Tokens (Light Enterprise Theme)
+   ========================================================================== */
+
 :root {
-  /* Colors */
-  --color-bg: #090d16;
-  --color-surface: #0f1523;
-  --color-surface-hover: #151c2e;
-  --color-surface-muted: #131a29;
-  --color-surface-card: #0d1320;
-  
-  --color-border: #1e2638;
-  --color-border-subtle: #162030;
-  --color-border-hover: #2d3b55;
-  --color-border-active: #0ea5e9;
+  /* Surface & Background Tokens */
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --surface-subtle: #f1f5f9;
+  --surface-hover: #e2e8f0;
+  --surface-elevated: #ffffff;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-subtle: #f1f5f9;
 
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
-  --color-text-dim: #475569;
+  /* Typography / Text Tokens */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-disabled: #94a3b8;
 
-  --color-accent: #0ea5e9;
-  --color-accent-hover: #38bdf8;
-  --color-accent-soft: rgba(14, 165, 233, 0.12);
-  --color-accent-border: rgba(14, 165, 233, 0.28);
+  /* Accent Brand Tokens (Technical Command Center Blue) */
+  --accent: #0284c7;
+  --accent-hover: #0369a1;
+  --accent-subtle: #f0f9ff;
+  --accent-border: #bae6fd;
 
-  --color-success: #10b981;
-  --color-success-soft: rgba(16, 185, 129, 0.12);
-  --color-success-border: rgba(16, 185, 129, 0.28);
+  /* Status Semantic Tokens */
+  --success: #16a34a;
+  --success-hover: #15803d;
+  --success-subtle: #f0fdf4;
+  --success-border: #bbf7d0;
 
-  --color-warning: #f59e0b;
-  --color-warning-soft: rgba(245, 158, 11, 0.12);
-  --color-warning-border: rgba(245, 158, 11, 0.28);
+  --warning: #d97706;
+  --warning-hover: #b45309;
+  --warning-subtle: #fffbeb;
+  --warning-border: #fde68a;
 
-  --color-danger: #ef4444;
-  --color-danger-soft: rgba(239, 68, 68, 0.12);
-  --color-danger-border: rgba(239, 68, 68, 0.28);
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --danger-subtle: #fef2f2;
+  --danger-border: #fecaca;
 
-  /* Spacing */
+  --info: #2563eb;
+  --info-hover: #1d4ed8;
+  --info-subtle: #eff6ff;
+  --info-border: #bfdbfe;
+
+  /* Spacing Scale (4, 8, 12, 16, 24, 32, 48, 64) */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -45,22 +58,54 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  /* Restrained Radius */
+  /* Restrained Enterprise Radii */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
 
-  /* Subtle Shadows & Elevation */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
-  --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
-  --shadow-glow: 0 0 12px rgba(14, 165, 233, 0.15);
+  /* Enterprise Shadows & Subtle Elevation */
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-elevated: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-glow: 0 0 0 3px rgba(2, 132, 199, 0.15);
 
   /* Fonts */
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Backward Compatibility Aliases */
+  --color-bg: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-subtle);
+  --color-surface-muted: var(--surface-subtle);
+  --color-surface-card: var(--surface);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-hover: var(--border-strong);
+  --color-border-active: var(--accent);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-dim: var(--text-disabled);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-subtle);
+  --color-accent-border: var(--accent-border);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-subtle);
+  --color-success-border: var(--success-border);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-subtle);
+  --color-warning-border: var(--warning-border);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-subtle);
+  --color-danger-border: var(--danger-border);
 }
 
-/* Base Reset & Typography */
+/* ==========================================================================
+   Base Reset & Body
+   ========================================================================== */
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -73,17 +118,17 @@ html, body {
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-bg);
-  color: var(--color-text-primary);
+  background-color: var(--background);
+  color: var(--text-primary);
   line-height: 1.5;
   font-size: 0.875rem;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Accessible focus indicators */
+/* Focus styles for accessibility */
 *:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -92,21 +137,37 @@ a {
   text-decoration: none;
 }
 
-/* Typography Hierarchy Tokens */
+/* Screen reader only utility */
+.edos-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ==========================================================================
+   Typography System
+   ========================================================================== */
+
 .edos-type-display {
-  font-size: 2rem;
-  line-height: 1.2;
+  font-size: 1.875rem;
+  line-height: 1.25;
   font-weight: 700;
   letter-spacing: -0.025em;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .edos-type-page-title {
   font-size: 1.5rem;
-  line-height: 1.25;
+  line-height: 1.3;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .edos-type-section-title {
@@ -114,26 +175,38 @@ a {
   line-height: 1.35;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .edos-type-card-title {
   font-size: 0.9375rem;
   line-height: 1.4;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .edos-type-body {
   font-size: 0.875rem;
-  line-height: 1.55;
-  color: var(--color-text-secondary);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.edos-type-body-sm {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
 }
 
 .edos-type-metadata {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   line-height: 1.4;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
+}
+
+.edos-type-caption {
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: var(--text-muted);
 }
 
 .edos-type-label {
@@ -142,7 +215,13 @@ a {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
+}
+
+.edos-type-mono {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: -0.01em;
 }
 
 /* ==========================================================================
@@ -153,7 +232,7 @@ a {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: var(--color-bg);
+  background-color: var(--background);
 }
 
 .edos-shell__body {
@@ -166,7 +245,7 @@ a {
 .edos-shell__workspace {
   flex: 1;
   min-width: 0;
-  background-color: var(--color-bg);
+  background-color: var(--background);
   overflow-y: auto;
 }
 
@@ -177,13 +256,13 @@ a {
 }
 
 /* ==========================================================================
-   Header Component
+   Header Component (Light Theme)
    ========================================================================== */
 
 .edos-header {
   height: 56px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -191,6 +270,7 @@ a {
   position: sticky;
   top: 0;
   z-index: 40;
+  box-shadow: var(--shadow-sm);
 }
 
 .edos-header__left {
@@ -202,8 +282,8 @@ a {
 .edos-header__toggle-btn {
   display: none;
   background: transparent;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
   border-radius: var(--radius-sm);
   padding: var(--space-2);
   cursor: pointer;
@@ -213,9 +293,9 @@ a {
 }
 
 .edos-header__toggle-btn:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
-  border-color: var(--color-border-hover);
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
 .edos-header__brand-context {
@@ -229,16 +309,16 @@ a {
   font-family: var(--font-mono);
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: var(--color-accent);
+  color: var(--accent);
 }
 
 .edos-header__separator {
-  color: var(--color-text-dim);
+  color: var(--border-strong);
 }
 
 .edos-header__section-title {
-  font-weight: 500;
-  color: var(--color-text-primary);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .edos-header__center {
@@ -251,17 +331,23 @@ a {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  background: var(--color-surface-card);
-  border: 1px solid var(--color-border-subtle);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 6px var(--space-3);
   font-size: 0.8125rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   user-select: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.edos-header__search-placeholder:hover {
+  border-color: var(--border-strong);
+  background: #edf2f7;
 }
 
 .edos-header__search-icon {
-  color: var(--color-text-dim);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -273,10 +359,11 @@ a {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   padding: 2px 6px;
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .edos-header__right {
@@ -296,8 +383,8 @@ a {
   gap: var(--space-2);
   padding: 4px 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-card);
+  border: 1px solid var(--border);
+  background: var(--surface-subtle);
 }
 
 .edos-header__user-avatar {
@@ -307,8 +394,8 @@ a {
   width: 22px;
   height: 22px;
   border-radius: var(--radius-sm);
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
+  background: var(--accent-subtle);
+  color: var(--accent);
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   font-weight: 600;
@@ -316,18 +403,18 @@ a {
 
 .edos-header__user-label {
   font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 /* ==========================================================================
-   Sidebar Component
+   Sidebar Component (Light Theme)
    ========================================================================== */
 
 .edos-sidebar {
-  width: 260px;
-  background: var(--color-surface);
-  border-right: 1px solid var(--color-border);
+  width: 250px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -339,11 +426,11 @@ a {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-6);
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border);
 }
 
 .edos-sidebar__brand-mark {
-  color: var(--color-accent);
+  color: var(--accent);
   display: flex;
   align-items: center;
 }
@@ -358,12 +445,12 @@ a {
   font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .edos-sidebar__brand-sub {
   font-size: 0.6875rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   letter-spacing: 0.02em;
 }
 
@@ -391,7 +478,7 @@ a {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-dim);
+  color: var(--text-muted);
   padding: var(--space-1) var(--space-3);
   margin-bottom: var(--space-1);
 }
@@ -415,44 +502,44 @@ a {
   border-radius: var(--radius-md);
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   border: 1px solid transparent;
   transition: all 0.15s ease;
 }
 
 .edos-sidebar__link:hover:not(.edos-sidebar__link--disabled) {
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
-  border-color: var(--color-border-subtle);
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
 }
 
 .edos-sidebar__link--active {
-  background: var(--color-surface-muted);
-  color: var(--color-accent);
-  border-color: var(--color-accent-border);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-color: var(--accent-border);
   font-weight: 600;
 }
 
 .edos-sidebar__link--active .edos-sidebar__icon-slot {
-  color: var(--color-accent);
+  color: var(--accent);
 }
 
 .edos-sidebar__link--disabled {
-  color: var(--color-text-dim);
+  color: var(--text-disabled);
   cursor: not-allowed;
-  opacity: 0.65;
+  opacity: 0.7;
 }
 
 .edos-sidebar__icon-slot {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .edos-sidebar__link--disabled .edos-sidebar__icon-slot {
-  color: var(--color-text-dim);
+  color: var(--text-disabled);
 }
 
 .edos-sidebar__item-label {
@@ -467,11 +554,11 @@ a {
   font-size: 0.625rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--color-text-dim);
-  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  background: var(--surface-subtle);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border);
 }
 
 .edos-sidebar__item-badge {
@@ -481,8 +568,8 @@ a {
 
 .edos-sidebar__footer {
   padding: var(--space-4) var(--space-6);
-  border-top: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-card);
+  border-top: 1px solid var(--border);
+  background: var(--surface-subtle);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -496,12 +583,13 @@ a {
 }
 
 .edos-sidebar__footer-label {
-  color: var(--color-text-dim);
+  color: var(--text-muted);
 }
 
 .edos-sidebar__footer-value {
   font-family: var(--font-mono);
-  color: var(--color-text-muted);
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 .edos-sidebar__footer-status {
@@ -509,15 +597,14 @@ a {
   align-items: center;
   gap: var(--space-2);
   font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .edos-sidebar__status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: var(--color-accent);
-  box-shadow: 0 0 6px var(--color-accent);
+  background-color: var(--success);
 }
 
 .edos-sidebar__backdrop {
@@ -525,7 +612,7 @@ a {
 }
 
 /* ==========================================================================
-   UI Primitive: Button
+   UI Primitive: Button (Light Enterprise System)
    ========================================================================== */
 
 .edos-btn {
@@ -540,62 +627,110 @@ a {
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
+  user-select: none;
+}
+
+.edos-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .edos-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* Sizes */
 .edos-btn--sm {
   padding: 4px 10px;
   font-size: 0.75rem;
+  height: 28px;
 }
 
 .edos-btn--md {
-  padding: 8px 16px;
+  padding: 6px 14px;
   font-size: 0.8125rem;
+  height: 34px;
 }
 
 .edos-btn--lg {
-  padding: 10px 20px;
+  padding: 8px 18px;
   font-size: 0.875rem;
+  height: 40px;
 }
 
 /* Variants */
 .edos-btn--primary {
-  background: var(--color-accent);
-  color: #06101e;
+  background: var(--accent);
+  color: #ffffff;
   font-weight: 600;
-  border-color: transparent;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
 }
 
 .edos-btn--primary:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-  box-shadow: var(--shadow-glow);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.edos-btn--primary:active:not(:disabled) {
+  background: #026aa2;
 }
 
 .edos-btn--secondary {
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
-  border-color: var(--color-border);
+  background: var(--surface);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
 }
 
 .edos-btn--secondary:hover:not(:disabled) {
-  background: var(--color-surface-muted);
-  border-color: var(--color-border-hover);
+  background: var(--surface-subtle);
+  border-color: var(--text-muted);
+}
+
+.edos-btn--secondary:active:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.edos-btn--outline {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.edos-btn--outline:hover:not(:disabled) {
+  background: var(--surface-subtle);
+  border-color: var(--text-secondary);
 }
 
 .edos-btn--ghost {
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   border-color: transparent;
 }
 
 .edos-btn--ghost:hover:not(:disabled) {
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+}
+
+.edos-btn--danger {
+  background: var(--danger);
+  color: #ffffff;
+  font-weight: 600;
+  border-color: var(--danger);
+  box-shadow: var(--shadow-sm);
+}
+
+.edos-btn--danger:hover:not(:disabled) {
+  background: var(--danger-hover);
+  border-color: var(--danger-hover);
+}
+
+.edos-btn--danger:active:not(:disabled) {
+  background: #991b1b;
 }
 
 /* ==========================================================================
@@ -603,12 +738,16 @@ a {
    ========================================================================== */
 
 .edos-card {
-  background: var(--color-surface-card);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   overflow: hidden;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.edos-card--elevated {
+  box-shadow: var(--shadow-elevated);
 }
 
 .edos-card__header {
@@ -616,26 +755,27 @@ a {
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-4);
-  padding: var(--space-6) var(--space-6) var(--space-4);
-  border-bottom: 1px solid var(--color-border-subtle);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface);
 }
 
 .edos-card__titles {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
 }
 
 .edos-card__title {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
 .edos-card__description {
   font-size: 0.8125rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   line-height: 1.4;
 }
 
@@ -649,10 +789,10 @@ a {
 
 .edos-card__footer {
   padding: var(--space-3) var(--space-6);
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border-subtle);
+  background: var(--surface-subtle);
+  border-top: 1px solid var(--border-subtle);
   font-size: 0.8125rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 /* ==========================================================================
@@ -671,55 +811,69 @@ a {
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .edos-badge--default {
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  border-color: var(--color-accent-border);
-}
-
-.edos-badge--success {
-  background: var(--color-success-soft);
-  color: var(--color-success);
-  border-color: var(--color-success-border);
-}
-
-.edos-badge--warning {
-  background: var(--color-warning-soft);
-  color: var(--color-warning);
-  border-color: var(--color-warning-border);
-}
-
-.edos-badge--danger {
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
-  border-color: var(--color-danger-border);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-color: var(--accent-border);
 }
 
 .edos-badge--neutral {
-  background: rgba(148, 163, 184, 0.08);
-  color: var(--color-text-secondary);
-  border-color: var(--color-border);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
 }
 
-/* Compatibility aliases with Day 1 */
+.edos-badge--success {
+  background: var(--success-subtle);
+  color: var(--success);
+  border-color: var(--success-border);
+}
+
+.edos-badge--warning {
+  background: var(--warning-subtle);
+  color: var(--warning);
+  border-color: var(--warning-border);
+}
+
+.edos-badge--danger {
+  background: var(--danger-subtle);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+.edos-badge--info {
+  background: var(--info-subtle);
+  color: var(--info);
+  border-color: var(--info-border);
+}
+
+.edos-badge--outline {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+/* Compatibility aliases */
 .badge {
-  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  border: 1px solid var(--color-accent-border);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
 }
 
 .badge-muted {
-  background: rgba(148, 163, 184, 0.08);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
 }
 
 /* ==========================================================================
@@ -742,42 +896,52 @@ a {
 }
 
 .edos-status--ready {
-  color: var(--color-success);
+  color: var(--success);
 }
 .edos-status--ready .edos-status__dot {
-  background-color: var(--color-success);
-  box-shadow: 0 0 8px var(--color-success);
+  background-color: var(--success);
 }
 
 .edos-status--active {
-  color: var(--color-accent);
+  color: var(--accent);
 }
 .edos-status--active .edos-status__dot {
-  background-color: var(--color-accent);
-  box-shadow: 0 0 8px var(--color-accent);
+  background-color: var(--accent);
+}
+
+.edos-status--processing {
+  color: var(--info);
+}
+.edos-status--processing .edos-status__dot {
+  background-color: var(--info);
+}
+
+.edos-status--pending {
+  color: var(--warning);
+}
+.edos-status--pending .edos-status__dot {
+  background-color: var(--warning);
 }
 
 .edos-status--warning {
-  color: var(--color-warning);
+  color: var(--warning);
 }
 .edos-status--warning .edos-status__dot {
-  background-color: var(--color-warning);
-  box-shadow: 0 0 8px var(--color-warning);
+  background-color: var(--warning);
 }
 
-.edos-status--danger {
-  color: var(--color-danger);
+.edos-status--error {
+  color: var(--danger);
 }
-.edos-status--danger .edos-status__dot {
-  background-color: var(--color-danger);
-  box-shadow: 0 0 8px var(--color-danger);
+.edos-status--error .edos-status__dot {
+  background-color: var(--danger);
 }
 
 .edos-status--neutral {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 .edos-status--neutral .edos-status__dot {
-  background-color: var(--color-text-dim);
+  background-color: var(--text-disabled);
 }
 
 @keyframes edos-pulse {
@@ -786,61 +950,325 @@ a {
     transform: scale(1);
   }
   50% {
-    opacity: 0.6;
+    opacity: 0.45;
     transform: scale(0.92);
   }
 }
 
 .edos-status__dot--pulse {
-  animation: edos-pulse 2.5s infinite ease-in-out;
+  animation: edos-pulse 2.2s infinite ease-in-out;
 }
 
 /* ==========================================================================
-   Overview Page Layout & Views
+   UI Primitive: Decision Badge (Visual Language)
    ========================================================================== */
 
-.edos-overview {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
+.edos-decision-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  white-space: nowrap;
 }
 
-.edos-overview__hero {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--color-border-subtle);
+.edos-decision-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.edos-overview__hero-pre {
+.edos-decision-badge--detected {
+  background: var(--info-subtle);
+  color: var(--info);
+  border-color: var(--info-border);
+}
+
+.edos-decision-badge--processing {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.edos-decision-badge--validated {
+  background: var(--info-subtle);
+  color: #1d4ed8;
+  border-color: var(--info-border);
+}
+
+.edos-decision-badge--recommended {
+  background: #f0fdfa;
+  color: #0f766e;
+  border-color: #99f6e4;
+}
+
+.edos-decision-badge--pending-review {
+  background: var(--warning-subtle);
+  color: var(--warning);
+  border-color: var(--warning-border);
+}
+
+.edos-decision-badge--approved {
+  background: var(--success-subtle);
+  color: var(--success);
+  border-color: var(--success-border);
+}
+
+.edos-decision-badge--rejected {
+  background: var(--danger-subtle);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+.edos-decision-badge--escalated {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+/* ==========================================================================
+   Form Primitives: Input & Select
+   ========================================================================== */
+
+.edos-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.edos-form-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.edos-form-group--disabled .edos-form-label {
+  color: var(--text-disabled);
+}
+
+.edos-input-wrapper,
+.edos-select-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-1);
+  width: 100%;
 }
 
-.edos-overview__hero-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  color: var(--color-text-primary);
-}
-
-.edos-overview__hero-subtitle {
-  font-size: 1rem;
-  font-weight: 500;
-  color: var(--color-accent);
-}
-
-.edos-overview__hero-description {
+.edos-input,
+.edos-select {
+  width: 100%;
+  height: 36px;
+  padding: 6px var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
   font-size: 0.875rem;
-  color: var(--color-text-secondary);
-  max-width: 680px;
-  line-height: 1.6;
+  color: var(--text-primary);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Operational Metric/Status Grid */
+.edos-input::placeholder {
+  color: var(--text-muted);
+}
+
+.edos-input:focus,
+.edos-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow);
+}
+
+.edos-input:disabled,
+.edos-select:disabled {
+  background: var(--surface-subtle);
+  color: var(--text-disabled);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.edos-input--error,
+.edos-select--error {
+  border-color: var(--danger) !important;
+}
+
+.edos-input--error:focus,
+.edos-select--error:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important;
+}
+
+.edos-input-icon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.edos-input-icon--start {
+  left: 10px;
+}
+
+.edos-input-icon--end {
+  right: 10px;
+}
+
+.edos-input--with-start-icon {
+  padding-left: 34px;
+}
+
+.edos-input--with-end-icon {
+  padding-right: 34px;
+}
+
+.edos-select {
+  appearance: none;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+.edos-select-chevron {
+  position: absolute;
+  right: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.edos-form-error {
+  font-size: 0.75rem;
+  color: var(--danger);
+  margin-top: 2px;
+}
+
+.edos-form-helper {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   UI Primitive: Tabs
+   ========================================================================== */
+
+.edos-tabs-container {
+  width: 100%;
+  border-bottom: 1px solid var(--border);
+}
+
+.edos-tabs {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.edos-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px var(--space-3);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.edos-tab:hover:not(.edos-tab--disabled) {
+  color: var(--text-primary);
+  border-bottom-color: var(--border-strong);
+}
+
+.edos-tab--active {
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+.edos-tab--disabled {
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.edos-tab__badge {
+  font-size: 0.625rem;
+  padding: 1px 5px;
+}
+
+/* ==========================================================================
+   UI Primitive: Tooltip
+   ========================================================================== */
+
+.edos-tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.edos-tooltip {
+  position: absolute;
+  z-index: 100;
+  padding: 4px 8px;
+  font-size: 0.6875rem;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  color: #ffffff;
+  background: #0f172a;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: var(--shadow-card);
+}
+
+.edos-tooltip-wrapper:hover .edos-tooltip,
+.edos-tooltip-wrapper:focus-within .edos-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.edos-tooltip--top {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.edos-tooltip--bottom {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+}
+
+.edos-tooltip--left {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+}
+
+.edos-tooltip--right {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(4px);
+}
+
+/* ==========================================================================
+   UI Primitive: KPI / Metric Card
+   ========================================================================== */
+
 .edos-metrics-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -848,8 +1276,8 @@ a {
 }
 
 .edos-metric-card {
-  background: var(--color-surface-card);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   display: flex;
@@ -857,6 +1285,7 @@ a {
   justify-content: space-between;
   gap: var(--space-4);
   min-height: 120px;
+  box-shadow: var(--shadow-card);
 }
 
 .edos-metric-card__header {
@@ -871,23 +1300,520 @@ a {
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .edos-metric-card__value {
   font-size: 1.75rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
+  font-weight: 700;
+  color: var(--text-primary);
   font-family: var(--font-mono);
   letter-spacing: -0.02em;
 }
 
 .edos-metric-card__note {
   font-size: 0.75rem;
-  color: var(--color-text-dim);
+  color: var(--text-muted);
 }
 
-/* Sections */
+/* ==========================================================================
+   UI Primitive: Data Table (Light Enterprise System)
+   ========================================================================== */
+
+.edos-table-container {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.edos-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.8125rem;
+}
+
+.edos-table__head {
+  background: var(--surface-subtle);
+  border-bottom: 1px solid var(--border);
+}
+
+.edos-table__th {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 10px var(--space-4);
+  white-space: nowrap;
+}
+
+.edos-table__row {
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color 0.12s ease;
+}
+
+.edos-table__row:last-child {
+  border-bottom: none;
+}
+
+.edos-table__row--hoverable:hover {
+  background-color: #f8fafc;
+}
+
+.edos-table__row--selected {
+  background-color: var(--accent-subtle) !important;
+}
+
+.edos-table__row--clickable {
+  cursor: pointer;
+}
+
+.edos-table__td {
+  padding: 12px var(--space-4);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.edos-table--compact .edos-table__th {
+  padding: 6px var(--space-3);
+}
+
+.edos-table--compact .edos-table__td {
+  padding: 6px var(--space-3);
+  font-size: 0.75rem;
+}
+
+.edos-table__cell--right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.edos-table__cell--center {
+  text-align: center;
+}
+
+.edos-table__empty-cell {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   UI Primitive: Key-Value Display
+   ========================================================================== */
+
+.edos-kv-grid {
+  display: grid;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.edos-kv--cols-1 {
+  grid-template-columns: 1fr;
+}
+
+.edos-kv--cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.edos-kv--cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.edos-kv--cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.edos-kv-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.edos-kv--horizontal .edos-kv-item {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-2);
+}
+
+.edos-kv-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.edos-kv-value-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.edos-kv-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.edos-kv-value--mono {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.edos-kv-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   UI Primitive: Timeline Component
+   ========================================================================== */
+
+.edos-timeline {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-left: var(--space-2);
+}
+
+.edos-timeline-step {
+  display: flex;
+  gap: var(--space-4);
+  position: relative;
+}
+
+.edos-timeline-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.edos-timeline-node {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  background: var(--surface);
+  border: 2px solid var(--border-strong);
+  color: var(--text-muted);
+}
+
+.edos-timeline-track {
+  width: 2px;
+  flex: 1;
+  background-color: var(--border);
+  min-height: 28px;
+  margin: 2px 0;
+}
+
+.edos-timeline-step--completed .edos-timeline-node {
+  background: var(--success);
+  border-color: var(--success);
+  color: #ffffff;
+}
+
+.edos-timeline-step--completed .edos-timeline-track {
+  background-color: var(--success-border);
+}
+
+.edos-timeline-step--current .edos-timeline-node {
+  background: var(--surface);
+  border-color: var(--accent);
+}
+
+.edos-timeline-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--accent);
+}
+
+.edos-timeline-step--error .edos-timeline-node {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #ffffff;
+}
+
+.edos-timeline-content {
+  padding-bottom: var(--space-6);
+  flex: 1;
+}
+
+.edos-timeline-step--last .edos-timeline-content {
+  padding-bottom: 0;
+}
+
+.edos-timeline-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.edos-timeline-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.edos-timeline-time {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.edos-timeline-description {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   States: Empty, Loading, Error
+   ========================================================================== */
+
+/* Empty State */
+.edos-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-subtle);
+}
+
+.edos-empty-state__icon-wrapper {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+  box-shadow: var(--shadow-sm);
+}
+
+.edos-empty-state__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.edos-empty-state__description {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  max-width: 440px;
+  line-height: 1.5;
+  margin-bottom: var(--space-4);
+}
+
+.edos-empty-state__action {
+  margin-bottom: var(--space-2);
+}
+
+.edos-empty-state__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+/* Loading State */
+.edos-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-6);
+  gap: var(--space-3);
+}
+
+.edos-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: edos-spin 0.8s linear infinite;
+}
+
+@keyframes edos-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.edos-loading-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.edos-loading-sublabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Loading Skeleton */
+.edos-loading-skeleton-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4);
+}
+
+.edos-skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: edos-shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+.edos-skeleton--header {
+  height: 24px;
+  width: 40%;
+}
+
+.edos-skeleton--row {
+  height: 16px;
+  width: 100%;
+}
+
+.edos-skeleton--row-short {
+  height: 16px;
+  width: 70%;
+}
+
+@keyframes edos-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Error State */
+.edos-error-state {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-lg);
+  background: var(--danger-subtle);
+}
+
+.edos-error-state__icon-wrapper {
+  color: var(--danger);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.edos-error-state__content {
+  flex: 1;
+}
+
+.edos-error-state__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #991b1b;
+  margin-bottom: 2px;
+}
+
+.edos-error-state__message {
+  font-size: 0.8125rem;
+  color: #b91c1c;
+  line-height: 1.4;
+}
+
+.edos-error-state__code {
+  display: inline-block;
+  margin-top: var(--space-1);
+  font-size: 0.6875rem;
+  font-family: var(--font-mono);
+  color: #991b1b;
+}
+
+.edos-error-state__actions {
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Overview Page & Pipeline Visualizer
+   ========================================================================== */
+
+.edos-overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.edos-overview__hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.edos-overview__hero-pre {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.edos-overview__hero-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+}
+
+.edos-overview__hero-subtitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.edos-overview__hero-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  max-width: 680px;
+  line-height: 1.6;
+}
+
 .edos-section {
   display: flex;
   flex-direction: column;
@@ -904,78 +1830,13 @@ a {
   font-size: 1rem;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .edos-section__tag {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  color: var(--color-text-dim);
-}
-
-/* Intentional Empty State */
-.edos-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: var(--space-12) var(--space-6);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-lg);
-  background: rgba(15, 21, 35, 0.4);
-}
-
-.edos-empty-state__icon-wrapper {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-4);
-}
-
-.edos-empty-state__title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-2);
-}
-
-.edos-empty-state__description {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-  max-width: 460px;
-  line-height: 1.6;
-  margin-bottom: var(--space-4);
-}
-
-.edos-empty-state__meta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 4px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-}
-
-/* Pipeline Architecture Visualizer Card */
-.edos-pipeline-card {
-  background: var(--color-surface-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  color: var(--text-muted);
 }
 
 .edos-pipeline-flow {
@@ -990,22 +1851,103 @@ a {
   align-items: center;
   gap: var(--space-2);
   padding: 6px 10px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .edos-pipeline-step__num {
-  color: var(--color-accent);
+  color: var(--accent);
   font-size: 0.6875rem;
+  font-weight: 600;
 }
 
 .edos-pipeline-arrow {
-  color: var(--color-text-dim);
+  color: var(--text-disabled);
   font-size: 0.75rem;
+}
+
+/* ==========================================================================
+   Design System Showcase Styles (/design-system)
+   ========================================================================== */
+
+.edos-showcase {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-bottom: var(--space-16);
+}
+
+.edos-showcase__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.edos-showcase__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.edos-showcase__section-head {
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-2);
+}
+
+.edos-showcase__grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.edos-showcase__grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.edos-showcase__grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.edos-showcase__grid--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.edos-swatch {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.edos-swatch__color {
+  height: 48px;
+  width: 100%;
+}
+
+.edos-swatch__meta {
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.edos-swatch__name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.edos-swatch__token {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-muted);
 }
 
 /* ==========================================================================
@@ -1018,6 +1960,12 @@ a {
   }
   .edos-header__center {
     display: none;
+  }
+  .edos-showcase__grid--4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .edos-showcase__grid--3 {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -1033,7 +1981,7 @@ a {
     left: 0;
     z-index: 50;
     transform: translateX(-100%);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
   }
 
   .edos-sidebar--open {
@@ -1047,12 +1995,18 @@ a {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.65);
+    background: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(2px);
     z-index: 45;
   }
 
   .edos-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .edos-showcase__grid--2,
+  .edos-showcase__grid--3,
+  .edos-showcase__grid--4 {
     grid-template-columns: 1fr;
   }
 

@@ -1,6 +1,6 @@
 import React from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -15,6 +15,7 @@ export function Button({
   className = "",
   children,
   disabled,
+  type = "button",
   ...props
 }: ButtonProps) {
   const baseClass = "edos-btn";
@@ -26,6 +27,7 @@ export function Button({
 
   return (
     <button
+      type={type}
       className={combinedClassName}
       disabled={disabled}
       {...props}

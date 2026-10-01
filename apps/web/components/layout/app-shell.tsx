@@ -12,6 +12,7 @@ export interface AppShellProps {
 }
 
 function resolveSectionName(pathname: string): string {
+  if (pathname.startsWith("/design-system")) return "Design System";
   if (pathname.startsWith("/decisions")) return "Decisions";
   if (pathname.startsWith("/supply-chain/products")) return "Products";
   if (pathname.startsWith("/supply-chain/inventory")) return "Inventory";

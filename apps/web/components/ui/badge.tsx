@@ -2,10 +2,12 @@ import React from "react";
 
 export type BadgeVariant =
   | "default"
+  | "neutral"
   | "success"
   | "warning"
   | "danger"
-  | "neutral";
+  | "info"
+  | "outline";
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;

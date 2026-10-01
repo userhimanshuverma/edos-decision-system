@@ -2,6 +2,8 @@ import React from "react";
 import { Badge } from "../components/ui/badge";
 import { Card } from "../components/ui/card";
 import { StatusIndicator } from "../components/ui/status-indicator";
+import { Metric } from "../components/ui/metric";
+import { EmptyState } from "../components/ui/empty-state";
 
 export default function OverviewPage() {
   return (
@@ -10,7 +12,7 @@ export default function OverviewPage() {
       <section className="edos-overview__hero" aria-labelledby="overview-title">
         <div className="edos-overview__hero-pre">
           <Badge variant="default">Foundation Phase</Badge>
-          <Badge variant="neutral">Day 2</Badge>
+          <Badge variant="neutral">Day 3</Badge>
         </div>
         <h1 id="overview-title" className="edos-overview__hero-title">
           Overview
@@ -29,42 +31,37 @@ export default function OverviewPage() {
         aria-label="Operational high-level metrics"
       >
         {/* Card 1: Active Decisions */}
-        <div className="edos-metric-card">
-          <div className="edos-metric-card__header">
-            <span className="edos-metric-card__label">Active Decisions</span>
-            <Badge variant="neutral">Idle</Badge>
-          </div>
-          <div className="edos-metric-card__value">—</div>
-          <span className="edos-metric-card__note">
-            No decision runs currently in progress
-          </span>
-        </div>
+        <Metric
+          label="Active Decisions"
+          value="—"
+          badge="Idle"
+          badgeVariant="neutral"
+          note="No decision runs currently in progress"
+        />
 
         {/* Card 2: Pending Reviews */}
-        <div className="edos-metric-card">
-          <div className="edos-metric-card__header">
-            <span className="edos-metric-card__label">Pending Reviews</span>
-            <Badge variant="neutral">Queue 0</Badge>
-          </div>
-          <div className="edos-metric-card__value">—</div>
-          <span className="edos-metric-card__note">
-            Human approval queue awaiting triggers
-          </span>
-        </div>
+        <Metric
+          label="Pending Reviews"
+          value="—"
+          badge="Queue 0"
+          badgeVariant="neutral"
+          note="Human approval queue awaiting triggers"
+        />
 
         {/* Card 3: System Status */}
-        <div className="edos-metric-card">
-          <div className="edos-metric-card__header">
-            <span className="edos-metric-card__label">System Status</span>
-            <Badge variant="success">READY</Badge>
-          </div>
-          <div className="edos-metric-card__value" style={{ color: "var(--color-success)" }}>
-            READY
-          </div>
-          <div className="edos-metric-card__note">
-            <StatusIndicator tone="ready" label="FastAPI & Web Shell Operational" pulse />
-          </div>
-        </div>
+        <Metric
+          label="System Status"
+          value={<span style={{ color: "var(--success)" }}>READY</span>}
+          badge="READY"
+          badgeVariant="success"
+          note={
+            <StatusIndicator
+              tone="ready"
+              label="FastAPI & Web Shell Operational"
+              pulse
+            />
+          }
+        />
       </section>
 
       {/* Recent Operational Activity Section */}
@@ -77,34 +74,16 @@ export default function OverviewPage() {
         </div>
 
         <Card>
-          <div className="edos-empty-state">
-            <div className="edos-empty-state__icon-wrapper" aria-hidden="true">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </div>
-            <h4 className="edos-empty-state__title">
-              No operational decisions yet
-            </h4>
-            <p className="edos-empty-state__description">
-              Decision activity will appear here once EDOS begins processing
-              operational scenarios.
-            </p>
-            <div className="edos-empty-state__meta">
-              <span className="edos-status__dot" style={{ background: "var(--color-accent)", width: 6, height: 6 }} />
-              <span>Awaiting scenario execution triggers</span>
-            </div>
-          </div>
+          <EmptyState
+            title="No operational decisions yet"
+            description="Decision activity will appear here once EDOS begins processing operational scenarios."
+            meta={
+              <span className="edos-status edos-status--active">
+                <span className="edos-status__dot" />
+                <span>Awaiting scenario execution triggers</span>
+              </span>
+            }
+          />
         </Card>
       </section>
 
