@@ -171,6 +171,22 @@ The repository is structured according to a phased 30-day plan. Here is a detail
 * **Overview Migration (`apps/web/app/page.tsx`)**:
   - Refactored overview screen to use the new light theme, `Metric`, `EmptyState`, `Card`, and `Badge` primitives.
 
+### 4.4 Day 4: ShopFlow Domain Model
+* **Operational Domain Models (`apps/api/app/domain/`)**:
+  - Established strongly-typed Pydantic v2 domain models representing the operational supply chain entities:
+    - `Product` (`product.py`): id, SKU, name, category, unit cost (>=0), selling price (>=0), reorder point (>=0), active flag.
+    - `Supplier` (`supplier.py`): id, code, name, lead time in days (>=0), reliability score (0.0 to 1.0), active flag.
+    - `Warehouse` (`warehouse.py`): id, code, name, location, storage capacity (>=0), active flag.
+    - `Inventory` (`inventory.py`): id, product reference, warehouse reference, quantity on hand (>=0), quantity reserved (>=0), reorder point (>=0), updated timestamp, and calculated `available_quantity` property.
+* **Domain Validation & Integrity**:
+  - Enforced string whitespace trimming, minimum length validation, and strict extra field rejection (`extra="forbid"`).
+  - Cross-field consistency validation ensuring `quantity_reserved` never exceeds physical `quantity_on_hand`.
+* **Zero Premature Overhead**:
+  - Pure domain representations with zero database, ORM, or synthetic data dependencies.
+* **Automated Domain Test Suite (`apps/api/tests/`)**:
+  - Comprehensive unit testing across `test_product.py`, `test_supplier.py`, `test_warehouse.py`, and `test_inventory.py`.
+  - Validates correct model creation, default attribute assignments, required field presence, boundary/constraint enforcement, and full dict/JSON serialization round-trips.
+
 ---
 
 ## 5. Technology Stack & Directory Structure
@@ -205,9 +221,19 @@ edos-decision-system/
 │   │   ├── pyproject.toml             # Python package dependencies & pytest config
 │   │   ├── app/
 │   │   │   ├── config.py              # Environment configuration & settings class
-│   │   │   └── main.py                # FastAPI app initialization & /health route
+│   │   │   ├── main.py                # FastAPI app initialization & /health route
+│   │   │   └── domain/                # ShopFlow domain models (Pydantic v2)
+│   │   │       ├── __init__.py        # Domain package exports
+│   │   │       ├── product.py         # Product model & validation
+│   │   │       ├── supplier.py        # Supplier model & reliability validation
+│   │   │       ├── warehouse.py       # Warehouse model & capacity validation
+│   │   │       └── inventory.py       # Inventory model, stock balances & validation
 │   │   └── tests/
-│   │       └── test_health.py         # Pytest health check test
+│   │       ├── test_health.py         # Pytest health check test
+│   │       ├── test_product.py        # Product validation & serialization tests
+│   │       ├── test_supplier.py       # Supplier validation & boundary tests
+│   │       ├── test_warehouse.py      # Warehouse validation tests
+│   │       └── test_inventory.py      # Inventory cross-field & balance tests
 │   └── web/                           # Next.js web frontend service
 │       ├── Dockerfile                 # Web container definition
 │       ├── package.json               # Node.js dependencies & scripts
@@ -263,10 +289,11 @@ edos-decision-system/
 ┌─────────────────┬─────────────────────────────────────────────────────────┐
 │ Phase           │ Primary Deliverables                                    │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
-│ Days 1–5        │ Foundation (Completed: Days 1 & 2)                      │
+│ Days 1–5        │ Foundation (Completed: Days 1, 2, 3 & 4)                │
 │                 │ - Monorepo, FastAPI health check, Docker orchestration  │
 │                 │ - Next.js 14 App Shell, design tokens, Overview UI      │
-│                 │ - Pydantic domain models & decision runtime scaffolding │
+│                 │ - ShopFlow domain models (Product, Supplier, Warehouse, │
+│                 │   Inventory) with Pydantic validation & test suite      │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
 │ Days 6–10       │ Understand the Situation                                │
 │                 │ - Supply chain situation schema (Stockout/Delay event)  │
