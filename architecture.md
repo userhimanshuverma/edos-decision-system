@@ -222,18 +222,24 @@ edos-decision-system/
 │   │   ├── app/
 │   │   │   ├── config.py              # Environment configuration & settings class
 │   │   │   ├── main.py                # FastAPI app initialization & /health route
-│   │   │   └── domain/                # ShopFlow domain models (Pydantic v2)
-│   │   │       ├── __init__.py        # Domain package exports
-│   │   │       ├── product.py         # Product model & validation
-│   │   │       ├── supplier.py        # Supplier model & reliability validation
-│   │   │       ├── warehouse.py       # Warehouse model & capacity validation
-│   │   │       └── inventory.py       # Inventory model, stock balances & validation
+│   │   │   ├── domain/                # ShopFlow domain models (Pydantic v2)
+│   │   │   │   ├── __init__.py        # Domain package exports
+│   │   │   │   ├── product.py         # Product model & validation
+│   │   │   │   ├── supplier.py        # Supplier model & reliability validation
+│   │   │   │   ├── warehouse.py       # Warehouse model & capacity validation
+│   │   │   │   └── inventory.py       # Inventory model, stock balances & validation
+│   │   │   └── data/                  # ShopFlow Synthetic Data Engine (Day 5)
+│   │   │       ├── __init__.py        # Engine exports
+│   │   │       ├── dataset.py         # ShopFlowDataset container & Scenario models
+│   │   │       ├── generator.py       # Deterministic generator & CLI
+│   │   │       └── scenarios.py       # Controlled operational scenario mutators
 │   │   └── tests/
 │   │       ├── test_health.py         # Pytest health check test
 │   │       ├── test_product.py        # Product validation & serialization tests
 │   │       ├── test_supplier.py       # Supplier validation & boundary tests
 │   │       ├── test_warehouse.py      # Warehouse validation tests
-│   │       └── test_inventory.py      # Inventory cross-field & balance tests
+│   │       ├── test_inventory.py      # Inventory cross-field & balance tests
+│   │       └── test_synthetic_data.py # Deterministic data generation & scenario tests
 │   └── web/                           # Next.js web frontend service
 │       ├── Dockerfile                 # Web container definition
 │       ├── package.json               # Node.js dependencies & scripts
@@ -256,8 +262,8 @@ edos-decision-system/
 │           └── navigation.ts          # Navigation links and domain sections
 ├── data/                              # Data persistence & fixture directories
 │   ├── raw/                           # Raw input datasets
-│   ├── processed/                     # Sanitized operational data
-│   ├── schemas/                       # JSON Schemas and fixture mocks
+│   ├── processed/                     # Sanitized operational data & scenario fixtures
+│   ├── schemas/                       # JSON Schemas and sample fixtures
 │   └── README.md                      # Data guidelines and structure explanation
 └── docs/                              # Project documentation
     └── architecture/
@@ -289,11 +295,13 @@ edos-decision-system/
 ┌─────────────────┬─────────────────────────────────────────────────────────┐
 │ Phase           │ Primary Deliverables                                    │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
-│ Days 1–5        │ Foundation (Completed: Days 1, 2, 3 & 4)                │
+│ Days 1–5        │ Foundation (Completed: Days 1, 2, 3, 4 & 5)             │
 │                 │ - Monorepo, FastAPI health check, Docker orchestration  │
 │                 │ - Next.js 14 App Shell, design tokens, Overview UI      │
 │                 │ - ShopFlow domain models (Product, Supplier, Warehouse, │
 │                 │   Inventory) with Pydantic validation & test suite      │
+│                 │ - ShopFlow Synthetic Data Engine (reproducible seed,    │
+│                 │   scenarios, referential integrity & test suite)        │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
 │ Days 6–10       │ Understand the Situation                                │
 │                 │ - Supply chain situation schema (Stockout/Delay event)  │

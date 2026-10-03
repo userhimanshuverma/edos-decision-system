@@ -1,0 +1,448 @@
+{
+  "seed": 42,
+  "scenario": {
+    "scenario_type": "normal",
+    "description": "Nominal ShopFlow operating state: balanced inventory levels and dependable supplier lead times.",
+    "target_skus": [
+      "SKU-ELEC-1001"
+    ],
+    "target_suppliers": [
+      "SUP-PAC-01"
+    ],
+    "parameters": {}
+  },
+  "products": [
+    {
+      "id": "prod-001",
+      "sku": "SKU-ELEC-1001",
+      "name": "Industrial IoT Gateway Edge-X",
+      "category": "Industrial Electronics",
+      "unit_cost": 126.74,
+      "selling_price": 178.23,
+      "reorder_point": 50,
+      "active": true
+    },
+    {
+      "id": "prod-002",
+      "sku": "SKU-ELEC-1002",
+      "name": "Quad-Core Embedded Logic Controller",
+      "category": "Industrial Electronics",
+      "unit_cost": 303.03,
+      "selling_price": 441.15,
+      "reorder_point": 35,
+      "active": true
+    },
+    {
+      "id": "prod-003",
+      "sku": "SKU-MECH-2001",
+      "name": "High-Torque Brushless Servo Motor",
+      "category": "Mechanical & Motion",
+      "unit_cost": 90.08,
+      "selling_price": 141.35,
+      "reorder_point": 70,
+      "active": true
+    },
+    {
+      "id": "prod-004",
+      "sku": "SKU-MECH-2002",
+      "name": "Precision Ground Ball Screw Assembly",
+      "category": "Mechanical & Motion",
+      "unit_cost": 67.55,
+      "selling_price": 96.04,
+      "reorder_point": 60,
+      "active": true
+    },
+    {
+      "id": "prod-005",
+      "sku": "SKU-POWR-3001",
+      "name": "24V 20A Industrial DIN-Rail PSU",
+      "category": "Power Distribution",
+      "unit_cost": 44.65,
+      "selling_price": 62.84,
+      "reorder_point": 90,
+      "active": true
+    },
+    {
+      "id": "prod-006",
+      "sku": "SKU-POWR-3002",
+      "name": "Modular LiFePO4 48V Storage Cell",
+      "category": "Power Distribution",
+      "unit_cost": 223.53,
+      "selling_price": 341.18,
+      "reorder_point": 30,
+      "active": true
+    },
+    {
+      "id": "prod-007",
+      "sku": "SKU-NETW-4001",
+      "name": "Managed 8-Port Gigabit Switch",
+      "category": "Industrial Networking",
+      "unit_cost": 152.42,
+      "selling_price": 220.96,
+      "reorder_point": 45,
+      "active": true
+    },
+    {
+      "id": "prod-008",
+      "sku": "SKU-NETW-4002",
+      "name": "Ruggedized Dual-SIM LTE Router",
+      "category": "Industrial Networking",
+      "unit_cost": 142.1,
+      "selling_price": 218.3,
+      "reorder_point": 40,
+      "active": true
+    },
+    {
+      "id": "prod-009",
+      "sku": "SKU-SENS-5001",
+      "name": "Infrared Thermal Line Scanner",
+      "category": "Sensors & Instrumentation",
+      "unit_cost": 281.89,
+      "selling_price": 436.17,
+      "reorder_point": 25,
+      "active": true
+    },
+    {
+      "id": "prod-010",
+      "sku": "SKU-SENS-5002",
+      "name": "Triaxial Piezoelectric Vibration Sensor",
+      "category": "Sensors & Instrumentation",
+      "unit_cost": 94.85,
+      "selling_price": 132.94,
+      "reorder_point": 80,
+      "active": true
+    }
+  ],
+  "suppliers": [
+    {
+      "id": "sup-001",
+      "code": "SUP-PAC-01",
+      "name": "Pacific Dynamics Core",
+      "lead_time_days": 10,
+      "reliability": 0.98,
+      "active": true
+    },
+    {
+      "id": "sup-002",
+      "code": "SUP-APX-02",
+      "name": "Apex Motion & Machine Corp",
+      "lead_time_days": 14,
+      "reliability": 0.95,
+      "active": true
+    },
+    {
+      "id": "sup-003",
+      "code": "SUP-VNG-03",
+      "name": "Vanguard Industrial Power",
+      "lead_time_days": 7,
+      "reliability": 0.97,
+      "active": true
+    },
+    {
+      "id": "sup-004",
+      "code": "SUP-OMN-04",
+      "name": "OmniSensor Systems Global",
+      "lead_time_days": 12,
+      "reliability": 0.93,
+      "active": true
+    }
+  ],
+  "warehouses": [
+    {
+      "id": "wh-001",
+      "code": "WH-EAST-01",
+      "name": "Eastern Logistics Hub",
+      "location": "Allentown, PA",
+      "capacity": 150000,
+      "active": true
+    },
+    {
+      "id": "wh-002",
+      "code": "WH-CENT-02",
+      "name": "Midwest Distribution Center",
+      "location": "Indianapolis, IN",
+      "capacity": 275000,
+      "active": true
+    },
+    {
+      "id": "wh-003",
+      "code": "WH-WEST-03",
+      "name": "Pacific Gateway Depot",
+      "location": "Stockton, CA",
+      "capacity": 180000,
+      "active": true
+    }
+  ],
+  "inventory": [
+    {
+      "id": "inv-prod-001-wh-001",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "quantity_on_hand": 180,
+      "quantity_reserved": 27,
+      "reorder_point": 50,
+      "updated_at": "2026-10-01T23:36:00Z"
+    },
+    {
+      "id": "inv-prod-001-wh-002",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "quantity_on_hand": 127,
+      "quantity_reserved": 10,
+      "reorder_point": 50,
+      "updated_at": "2026-10-01T23:29:00Z"
+    },
+    {
+      "id": "inv-prod-001-wh-003",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "quantity_on_hand": 110,
+      "quantity_reserved": 11,
+      "reorder_point": 50,
+      "updated_at": "2026-10-02T00:15:00Z"
+    },
+    {
+      "id": "inv-prod-002-wh-001",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "quantity_on_hand": 129,
+      "quantity_reserved": 18,
+      "reorder_point": 35,
+      "updated_at": "2026-10-01T13:28:00Z"
+    },
+    {
+      "id": "inv-prod-002-wh-002",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "quantity_on_hand": 121,
+      "quantity_reserved": 15,
+      "reorder_point": 35,
+      "updated_at": "2026-10-02T00:55:00Z"
+    },
+    {
+      "id": "inv-prod-002-wh-003",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "quantity_on_hand": 75,
+      "quantity_reserved": 7,
+      "reorder_point": 35,
+      "updated_at": "2026-10-02T09:27:00Z"
+    },
+    {
+      "id": "inv-prod-003-wh-001",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "quantity_on_hand": 226,
+      "quantity_reserved": 40,
+      "reorder_point": 70,
+      "updated_at": "2026-10-02T07:42:00Z"
+    },
+    {
+      "id": "inv-prod-003-wh-002",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "quantity_on_hand": 166,
+      "quantity_reserved": 10,
+      "reorder_point": 70,
+      "updated_at": "2026-10-02T10:34:00Z"
+    },
+    {
+      "id": "inv-prod-003-wh-003",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "quantity_on_hand": 171,
+      "quantity_reserved": 15,
+      "reorder_point": 70,
+      "updated_at": "2026-10-01T14:43:00Z"
+    },
+    {
+      "id": "inv-prod-004-wh-001",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "quantity_on_hand": 222,
+      "quantity_reserved": 39,
+      "reorder_point": 60,
+      "updated_at": "2026-10-02T00:58:00Z"
+    },
+    {
+      "id": "inv-prod-004-wh-002",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "quantity_on_hand": 153,
+      "quantity_reserved": 22,
+      "reorder_point": 60,
+      "updated_at": "2026-10-02T00:27:00Z"
+    },
+    {
+      "id": "inv-prod-004-wh-003",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "quantity_on_hand": 139,
+      "quantity_reserved": 14,
+      "reorder_point": 60,
+      "updated_at": "2026-10-02T10:52:00Z"
+    },
+    {
+      "id": "inv-prod-005-wh-001",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "quantity_on_hand": 228,
+      "quantity_reserved": 43,
+      "reorder_point": 90,
+      "updated_at": "2026-10-02T10:07:00Z"
+    },
+    {
+      "id": "inv-prod-005-wh-002",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "quantity_on_hand": 192,
+      "quantity_reserved": 27,
+      "reorder_point": 90,
+      "updated_at": "2026-10-02T06:13:00Z"
+    },
+    {
+      "id": "inv-prod-005-wh-003",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "quantity_on_hand": 311,
+      "quantity_reserved": 23,
+      "reorder_point": 90,
+      "updated_at": "2026-10-02T00:57:00Z"
+    },
+    {
+      "id": "inv-prod-006-wh-001",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "quantity_on_hand": 76,
+      "quantity_reserved": 14,
+      "reorder_point": 30,
+      "updated_at": "2026-10-02T11:29:00Z"
+    },
+    {
+      "id": "inv-prod-006-wh-002",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "quantity_on_hand": 93,
+      "quantity_reserved": 14,
+      "reorder_point": 30,
+      "updated_at": "2026-10-01T13:54:00Z"
+    },
+    {
+      "id": "inv-prod-006-wh-003",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "quantity_on_hand": 73,
+      "quantity_reserved": 4,
+      "reorder_point": 30,
+      "updated_at": "2026-10-01T22:46:00Z"
+    },
+    {
+      "id": "inv-prod-007-wh-001",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "quantity_on_hand": 126,
+      "quantity_reserved": 7,
+      "reorder_point": 45,
+      "updated_at": "2026-10-02T07:21:00Z"
+    },
+    {
+      "id": "inv-prod-007-wh-002",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "quantity_on_hand": 168,
+      "quantity_reserved": 16,
+      "reorder_point": 45,
+      "updated_at": "2026-10-02T10:22:00Z"
+    },
+    {
+      "id": "inv-prod-007-wh-003",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "quantity_on_hand": 134,
+      "quantity_reserved": 24,
+      "reorder_point": 45,
+      "updated_at": "2026-10-02T09:56:00Z"
+    },
+    {
+      "id": "inv-prod-008-wh-001",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "quantity_on_hand": 116,
+      "quantity_reserved": 10,
+      "reorder_point": 40,
+      "updated_at": "2026-10-01T20:25:00Z"
+    },
+    {
+      "id": "inv-prod-008-wh-002",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "quantity_on_hand": 139,
+      "quantity_reserved": 18,
+      "reorder_point": 40,
+      "updated_at": "2026-10-02T07:57:00Z"
+    },
+    {
+      "id": "inv-prod-008-wh-003",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "quantity_on_hand": 114,
+      "quantity_reserved": 15,
+      "reorder_point": 40,
+      "updated_at": "2026-10-02T00:21:00Z"
+    },
+    {
+      "id": "inv-prod-009-wh-001",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "quantity_on_hand": 60,
+      "quantity_reserved": 11,
+      "reorder_point": 25,
+      "updated_at": "2026-10-02T05:23:00Z"
+    },
+    {
+      "id": "inv-prod-009-wh-002",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "quantity_on_hand": 74,
+      "quantity_reserved": 12,
+      "reorder_point": 25,
+      "updated_at": "2026-10-01T15:44:00Z"
+    },
+    {
+      "id": "inv-prod-009-wh-003",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "quantity_on_hand": 57,
+      "quantity_reserved": 4,
+      "reorder_point": 25,
+      "updated_at": "2026-10-02T11:13:00Z"
+    },
+    {
+      "id": "inv-prod-010-wh-001",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "quantity_on_hand": 227,
+      "quantity_reserved": 13,
+      "reorder_point": 80,
+      "updated_at": "2026-10-02T01:01:00Z"
+    },
+    {
+      "id": "inv-prod-010-wh-002",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "quantity_on_hand": 255,
+      "quantity_reserved": 30,
+      "reorder_point": 80,
+      "updated_at": "2026-10-01T20:34:00Z"
+    },
+    {
+      "id": "inv-prod-010-wh-003",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "quantity_on_hand": 315,
+      "quantity_reserved": 56,
+      "reorder_point": 80,
+      "updated_at": "2026-10-01T12:23:00Z"
+    }
+  ]
+}

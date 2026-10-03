@@ -1,0 +1,344 @@
+{
+  "$defs": {
+    "Inventory": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Unique identifier for the inventory position",
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "product_id": {
+          "description": "Referenced Product identifier",
+          "minLength": 1,
+          "title": "Product Id",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "description": "Referenced Warehouse identifier",
+          "minLength": 1,
+          "title": "Warehouse Id",
+          "type": "string"
+        },
+        "quantity_on_hand": {
+          "description": "Physical units present in warehouse",
+          "minimum": 0,
+          "title": "Quantity On Hand",
+          "type": "integer"
+        },
+        "quantity_reserved": {
+          "default": 0,
+          "description": "Allocated or reserved units",
+          "minimum": 0,
+          "title": "Quantity Reserved",
+          "type": "integer"
+        },
+        "reorder_point": {
+          "description": "Reorder trigger threshold for this SKU at this location",
+          "minimum": 0,
+          "title": "Reorder Point",
+          "type": "integer"
+        },
+        "updated_at": {
+          "description": "Timestamp of the most recent inventory update (UTC)",
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "product_id",
+        "warehouse_id",
+        "quantity_on_hand",
+        "reorder_point"
+      ],
+      "title": "Inventory",
+      "type": "object"
+    },
+    "Product": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Unique identifier for the product",
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "sku": {
+          "description": "Stock keeping unit code",
+          "minLength": 1,
+          "title": "Sku",
+          "type": "string"
+        },
+        "name": {
+          "description": "Product display name",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "category": {
+          "description": "Product category",
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "unit_cost": {
+          "description": "Cost per unit in standard currency",
+          "minimum": 0.0,
+          "title": "Unit Cost",
+          "type": "number"
+        },
+        "selling_price": {
+          "description": "Retail selling price per unit",
+          "minimum": 0.0,
+          "title": "Selling Price",
+          "type": "number"
+        },
+        "reorder_point": {
+          "description": "Inventory threshold triggering replenishment",
+          "minimum": 0,
+          "title": "Reorder Point",
+          "type": "integer"
+        },
+        "active": {
+          "default": true,
+          "description": "Whether the product is currently active",
+          "title": "Active",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "sku",
+        "name",
+        "category",
+        "unit_cost",
+        "selling_price",
+        "reorder_point"
+      ],
+      "title": "Product",
+      "type": "object"
+    },
+    "ScenarioMetadata": {
+      "additionalProperties": false,
+      "description": "Metadata describing a synthetic data operational scenario.",
+      "properties": {
+        "scenario_type": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/ScenarioType"
+            }
+          ],
+          "description": "Classification of the operational scenario"
+        },
+        "description": {
+          "description": "Human-readable scenario description",
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "target_skus": {
+          "description": "SKUs specifically affected by the scenario",
+          "items": {
+            "type": "string"
+          },
+          "title": "Target Skus",
+          "type": "array"
+        },
+        "target_suppliers": {
+          "description": "Supplier codes affected by the scenario",
+          "items": {
+            "type": "string"
+          },
+          "title": "Target Suppliers",
+          "type": "array"
+        },
+        "parameters": {
+          "description": "Arbitrary scenario parameters",
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "scenario_type",
+        "description"
+      ],
+      "title": "ScenarioMetadata",
+      "type": "object"
+    },
+    "ScenarioType": {
+      "description": "Operational scenario types representing controlled synthetic ShopFlow conditions.",
+      "enum": [
+        "normal",
+        "low_inventory",
+        "approaching_reorder",
+        "supplier_delay",
+        "supplier_unreliable",
+        "potential_stockout"
+      ],
+      "title": "ScenarioType",
+      "type": "string"
+    },
+    "Supplier": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Unique identifier for the supplier",
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "code": {
+          "description": "Supplier code/reference identifier",
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "name": {
+          "description": "Supplier business name",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "lead_time_days": {
+          "description": "Standard supplier fulfillment lead time in days",
+          "minimum": 0,
+          "title": "Lead Time Days",
+          "type": "integer"
+        },
+        "reliability": {
+          "description": "Supplier reliability score between 0.0 and 1.0",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Reliability",
+          "type": "number"
+        },
+        "active": {
+          "default": true,
+          "description": "Whether the supplier is active",
+          "title": "Active",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "code",
+        "name",
+        "lead_time_days",
+        "reliability"
+      ],
+      "title": "Supplier",
+      "type": "object"
+    },
+    "Warehouse": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Unique identifier for the warehouse",
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "code": {
+          "description": "Warehouse facility code",
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "name": {
+          "description": "Warehouse facility name",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "location": {
+          "description": "Geographic location or address",
+          "minLength": 1,
+          "title": "Location",
+          "type": "string"
+        },
+        "capacity": {
+          "description": "Total storage unit capacity",
+          "minimum": 0,
+          "title": "Capacity",
+          "type": "integer"
+        },
+        "active": {
+          "default": true,
+          "description": "Whether the warehouse is operational",
+          "title": "Active",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "code",
+        "name",
+        "location",
+        "capacity"
+      ],
+      "title": "Warehouse",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Container holding a complete, consistent ShopFlow synthetic dataset.",
+  "properties": {
+    "seed": {
+      "description": "Random seed used to generate this dataset",
+      "title": "Seed",
+      "type": "integer"
+    },
+    "scenario": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ScenarioMetadata"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Operational scenario metadata if configured"
+    },
+    "products": {
+      "description": "List of generated products",
+      "items": {
+        "$ref": "#/$defs/Product"
+      },
+      "title": "Products",
+      "type": "array"
+    },
+    "suppliers": {
+      "description": "List of generated suppliers",
+      "items": {
+        "$ref": "#/$defs/Supplier"
+      },
+      "title": "Suppliers",
+      "type": "array"
+    },
+    "warehouses": {
+      "description": "List of generated warehouses",
+      "items": {
+        "$ref": "#/$defs/Warehouse"
+      },
+      "title": "Warehouses",
+      "type": "array"
+    },
+    "inventory": {
+      "description": "List of generated inventory positions",
+      "items": {
+        "$ref": "#/$defs/Inventory"
+      },
+      "title": "Inventory",
+      "type": "array"
+    }
+  },
+  "required": [
+    "seed"
+  ],
+  "title": "ShopFlowDataset",
+  "type": "object"
+}
