@@ -187,6 +187,30 @@ The repository is structured according to a phased 30-day plan. Here is a detail
   - Comprehensive unit testing across `test_product.py`, `test_supplier.py`, `test_warehouse.py`, and `test_inventory.py`.
   - Validates correct model creation, default attribute assignments, required field presence, boundary/constraint enforcement, and full dict/JSON serialization round-trips.
 
+### 4.5 Day 5: ShopFlow Synthetic Data Engine
+* **Deterministic Data Generator (`apps/api/app/data/`)**:
+  - Isolated instance-specific pseudorandom generation (`random.Random(seed)`) guaranteeing 100% reproducible operational datasets.
+  - Baseline dataset generation (10 products, 4 suppliers, 3 warehouses, 30 inventory positions) with referential integrity.
+  - Six controlled operational scenarios (`normal`, `low_inventory`, `approaching_reorder`, `supplier_delay`, `supplier_unreliable`, `potential_stockout`).
+
+### 4.6 Day 6: Inventory Data Layer
+* **Objective**:
+  - Make EDOS reliably able to access current inventory state as the foundational step of Phase 2 ("Understand the Situation").
+* **Data Access Layer (`apps/api/app/repositories/inventory_repository.py`)**:
+  - Modular in-memory repository wrapping the deterministic `ShopFlowDataset` (canonical seed 42).
+  - Clear separation of concerns: Domain models remain pure; repository handles queries; API handles HTTP transport.
+  - Supports `list_all(product_id, warehouse_id)`, `get_by_id(inventory_id)`, `get_by_product_id(product_id)`, `get_by_warehouse_id(warehouse_id)`, `product_exists`, and `warehouse_exists`.
+* **FastAPI Inventory APIs (`apps/api/app/api/`)**:
+  - `GET /api/inventory`: Lists all operational inventory positions with optional `product_id` and `warehouse_id` query filters.
+  - `GET /api/inventory/{inventory_id}`: Retrieves a single inventory position by ID; returns HTTP 404 for unknown positions.
+  - `GET /api/inventory/product/{product_id}`: Retrieves inventory positions for a product; returns HTTP 404 for unknown products.
+  - `GET /api/inventory/warehouse/{warehouse_id}`: Retrieves inventory positions for a warehouse; returns HTTP 404 for unknown warehouses.
+  - Direct router alias `/inventory` mounted for convenience alongside the canonical `/api/inventory` endpoints.
+* **Typed API Response Model (`InventoryResponse`)**:
+  - Strongly typed Pydantic v2 schema exposing `inventory_id`, `id`, `product_id`, `warehouse_id`, `quantity_on_hand`, `quantity_reserved`, `available_quantity`, `reorder_point`, and `updated_at`.
+* **Frontend Typing Preparation (`apps/web/lib/types/inventory.ts`)**:
+  - Lightweight TypeScript `InventoryRecord` interface preparing future UI integration without premature screen creation.
+
 ---
 
 ## 5. Technology Stack & Directory Structure
@@ -222,12 +246,19 @@ edos-decision-system/
 │   │   ├── app/
 │   │   │   ├── config.py              # Environment configuration & settings class
 │   │   │   ├── main.py                # FastAPI app initialization & /health route
+│   │   │   ├── api/                   # FastAPI route handlers & schemas (Day 6)
+│   │   │   │   ├── __init__.py        # API router & schema exports
+│   │   │   │   ├── schemas.py         # Pydantic v2 InventoryResponse schema
+│   │   │   │   └── inventory.py       # Inventory HTTP endpoints & dependency injection
 │   │   │   ├── domain/                # ShopFlow domain models (Pydantic v2)
 │   │   │   │   ├── __init__.py        # Domain package exports
 │   │   │   │   ├── product.py         # Product model & validation
 │   │   │   │   ├── supplier.py        # Supplier model & reliability validation
 │   │   │   │   ├── warehouse.py       # Warehouse model & capacity validation
 │   │   │   │   └── inventory.py       # Inventory model, stock balances & validation
+│   │   │   ├── repositories/          # Application data access layer (Day 6)
+│   │   │   │   ├── __init__.py        # Repositories exports
+│   │   │   │   └── inventory_repository.py # In-memory inventory query & filter operations
 │   │   │   └── data/                  # ShopFlow Synthetic Data Engine (Day 5)
 │   │   │       ├── __init__.py        # Engine exports
 │   │   │       ├── dataset.py         # ShopFlowDataset container & Scenario models
@@ -238,7 +269,9 @@ edos-decision-system/
 │   │       ├── test_product.py        # Product validation & serialization tests
 │   │       ├── test_supplier.py       # Supplier validation & boundary tests
 │   │       ├── test_warehouse.py      # Warehouse validation tests
-│   │       ├── test_inventory.py      # Inventory cross-field & balance tests
+│   │       ├── test_inventory.py      # Inventory domain & balance tests
+│   │       ├── test_inventory_api.py  # Inventory API endpoint & routing tests (Day 6)
+│   │       ├── test_inventory_repository.py # Inventory repository unit & integrity tests (Day 6)
 │   │       └── test_synthetic_data.py # Deterministic data generation & scenario tests
 │   └── web/                           # Next.js web frontend service
 │       ├── Dockerfile                 # Web container definition
@@ -248,6 +281,7 @@ edos-decision-system/
 │       │   ├── globals.css            # Complete enterprise design token system
 │       │   ├── layout.tsx             # Root React layout wrapping AppShell
 │       │   └── page.tsx               # Overview dashboard & pipeline diagram
+
 │       ├── components/
 │       │   ├── layout/
 │       │   │   ├── app-shell.tsx      # Main layout grid container
@@ -303,7 +337,8 @@ edos-decision-system/
 │                 │ - ShopFlow Synthetic Data Engine (reproducible seed,    │
 │                 │   scenarios, referential integrity & test suite)        │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
-│ Days 6–10       │ Understand the Situation                                │
+│ Days 6–10       │ Understand the Situation (Day 6 Completed)              │
+│                 │ - Day 6: Inventory Data Layer & FastAPI endpoints       │
 │                 │ - Supply chain situation schema (Stockout/Delay event)  │
 │                 │ - Context engine & data ingestion pipelines             │
 │                 │ - Situation detail & operational state views            │
