@@ -11,7 +11,8 @@ from app.data import (
     generate_scenario_dataset,
     generate_shopflow_dataset,
 )
-from app.domain import Inventory, Product, Supplier, Warehouse
+from app.domain import DemandRecord, Inventory, Product, Supplier, Warehouse
+
 
 
 def test_dataset_generation_success():
@@ -268,3 +269,78 @@ def test_dataset_lookups():
     assert inv.product_id == first_prod.id
     assert inv.warehouse_id == first_wh.id
     assert dataset.get_inventory("nonexistent", first_wh.id) is None
+
+
+def test_synthetic_demand_generation_and_integrity():
+    dataset = generate_shopflow_dataset(seed=42)
+    # 10 products x 3 warehouses x 14 days = 420 records
+    assert len(dataset.demand) == 420
+
+    product_ids = {p.id for p in dataset.products}
+    warehouse_ids = {w.id for w in dataset.warehouses}
+
+    for record in dataset.demand:
+        assert isinstance(record, DemandRecord)
+        assert record.product_id in product_ids
+        assert record.warehouse_id in warehouse_ids
+        assert record.quantity >= 0
+
+    # Test integrity violation on corrupt product_id in demand
+    corrupted_demand = list(dataset.demand)
+    corrupted_demand[0] = corrupted_demand[0].model_copy(
+        update={"product_id": "ghost-prod-999"}
+    )
+    corrupted_dataset = dataset.model_copy(update={"demand": corrupted_demand})
+    with pytest.raises(ValueError) as exc_info:
+        corrupted_dataset.validate_integrity()
+    assert "unknown product_id 'ghost-prod-999'" in str(exc_info.value)
+
+    # Test integrity violation on corrupt warehouse_id in demand
+    corrupted_demand2 = list(dataset.demand)
+    corrupted_demand2[0] = corrupted_demand2[0].model_copy(
+        update={"warehouse_id": "ghost-wh-999"}
+    )
+    corrupted_dataset2 = dataset.model_copy(update={"demand": corrupted_demand2})
+    with pytest.raises(ValueError) as exc_info:
+        corrupted_dataset2.validate_integrity()
+    assert "unknown warehouse_id 'ghost-wh-999'" in str(exc_info.value)
+
+
+def test_synthetic_demand_determinism_and_ordering():
+    ds1 = generate_shopflow_dataset(seed=42)
+    ds2 = generate_shopflow_dataset(seed=42)
+    assert ds1.demand == ds2.demand
+
+    # Different seed produces different demand
+    ds_other = generate_shopflow_dataset(seed=99)
+    assert [d.quantity for d in ds1.demand] != [d.quantity for d in ds_other.demand]
+
+    # Verify stable ordering: (date, product_id, warehouse_id)
+    keys = [(d.date, d.product_id, d.warehouse_id) for d in ds1.demand]
+    assert keys == sorted(keys)
+
+
+def test_dataset_demand_lookups():
+    dataset = generate_shopflow_dataset(seed=42)
+    first_record = dataset.demand[0]
+
+    assert dataset.get_demand(first_record.id) == first_record
+    assert dataset.get_demand("non-existent-dem-id") is None
+
+    prod_records = dataset.get_demand_by_product(first_record.product_id)
+    assert len(prod_records) == 42
+    assert all(d.product_id == first_record.product_id for d in prod_records)
+
+    wh_records = dataset.get_demand_by_warehouse(first_record.warehouse_id)
+    assert len(wh_records) == 140
+    assert all(d.warehouse_id == first_record.warehouse_id for d in wh_records)
+
+    prod_wh_records = dataset.get_demand_by_product_and_warehouse(
+        first_record.product_id, first_record.warehouse_id
+    )
+    assert len(prod_wh_records) == 14
+    assert all(
+        d.product_id == first_record.product_id and d.warehouse_id == first_record.warehouse_id
+        for d in prod_wh_records
+    )
+

@@ -211,6 +211,53 @@ The repository is structured according to a phased 30-day plan. Here is a detail
 * **Frontend Typing Preparation (`apps/web/lib/types/inventory.ts`)**:
   - Lightweight TypeScript `InventoryRecord` interface preparing future UI integration without premature screen creation.
 
+### 4.7 Day 7: Demand Data Layer
+* **Objective**:
+  - Equip EDOS with historical observed demand data to answer: "How quickly is inventory being consumed over time?" (Complementing Day 6's "What do we have?").
+  - Strictly limited to historical observed consumption; deliberately excludes forecasting, machine learning, stockout risk scoring, or replenishment calculations.
+* **Domain Model (`DemandRecord` in `apps/api/app/domain/demand.py`)**:
+  - Strongly typed Pydantic v2 entity with strict validation (`extra="forbid"`, `str_strip_whitespace=True`):
+    - `id`: Unique record identifier (e.g., `dem-prod-001-wh-001-2026-09-18`).
+    - `product_id`: Valid non-empty product identifier with catalog referential integrity.
+    - `warehouse_id`: Valid non-empty warehouse identifier with facility referential integrity.
+    - `date`: Calendar date (`dt.date`) of observed consumption.
+    - `quantity`: Non-negative integer (`ge=0`) representing physical units demanded.
+* **Deterministic Synthetic Demand Engine (`apps/api/app/data/generator.py`)**:
+  - Integrated into the existing ShopFlow synthetic engine using the established isolated RNG seed (`random.Random(seed)`).
+  - Generates 14 consecutive calendar days of historical demand across all 10 products and 3 warehouses (420 records in canonical seed 42 dataset).
+  - Velocity-proportional baseline demand scaled to SKU reorder points with realistic deterministic daily variance and occasional zero-demand days.
+  - Stable chronological sorting: `(date, product_id, warehouse_id)`.
+  - Guaranteed referential integrity validated within `ShopFlowDataset.validate_integrity()`.
+  - Zero regression on existing Day 5 scenarios or Day 6 inventory values.
+* **Demand Repository (`apps/api/app/repositories/demand_repository.py`)**:
+  - In-memory data access layer providing clean, encapsulated queries:
+    - `list_all(product_id, warehouse_id, start_date, end_date)`
+    - `get_by_id(demand_id)`
+    - `get_by_product_id(product_id, start_date, end_date)`
+    - `get_by_warehouse_id(warehouse_id, start_date, end_date)`
+    - `get_by_product_and_warehouse(product_id, warehouse_id, start_date, end_date)`
+    - `get_by_date_range(start_date, end_date, product_id, warehouse_id)`
+    - `product_exists(product_id)` & `warehouse_exists(warehouse_id)`
+  - Deterministic historical trend aggregation (`get_product_demand_trend`):
+    - Computes `total_demand`, `average_daily_demand`, and chronological daily breakdown.
+    - Simple deterministic split-half trajectory comparison (`increasing`, `decreasing`, `stable`, with `percentage_change`).
+* **FastAPI Demand APIs (`apps/api/app/api/demand.py`)**:
+  - Mounted at `/api/demand` and alias `/demand`:
+    - `GET /api/demand`: List records with optional product, warehouse, and date filters.
+    - `GET /api/demand/{demand_id}`: Retrieve single record; HTTP 404 for unknown IDs.
+    - `GET /api/demand/product/{product_id}`: Retrieve records for product; HTTP 404 for unknown products.
+    - `GET /api/demand/warehouse/{warehouse_id}`: Retrieve records for warehouse; HTTP 404 for unknown warehouses.
+    - `GET /api/demand/product/{product_id}/trend`: Historical aggregation and trend trajectory; HTTP 404 for unknown products/warehouses.
+* **Typed API Response Schemas (`apps/api/app/api/schemas.py`)**:
+  - `DemandResponse`: Strongly typed representation of an observed demand record.
+  - `DailyDemandPoint`: Daily date-quantity coordinate within a trend sequence.
+  - `DemandTrendResponse`: Aggregated historical trend summary with daily history points.
+* **Frontend Typing Preparation (`apps/web/lib/types/demand.ts`)**:
+  - Lightweight TypeScript interfaces (`DemandRecord`, `DailyDemandPoint`, `DemandTrend`) matching API response contracts without premature UI construction.
+* **Automated Test Coverage**:
+  - 45 new unit and integration tests across `test_demand.py`, `test_demand_repository.py`, `test_demand_api.py`, and `test_synthetic_data.py`. Full suite of 125 tests passing in < 2 seconds.
+
+
 ---
 
 ## 5. Technology Stack & Directory Structure
@@ -246,23 +293,26 @@ edos-decision-system/
 │   │   ├── app/
 │   │   │   ├── config.py              # Environment configuration & settings class
 │   │   │   ├── main.py                # FastAPI app initialization & /health route
-│   │   │   ├── api/                   # FastAPI route handlers & schemas (Day 6)
+│   │   │   ├── api/                   # FastAPI route handlers & schemas (Days 6–7)
 │   │   │   │   ├── __init__.py        # API router & schema exports
-│   │   │   │   ├── schemas.py         # Pydantic v2 InventoryResponse schema
-│   │   │   │   └── inventory.py       # Inventory HTTP endpoints & dependency injection
+│   │   │   │   ├── schemas.py         # Pydantic v2 Inventory & Demand response schemas
+│   │   │   │   ├── inventory.py       # Inventory HTTP endpoints & dependency injection (Day 6)
+│   │   │   │   └── demand.py          # Demand HTTP endpoints, filters & trend (Day 7)
 │   │   │   ├── domain/                # ShopFlow domain models (Pydantic v2)
 │   │   │   │   ├── __init__.py        # Domain package exports
 │   │   │   │   ├── product.py         # Product model & validation
 │   │   │   │   ├── supplier.py        # Supplier model & reliability validation
 │   │   │   │   ├── warehouse.py       # Warehouse model & capacity validation
-│   │   │   │   └── inventory.py       # Inventory model, stock balances & validation
-│   │   │   ├── repositories/          # Application data access layer (Day 6)
+│   │   │   │   ├── inventory.py       # Inventory model, stock balances & validation (Day 4)
+│   │   │   │   └── demand.py          # DemandRecord model & calendar date validation (Day 7)
+│   │   │   ├── repositories/          # Application data access layer (Days 6–7)
 │   │   │   │   ├── __init__.py        # Repositories exports
-│   │   │   │   └── inventory_repository.py # In-memory inventory query & filter operations
-│   │   │   └── data/                  # ShopFlow Synthetic Data Engine (Day 5)
+│   │   │   │   ├── inventory_repository.py # In-memory inventory query & filter operations (Day 6)
+│   │   │   │   └── demand_repository.py # In-memory demand query, filter & trend operations (Day 7)
+│   │   │   └── data/                  # ShopFlow Synthetic Data Engine (Days 5 & 7)
 │   │   │       ├── __init__.py        # Engine exports
 │   │   │       ├── dataset.py         # ShopFlowDataset container & Scenario models
-│   │   │       ├── generator.py       # Deterministic generator & CLI
+│   │   │       ├── generator.py       # Deterministic generator, CLI & historical demand (Day 7)
 │   │   │       └── scenarios.py       # Controlled operational scenario mutators
 │   │   └── tests/
 │   │       ├── test_health.py         # Pytest health check test
@@ -272,7 +322,10 @@ edos-decision-system/
 │   │       ├── test_inventory.py      # Inventory domain & balance tests
 │   │       ├── test_inventory_api.py  # Inventory API endpoint & routing tests (Day 6)
 │   │       ├── test_inventory_repository.py # Inventory repository unit & integrity tests (Day 6)
-│   │       └── test_synthetic_data.py # Deterministic data generation & scenario tests
+│   │       ├── test_demand.py         # Demand domain validation & serialization tests (Day 7)
+│   │       ├── test_demand_api.py     # Demand API endpoint, filter & trend tests (Day 7)
+│   │       ├── test_demand_repository.py # Demand repository unit & trend tests (Day 7)
+│   │       └── test_synthetic_data.py # Deterministic data generation, scenarios & demand tests
 │   └── web/                           # Next.js web frontend service
 │       ├── Dockerfile                 # Web container definition
 │       ├── package.json               # Node.js dependencies & scripts
@@ -281,7 +334,6 @@ edos-decision-system/
 │       │   ├── globals.css            # Complete enterprise design token system
 │       │   ├── layout.tsx             # Root React layout wrapping AppShell
 │       │   └── page.tsx               # Overview dashboard & pipeline diagram
-
 │       ├── components/
 │       │   ├── layout/
 │       │   │   ├── app-shell.tsx      # Main layout grid container
@@ -293,7 +345,10 @@ edos-decision-system/
 │       │       ├── card.tsx           # Content containers
 │       │       └── status-indicator.tsx # Live pulse status dot
 │       └── lib/
-│           └── navigation.ts          # Navigation links and domain sections
+│           ├── navigation.ts          # Navigation links and domain sections
+│           └── types/                 # Shared TypeScript interface definitions
+│               ├── inventory.ts       # Inventory operational type contracts (Day 6)
+│               └── demand.ts          # Demand operational & trend type contracts (Day 7)
 ├── data/                              # Data persistence & fixture directories
 │   ├── raw/                           # Raw input datasets
 │   ├── processed/                     # Sanitized operational data & scenario fixtures
@@ -337,11 +392,12 @@ edos-decision-system/
 │                 │ - ShopFlow Synthetic Data Engine (reproducible seed,    │
 │                 │   scenarios, referential integrity & test suite)        │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
-│ Days 6–10       │ Understand the Situation (Day 6 Completed)              │
-│                 │ - Day 6: Inventory Data Layer & FastAPI endpoints       │
-│                 │ - Supply chain situation schema (Stockout/Delay event)  │
-│                 │ - Context engine & data ingestion pipelines             │
-│                 │ - Situation detail & operational state views            │
+│ Days 6–10       │ Understand the Situation (Days 6 & 7 Completed)         │
+│                 │ - Day 6: Inventory Data Layer & FastAPI endpoints (Done)│
+│                 │ - Day 7: Demand Data Layer & trend/history APIs (Done)  │
+│                 │ - Day 8: Supplier / lead-time intelligence layer        │
+│                 │ - Day 9: Context Engine & situation synthesis           │
+│                 │ - Day 10: Decision Context UI & operational state views │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
 │ Days 11–15      │ Model the Decision                                      │
 │                 │ - Candidate action generation (Expedite, Split, Source) │

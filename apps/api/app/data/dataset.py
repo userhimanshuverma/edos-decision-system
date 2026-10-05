@@ -7,10 +7,12 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.domain.demand import DemandRecord
 from app.domain.inventory import Inventory
 from app.domain.product import Product
 from app.domain.supplier import Supplier
 from app.domain.warehouse import Warehouse
+
 
 
 class ScenarioType(str, Enum):
@@ -47,9 +49,10 @@ class ShopFlowDataset(BaseModel):
     suppliers: list[Supplier] = Field(default_factory=list, description="List of generated suppliers")
     warehouses: list[Warehouse] = Field(default_factory=list, description="List of generated warehouses")
     inventory: list[Inventory] = Field(default_factory=list, description="List of generated inventory positions")
+    demand: list[DemandRecord] = Field(default_factory=list, description="List of generated historical demand records")
 
     def validate_integrity(self) -> None:
-        """Validates that all inventory records reference existing products and warehouses."""
+        """Validates that all inventory and demand records reference existing products and warehouses."""
         product_ids = {p.id for p in self.products}
         warehouse_ids = {w.id for w in self.warehouses}
 
@@ -65,6 +68,20 @@ class ShopFlowDataset(BaseModel):
             if inv.quantity_reserved > inv.quantity_on_hand:
                 raise ValueError(
                     f"Inventory position '{inv.id}' has quantity_reserved ({inv.quantity_reserved}) > quantity_on_hand ({inv.quantity_on_hand})"
+                )
+
+        for dem in self.demand:
+            if dem.product_id not in product_ids:
+                raise ValueError(
+                    f"Demand record '{dem.id}' references unknown product_id '{dem.product_id}'"
+                )
+            if dem.warehouse_id not in warehouse_ids:
+                raise ValueError(
+                    f"Demand record '{dem.id}' references unknown warehouse_id '{dem.warehouse_id}'"
+                )
+            if dem.quantity < 0:
+                raise ValueError(
+                    f"Demand record '{dem.id}' has negative quantity ({dem.quantity})"
                 )
 
     def get_product(self, product_id: str) -> Product | None:
@@ -94,6 +111,26 @@ class ShopFlowDataset(BaseModel):
             if inv.product_id == product_id and inv.warehouse_id == warehouse_id:
                 return inv
         return None
+
+    def get_demand(self, demand_id: str) -> DemandRecord | None:
+        """Finds demand record by id."""
+        for dem in self.demand:
+            if dem.id == demand_id:
+                return dem
+        return None
+
+    def get_demand_by_product(self, product_id: str) -> list[DemandRecord]:
+        """Finds demand records for a specific product."""
+        return [dem for dem in self.demand if dem.product_id == product_id]
+
+    def get_demand_by_warehouse(self, warehouse_id: str) -> list[DemandRecord]:
+        """Finds demand records for a specific warehouse."""
+        return [dem for dem in self.demand if dem.warehouse_id == warehouse_id]
+
+    def get_demand_by_product_and_warehouse(self, product_id: str, warehouse_id: str) -> list[DemandRecord]:
+        """Finds demand records for a specific product and warehouse."""
+        return [dem for dem in self.demand if dem.product_id == product_id and dem.warehouse_id == warehouse_id]
+
 
     def to_dict(self) -> dict[str, Any]:
         """Serializes the dataset to a JSON-compatible dictionary."""

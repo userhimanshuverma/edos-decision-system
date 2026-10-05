@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from app.api.demand import router as demand_router
 from app.api.inventory import router as inventory_router
 from app.config import get_settings
 
@@ -17,8 +18,11 @@ def health_check():
     }
 
 
-# Canonical API router prefix
+# Canonical API router prefixes
 app.include_router(inventory_router, prefix="/api/inventory", tags=["inventory"])
+app.include_router(demand_router, prefix="/api/demand", tags=["demand"])
 
-# Direct router alias for /inventory
+# Direct router aliases
 app.include_router(inventory_router, prefix="/inventory", tags=["inventory"], include_in_schema=False)
+app.include_router(demand_router, prefix="/demand", tags=["demand"], include_in_schema=False)
+

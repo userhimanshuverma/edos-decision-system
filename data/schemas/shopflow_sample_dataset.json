@@ -444,5 +444,2947 @@
       "reorder_point": 80,
       "updated_at": "2026-10-01T12:23:00Z"
     }
+  ],
+  "demand": [
+    {
+      "id": "dem-prod-001-wh-001-2026-09-18",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-18",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-18",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-18",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-18",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-18",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-18",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-18",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-18",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-18",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-18",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-18",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-18",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-18",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-18",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-18",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-18",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-18",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-18",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-18",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-18",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-18",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-18",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-18",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-18",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-18",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-18",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-18",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-18",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-18",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-18",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-18",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-18",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-18",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-18",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-18",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-18",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-18",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-18",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-18",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-18",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-18",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-18",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-18",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-18",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-18",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-18",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-18",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-18",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-18",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-18",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-18",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-18",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-18",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-18",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-18",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-18",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-18",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-18",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-18",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-19",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-19",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-19",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-19",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-19",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-19",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-19",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-19",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-19",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-19",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-19",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-19",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-19",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-19",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-19",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-19",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-19",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-19",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-19",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-19",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-19",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-19",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-19",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-19",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-19",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-19",
+      "quantity": 12
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-19",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-19",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-19",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-19",
+      "quantity": 15
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-19",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-19",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-19",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-19",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-19",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-19",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-19",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-19",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-19",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-19",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-19",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-19",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-19",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-19",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-19",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-19",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-19",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-19",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-19",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-19",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-19",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-19",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-19",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-19",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-19",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-19",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-19",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-19",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-19",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-19",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-20",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-20",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-20",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-20",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-20",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-20",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-20",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-20",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-20",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-20",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-20",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-20",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-20",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-20",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-20",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-20",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-20",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-20",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-20",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-20",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-20",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-20",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-20",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-20",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-20",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-20",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-20",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-20",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-20",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-20",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-20",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-20",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-20",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-20",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-20",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-20",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-20",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-20",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-20",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-20",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-20",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-20",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-20",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-20",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-20",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-20",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-20",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-20",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-20",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-20",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-20",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-20",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-20",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-20",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-20",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-20",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-20",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-20",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-20",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-20",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-21",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-21",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-21",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-21",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-21",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-21",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-21",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-21",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-21",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-21",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-21",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-21",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-21",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-21",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-21",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-21",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-21",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-21",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-21",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-21",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-21",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-21",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-21",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-21",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-21",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-21",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-21",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-21",
+      "quantity": 13
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-21",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-21",
+      "quantity": 12
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-21",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-21",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-21",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-21",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-21",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-21",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-21",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-21",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-21",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-21",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-21",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-21",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-21",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-21",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-21",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-21",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-21",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-21",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-21",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-21",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-21",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-21",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-21",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-21",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-21",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-21",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-21",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-21",
+      "quantity": 12
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-21",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-21",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-22",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-22",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-22",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-22",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-22",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-22",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-22",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-22",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-22",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-22",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-22",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-22",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-22",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-22",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-22",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-22",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-22",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-22",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-22",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-22",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-22",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-22",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-22",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-22",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-22",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-22",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-22",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-22",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-22",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-22",
+      "quantity": 15
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-22",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-22",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-22",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-22",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-22",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-22",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-22",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-22",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-22",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-22",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-22",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-22",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-22",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-22",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-22",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-22",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-22",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-22",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-22",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-22",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-22",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-22",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-22",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-22",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-22",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-22",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-22",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-22",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-22",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-22",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-23",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-23",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-23",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-23",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-23",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-23",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-23",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-23",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-23",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-23",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-23",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-23",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-23",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-23",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-23",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-23",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-23",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-23",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-23",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-23",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-23",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-23",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-23",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-23",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-23",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-23",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-23",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-23",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-23",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-23",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-23",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-23",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-23",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-23",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-23",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-23",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-23",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-23",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-23",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-23",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-23",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-23",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-23",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-23",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-23",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-23",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-23",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-23",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-23",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-23",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-23",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-23",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-23",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-23",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-23",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-23",
+      "quantity": 13
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-23",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-23",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-23",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-23",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-24",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-24",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-24",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-24",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-24",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-24",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-24",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-24",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-24",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-24",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-24",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-24",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-24",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-24",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-24",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-24",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-24",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-24",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-24",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-24",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-24",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-24",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-24",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-24",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-24",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-24",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-24",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-24",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-24",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-24",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-24",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-24",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-24",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-24",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-24",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-24",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-24",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-24",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-24",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-24",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-24",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-24",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-24",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-24",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-24",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-24",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-24",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-24",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-24",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-24",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-24",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-24",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-24",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-24",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-24",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-24",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-24",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-24",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-24",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-24",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-25",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-25",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-25",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-25",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-25",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-25",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-25",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-25",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-25",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-25",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-25",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-25",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-25",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-25",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-25",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-25",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-25",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-25",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-25",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-25",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-25",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-25",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-25",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-25",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-25",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-25",
+      "quantity": 13
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-25",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-25",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-25",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-25",
+      "quantity": 13
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-25",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-25",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-25",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-25",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-25",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-25",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-25",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-25",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-25",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-25",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-25",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-25",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-25",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-25",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-25",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-25",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-25",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-25",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-25",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-25",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-25",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-25",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-25",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-25",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-25",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-25",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-25",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-25",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-25",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-25",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-26",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-26",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-26",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-26",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-26",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-26",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-26",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-26",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-26",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-26",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-26",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-26",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-26",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-26",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-26",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-26",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-26",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-26",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-26",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-26",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-26",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-26",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-26",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-26",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-26",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-26",
+      "quantity": 12
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-26",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-26",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-26",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-26",
+      "quantity": 15
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-26",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-26",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-26",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-26",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-26",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-26",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-26",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-26",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-26",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-26",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-26",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-26",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-26",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-26",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-26",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-26",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-26",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-26",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-26",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-26",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-26",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-26",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-26",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-26",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-26",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-26",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-26",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-26",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-26",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-26",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-27",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-27",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-27",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-27",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-27",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-27",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-27",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-27",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-27",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-27",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-27",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-27",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-27",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-27",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-27",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-27",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-27",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-27",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-27",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-27",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-27",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-27",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-27",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-27",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-27",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-27",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-27",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-27",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-27",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-27",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-27",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-27",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-27",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-27",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-27",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-27",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-27",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-27",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-27",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-27",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-27",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-27",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-27",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-27",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-27",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-27",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-27",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-27",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-27",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-27",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-27",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-27",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-27",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-27",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-27",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-27",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-27",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-27",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-27",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-27",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-28",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-28",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-28",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-28",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-28",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-28",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-28",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-28",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-28",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-28",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-28",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-28",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-28",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-28",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-28",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-28",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-28",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-28",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-28",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-28",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-28",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-28",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-28",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-28",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-28",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-28",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-28",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-28",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-28",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-28",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-28",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-28",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-28",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-28",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-28",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-28",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-28",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-28",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-28",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-28",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-28",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-28",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-28",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-28",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-28",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-28",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-28",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-28",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-28",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-28",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-28",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-28",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-28",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-28",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-28",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-28",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-28",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-28",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-28",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-28",
+      "quantity": 12
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-29",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-29",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-29",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-29",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-29",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-29",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-29",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-29",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-29",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-29",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-29",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-29",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-29",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-29",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-29",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-29",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-29",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-29",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-29",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-29",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-29",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-29",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-29",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-29",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-29",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-29",
+      "quantity": 12
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-29",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-29",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-29",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-29",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-29",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-29",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-29",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-29",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-29",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-29",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-29",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-29",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-29",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-29",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-29",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-29",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-29",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-29",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-29",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-29",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-29",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-29",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-29",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-29",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-29",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-29",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-29",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-29",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-29",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-29",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-29",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-29",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-29",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-29",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-09-30",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-30",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-09-30",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-30",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-09-30",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-30",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-09-30",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-30",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-09-30",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-30",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-09-30",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-30",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-09-30",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-30",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-09-30",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-30",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-09-30",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-30",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-09-30",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-30",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-09-30",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-30",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-09-30",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-30",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-09-30",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-30",
+      "quantity": 13
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-09-30",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-30",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-09-30",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-30",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-09-30",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-30",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-09-30",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-30",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-09-30",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-30",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-09-30",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-30",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-09-30",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-30",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-09-30",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-30",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-09-30",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-30",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-09-30",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-30",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-09-30",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-30",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-09-30",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-30",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-09-30",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-30",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-09-30",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-30",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-09-30",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-09-30",
+      "quantity": 10
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-09-30",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-09-30",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-09-30",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-09-30",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-001-wh-001-2026-10-01",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-001",
+      "date": "2026-10-01",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-001-wh-002-2026-10-01",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-002",
+      "date": "2026-10-01",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-001-wh-003-2026-10-01",
+      "product_id": "prod-001",
+      "warehouse_id": "wh-003",
+      "date": "2026-10-01",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-002-wh-001-2026-10-01",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-001",
+      "date": "2026-10-01",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-002-wh-002-2026-10-01",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-002",
+      "date": "2026-10-01",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-002-wh-003-2026-10-01",
+      "product_id": "prod-002",
+      "warehouse_id": "wh-003",
+      "date": "2026-10-01",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-003-wh-001-2026-10-01",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-001",
+      "date": "2026-10-01",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-003-wh-002-2026-10-01",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-002",
+      "date": "2026-10-01",
+      "quantity": 9
+    },
+    {
+      "id": "dem-prod-003-wh-003-2026-10-01",
+      "product_id": "prod-003",
+      "warehouse_id": "wh-003",
+      "date": "2026-10-01",
+      "quantity": 7
+    },
+    {
+      "id": "dem-prod-004-wh-001-2026-10-01",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-001",
+      "date": "2026-10-01",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-004-wh-002-2026-10-01",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-002",
+      "date": "2026-10-01",
+      "quantity": 5
+    },
+    {
+      "id": "dem-prod-004-wh-003-2026-10-01",
+      "product_id": "prod-004",
+      "warehouse_id": "wh-003",
+      "date": "2026-10-01",
+      "quantity": 8
+    },
+    {
+      "id": "dem-prod-005-wh-001-2026-10-01",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-001",
+      "date": "2026-10-01",
+      "quantity": 14
+    },
+    {
+      "id": "dem-prod-005-wh-002-2026-10-01",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-002",
+      "date": "2026-10-01",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-005-wh-003-2026-10-01",
+      "product_id": "prod-005",
+      "warehouse_id": "wh-003",
+      "date": "2026-10-01",
+      "quantity": 15
+    },
+    {
+      "id": "dem-prod-006-wh-001-2026-10-01",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-001",
+      "date": "2026-10-01",
+      "quantity": 0
+    },
+    {
+      "id": "dem-prod-006-wh-002-2026-10-01",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-002",
+      "date": "2026-10-01",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-006-wh-003-2026-10-01",
+      "product_id": "prod-006",
+      "warehouse_id": "wh-003",
+      "date": "2026-10-01",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-007-wh-001-2026-10-01",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-001",
+      "date": "2026-10-01",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-007-wh-002-2026-10-01",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-002",
+      "date": "2026-10-01",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-007-wh-003-2026-10-01",
+      "product_id": "prod-007",
+      "warehouse_id": "wh-003",
+      "date": "2026-10-01",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-008-wh-001-2026-10-01",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-001",
+      "date": "2026-10-01",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-008-wh-002-2026-10-01",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-002",
+      "date": "2026-10-01",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-008-wh-003-2026-10-01",
+      "product_id": "prod-008",
+      "warehouse_id": "wh-003",
+      "date": "2026-10-01",
+      "quantity": 6
+    },
+    {
+      "id": "dem-prod-009-wh-001-2026-10-01",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-001",
+      "date": "2026-10-01",
+      "quantity": 2
+    },
+    {
+      "id": "dem-prod-009-wh-002-2026-10-01",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-002",
+      "date": "2026-10-01",
+      "quantity": 4
+    },
+    {
+      "id": "dem-prod-009-wh-003-2026-10-01",
+      "product_id": "prod-009",
+      "warehouse_id": "wh-003",
+      "date": "2026-10-01",
+      "quantity": 3
+    },
+    {
+      "id": "dem-prod-010-wh-001-2026-10-01",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-001",
+      "date": "2026-10-01",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-010-wh-002-2026-10-01",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-002",
+      "date": "2026-10-01",
+      "quantity": 11
+    },
+    {
+      "id": "dem-prod-010-wh-003-2026-10-01",
+      "product_id": "prod-010",
+      "warehouse_id": "wh-003",
+      "date": "2026-10-01",
+      "quantity": 0
+    }
   ]
 }

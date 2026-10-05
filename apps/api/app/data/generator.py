@@ -7,13 +7,16 @@ import random
 
 from app.data.dataset import ScenarioMetadata, ScenarioType, ShopFlowDataset
 from app.data.scenarios import apply_scenario
+from app.domain.demand import DemandRecord
 from app.domain.inventory import Inventory
 from app.domain.product import Product
 from app.domain.supplier import Supplier
 from app.domain.warehouse import Warehouse
 
+
 # Base deterministic timestamp for all generated synthetic timestamps
 DEFAULT_BASE_DATETIME = datetime(2026, 10, 1, 12, 0, 0, tzinfo=timezone.utc)
+DEFAULT_DEMAND_DAYS = 14
 
 # Realistic product catalog blueprints
 PRODUCT_BLUEPRINTS = [
@@ -193,7 +196,10 @@ def generate_shopflow_dataset(
     base_date: datetime | None = None,
     target_product_ids: list[str] | None = None,
     target_supplier_ids: list[str] | None = None,
+    demand_days: int = DEFAULT_DEMAND_DAYS,
 ) -> ShopFlowDataset:
+
+
     """Generates a complete, deterministic, and internally consistent ShopFlow dataset.
 
     All random state is isolated within a local random.Random(seed) generator.
@@ -350,6 +356,49 @@ def generate_shopflow_dataset(
         target_supplier_ids=target_supplier_ids,
     )
 
+    # 6. Generate Historical Observed Demand
+    # Historical demand reflects past daily consumption over the previous `demand_days` days
+    # ending on ref_time.date()
+    ref_date = ref_time.date()
+    demand_records: list[DemandRecord] = []
+    actual_demand_days = max(1, demand_days)
+
+    # Determine historical calendar dates in chronological order (earliest to latest)
+    historical_dates = [
+        ref_date - timedelta(days=actual_demand_days - 1 - d)
+        for d in range(actual_demand_days)
+    ]
+
+    for prod in products:
+        # Realistic baseline daily consumption scaled by reorder point
+        # Higher reorder point SKUs typically experience higher daily velocity
+        base_velocity = max(2, prod.reorder_point // 8)
+
+        for wh in warehouses:
+            for h_date in historical_dates:
+                dem_id = f"dem-{prod.id}-{wh.id}-{h_date.isoformat()}"
+
+                # Deterministic variation around product-warehouse baseline velocity
+                # 8% chance of quiet / zero-demand day for realism
+                if rnd.random() < 0.08:
+                    quantity = 0
+                else:
+                    variance = rnd.uniform(0.6, 1.4)
+                    quantity = max(0, int(round(base_velocity * variance)))
+
+                demand_records.append(
+                    DemandRecord(
+                        id=dem_id,
+                        product_id=prod.id,
+                        warehouse_id=wh.id,
+                        date=h_date,
+                        quantity=quantity,
+                    )
+                )
+
+    # Stable deterministic ordering: chronological by date, then product_id, then warehouse_id
+    demand_records.sort(key=lambda d: (d.date, d.product_id, d.warehouse_id))
+
     dataset = ShopFlowDataset(
         seed=seed,
         scenario=scenario_meta,
@@ -357,6 +406,7 @@ def generate_shopflow_dataset(
         suppliers=suppliers,
         warehouses=warehouses,
         inventory=inventory,
+        demand=demand_records,
     )
 
     # Validate referential integrity and bounds
@@ -376,11 +426,12 @@ def generate_scenario_dataset(
 
 def _cli() -> None:
     """Command-line interface to produce deterministic ShopFlow fixture files."""
-    parser = argparse.ArgumentParser(description="ShopFlow Synthetic Data Generator (Day 5)")
+    parser = argparse.ArgumentParser(description="ShopFlow Synthetic Data Generator (Day 5 & Day 7)")
     parser.add_argument("--seed", type=int, default=42, help="Deterministic generator seed (default: 42)")
     parser.add_argument("--products", type=int, default=10, help="Number of products (default: 10)")
     parser.add_argument("--suppliers", type=int, default=4, help="Number of suppliers (default: 4)")
     parser.add_argument("--warehouses", type=int, default=3, help="Number of warehouses (default: 3)")
+    parser.add_argument("--demand-days", type=int, default=DEFAULT_DEMAND_DAYS, help=f"Number of historical demand days (default: {DEFAULT_DEMAND_DAYS})")
     parser.add_argument(
         "--scenario",
         type=str,
@@ -403,15 +454,17 @@ def _cli() -> None:
         supplier_count=args.suppliers,
         warehouse_count=args.warehouses,
         scenario=ScenarioType(args.scenario),
+        demand_days=args.demand_days,
     )
 
     if args.output:
         out_path = Path(args.output)
         dataset.save_to_file(out_path)
-        print(f"Generated ShopFlow dataset saved to: {out_path} ({len(dataset.products)} products, {len(dataset.inventory)} inventory positions)")
+        print(f"Generated ShopFlow dataset saved to: {out_path} ({len(dataset.products)} products, {len(dataset.inventory)} inventory positions, {len(dataset.demand)} demand records)")
     else:
         print(dataset.to_json(indent=2))
 
 
 if __name__ == "__main__":
     _cli()
+
