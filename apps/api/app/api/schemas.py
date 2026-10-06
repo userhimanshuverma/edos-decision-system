@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import datetime as dt
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Any
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 from app.domain.demand import DemandRecord
 from app.domain.inventory import Inventory
+from app.domain.supplier import Supplier
+from app.repositories.supplier_repository import SupplierRiskLevel, classify_supplier_risk
 
 
 class InventoryResponse(BaseModel):
@@ -86,4 +89,54 @@ class DemandTrendResponse(BaseModel):
     trend_direction: str = Field(..., description="Historical trend trajectory ('increasing', 'decreasing', or 'stable')")
     percentage_change: float = Field(..., description="Percentage shift between first half and second half of window")
     history: list[DailyDemandPoint] = Field(default_factory=list, description="Chronological daily demand observations")
+
+
+class SupplierResponse(BaseModel):
+    """Clean typed response model representing an operational supplier entity with risk context."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    supplier_id: str = Field(..., description="Unique identifier for the supplier")
+    id: str = Field(..., description="Supplier identifier (alias for supplier_id)")
+    code: str = Field(..., min_length=1, description="Supplier code/reference identifier")
+    name: str = Field(..., min_length=1, description="Supplier business name")
+    lead_time_days: int = Field(..., ge=0, description="Standard supplier fulfillment lead time in days")
+    reliability: float = Field(..., ge=0.0, le=1.0, description="Supplier reliability score between 0.0 and 1.0")
+    active: bool = Field(default=True, description="Whether the supplier is active")
+    risk_level: SupplierRiskLevel = Field(..., description="Deterministic supplier operational risk classification (LOW, MEDIUM, HIGH)")
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_defaults(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Aliasing support between id and supplier_id
+            if "supplier_id" not in data and "id" in data:
+                data["supplier_id"] = data["id"]
+            elif "id" not in data and "supplier_id" in data:
+                data["id"] = data["supplier_id"]
+            # Auto-calculate risk_level if omitted
+            if "risk_level" not in data or data["risk_level"] is None:
+                lead = data.get("lead_time_days", 0)
+                rel = data.get("reliability", 1.0)
+                active = data.get("active", True)
+                data["risk_level"] = classify_supplier_risk(lead, rel, active)
+        return data
+
+    @classmethod
+    def from_domain(cls, supplier: Supplier) -> SupplierResponse:
+        """Constructs a SupplierResponse model from a domain Supplier instance."""
+        return cls(
+            supplier_id=supplier.id,
+            id=supplier.id,
+            code=supplier.code,
+            name=supplier.name,
+            lead_time_days=supplier.lead_time_days,
+            reliability=supplier.reliability,
+            active=supplier.active,
+            risk_level=classify_supplier_risk(
+                lead_time_days=supplier.lead_time_days,
+                reliability=supplier.reliability,
+                active=supplier.active,
+            ),
+        )
 

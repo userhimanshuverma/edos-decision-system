@@ -5,16 +5,23 @@ from app.api.schemas import (
     DemandResponse,
     DemandTrendResponse,
     InventoryResponse,
+    SupplierResponse,
+    SupplierRiskLevel,
 )
+from app.api.supplier import get_supplier_repository, router as supplier_router
 
 __all__ = [
     "DailyDemandPoint",
     "DemandResponse",
     "DemandTrendResponse",
     "InventoryResponse",
+    "SupplierResponse",
+    "SupplierRiskLevel",
     "demand_router",
     "get_demand_repository",
     "get_inventory_repository",
+    "get_supplier_repository",
     "inventory_router",
+    "supplier_router",
 ]
 

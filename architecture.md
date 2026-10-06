@@ -257,6 +257,54 @@ The repository is structured according to a phased 30-day plan. Here is a detail
 * **Automated Test Coverage**:
   - 45 new unit and integration tests across `test_demand.py`, `test_demand_repository.py`, `test_demand_api.py`, and `test_synthetic_data.py`. Full suite of 125 tests passing in < 2 seconds.
 
+### 4.8 Day 8: Supplier & Lead-Time Layer (Supplier Risk Information)
+* **Objective**:
+  - Equip EDOS with clean supplier data access and observable supplier behavior to answer: "Who supplies this operation, how long does supply take, and how reliable is the supplier?"
+  - Part of Phase 2 ("Understand the Situation"), completing the three operational foundational context dimensions:
+    - Day 6 (Inventory): *"What do we have?"*
+    - Day 7 (Demand): *"How quickly is it being consumed?"*
+    - Day 8 (Supplier): *"How reliable is incoming supply?"*
+  - Exposes supplier risk information as strictly operational context without becoming a stockout-risk calculation engine or decision engine.
+* **Domain Model (`Supplier` in `apps/api/app/domain/supplier.py`)**:
+  - Strongly typed Pydantic v2 entity:
+    - `id`: Unique supplier identifier (`sup-001`).
+    - `code`: Reference business code (`SUP-PAC-01`).
+    - `name`: Supplier company display name.
+    - `lead_time_days`: Non-negative fulfillment duration (`ge=0`).
+    - `reliability`: Historical fulfillment reliability ratio (`0.0 <= reliability <= 1.0`).
+    - `active`: Boolean operational status flag (`default=True`).
+* **Supplier Repository (`apps/api/app/repositories/supplier_repository.py`)**:
+  - Modular in-memory data access layer wrapping `ShopFlowDataset` (defaults to canonical seed 42):
+    - `list_all(active_only=False)`: Retrieves all suppliers sorted deterministically by supplier ID.
+    - `get_by_id(supplier_id)`: Retrieves a single supplier by unique ID.
+    - `get_by_code(code)`: Case-insensitive supplier code lookup.
+    - `get_active_suppliers()`: Retrieves only active suppliers deterministically.
+    - `supplier_exists(supplier_id)` & `code_exists(code)`: Fast existence checks.
+    - `get_supplier_risk(supplier)`: Evaluates deterministic operational risk classification.
+* **Deterministic Supplier Risk Information (`classify_supplier_risk`)**:
+  - Small, deterministic, auditable classification based strictly on observable vendor parameters:
+    - **`LOW`**: Dependable supplier (`reliability >= 0.92`, `lead_time_days <= 14`, and `active`).
+    - **`MEDIUM`**: Moderate / elevated lead time or reliability (`lead_time_days` between 15–21 days, or `reliability` between 0.85–0.92).
+    - **`HIGH`**: Severe operational vulnerability (`reliability < 0.85`, `lead_time_days > 21`, or `active == False`).
+  - Does NOT calculate stockout probability, replenishment quantity, or recommended action.
+* **FastAPI Supplier APIs (`apps/api/app/api/supplier.py`)**:
+  - Mounted at `/api/suppliers` (with aliases `/suppliers`, `/api/supplier`, and `/supplier`):
+    - `GET /api/suppliers`: Lists all operational suppliers with optional `active_only` filter.
+    - `GET /api/suppliers/{supplier_id}`: Retrieves single supplier by ID; returns HTTP 404 for unknown IDs.
+    - `GET /api/suppliers/code/{supplier_code}`: Case-insensitive supplier code lookup; returns HTTP 404 for unknown codes.
+* **Typed API Response Schemas (`SupplierResponse` in `apps/api/app/api/schemas.py`)**:
+  - Pydantic v2 schema exposing `supplier_id`, `id`, `code`, `name`, `lead_time_days`, `reliability`, `active`, and `risk_level` (`LOW`, `MEDIUM`, `HIGH`).
+* **Frontend Typing Preparation (`apps/web/lib/types/supplier.ts`)**:
+  - TypeScript interfaces `SupplierRecord`, `SupplierRisk`, and `SupplierRiskLevel` prepared for future Day 10 UI integration.
+* **Deterministic Synthetic Data Continuity**:
+  - Reuses the existing ShopFlow synthetic engine (`random.Random(seed=42)`).
+  - Validated against Day 5 scenarios (`SUPPLIER_DELAY` -> HIGH risk via +45d lead time; `SUPPLIER_UNRELIABLE` -> HIGH risk via 0.55 reliability).
+* **Automated Test Coverage**:
+  - 30 new unit and integration tests in `test_supplier_repository.py` and `test_supplier_api.py`.
+  - Full suite of 155 tests passing in ~3 seconds with zero regressions.
+* **Strictly Out of Scope (Deferred to Day 9+)**:
+  - No Context Engine, Unified Decision Context, stockout risk prediction, replenishment optimization, LLM explanations, purchase orders, or database migrations.
+
 
 ---
 
@@ -293,11 +341,12 @@ edos-decision-system/
 │   │   ├── app/
 │   │   │   ├── config.py              # Environment configuration & settings class
 │   │   │   ├── main.py                # FastAPI app initialization & /health route
-│   │   │   ├── api/                   # FastAPI route handlers & schemas (Days 6–7)
+│   │   │   ├── api/                   # FastAPI route handlers & schemas (Days 6–8)
 │   │   │   │   ├── __init__.py        # API router & schema exports
-│   │   │   │   ├── schemas.py         # Pydantic v2 Inventory & Demand response schemas
+│   │   │   │   ├── schemas.py         # Pydantic v2 Inventory, Demand & Supplier schemas
 │   │   │   │   ├── inventory.py       # Inventory HTTP endpoints & dependency injection (Day 6)
-│   │   │   │   └── demand.py          # Demand HTTP endpoints, filters & trend (Day 7)
+│   │   │   │   ├── demand.py          # Demand HTTP endpoints, filters & trend (Day 7)
+│   │   │   │   └── supplier.py        # Supplier HTTP endpoints & risk context (Day 8)
 │   │   │   ├── domain/                # ShopFlow domain models (Pydantic v2)
 │   │   │   │   ├── __init__.py        # Domain package exports
 │   │   │   │   ├── product.py         # Product model & validation
@@ -305,10 +354,11 @@ edos-decision-system/
 │   │   │   │   ├── warehouse.py       # Warehouse model & capacity validation
 │   │   │   │   ├── inventory.py       # Inventory model, stock balances & validation (Day 4)
 │   │   │   │   └── demand.py          # DemandRecord model & calendar date validation (Day 7)
-│   │   │   ├── repositories/          # Application data access layer (Days 6–7)
+│   │   │   ├── repositories/          # Application data access layer (Days 6–8)
 │   │   │   │   ├── __init__.py        # Repositories exports
 │   │   │   │   ├── inventory_repository.py # In-memory inventory query & filter operations (Day 6)
-│   │   │   │   └── demand_repository.py # In-memory demand query, filter & trend operations (Day 7)
+│   │   │   │   ├── demand_repository.py # In-memory demand query, filter & trend operations (Day 7)
+│   │   │   │   └── supplier_repository.py # In-memory supplier query & risk classification (Day 8)
 │   │   │   └── data/                  # ShopFlow Synthetic Data Engine (Days 5 & 7)
 │   │   │       ├── __init__.py        # Engine exports
 │   │   │       ├── dataset.py         # ShopFlowDataset container & Scenario models
@@ -325,6 +375,8 @@ edos-decision-system/
 │   │       ├── test_demand.py         # Demand domain validation & serialization tests (Day 7)
 │   │       ├── test_demand_api.py     # Demand API endpoint, filter & trend tests (Day 7)
 │   │       ├── test_demand_repository.py # Demand repository unit & trend tests (Day 7)
+│   │       ├── test_supplier_api.py   # Supplier API endpoint & risk context tests (Day 8)
+│   │       ├── test_supplier_repository.py # Supplier repository unit & determinism tests (Day 8)
 │   │       └── test_synthetic_data.py # Deterministic data generation, scenarios & demand tests
 │   └── web/                           # Next.js web frontend service
 │       ├── Dockerfile                 # Web container definition
@@ -348,7 +400,8 @@ edos-decision-system/
 │           ├── navigation.ts          # Navigation links and domain sections
 │           └── types/                 # Shared TypeScript interface definitions
 │               ├── inventory.ts       # Inventory operational type contracts (Day 6)
-│               └── demand.ts          # Demand operational & trend type contracts (Day 7)
+│               ├── demand.ts          # Demand operational & trend type contracts (Day 7)
+│               └── supplier.ts        # Supplier operational & risk type contracts (Day 8)
 ├── data/                              # Data persistence & fixture directories
 │   ├── raw/                           # Raw input datasets
 │   ├── processed/                     # Sanitized operational data & scenario fixtures
@@ -392,10 +445,10 @@ edos-decision-system/
 │                 │ - ShopFlow Synthetic Data Engine (reproducible seed,    │
 │                 │   scenarios, referential integrity & test suite)        │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
-│ Days 6–10       │ Understand the Situation (Days 6 & 7 Completed)         │
+│ Days 6–10       │ Understand the Situation (Days 6, 7 & 8 Completed)      │
 │                 │ - Day 6: Inventory Data Layer & FastAPI endpoints (Done)│
 │                 │ - Day 7: Demand Data Layer & trend/history APIs (Done)  │
-│                 │ - Day 8: Supplier / lead-time intelligence layer        │
+│                 │ - Day 8: Supplier / lead-time intelligence layer (Done) │
 │                 │ - Day 9: Context Engine & situation synthesis           │
 │                 │ - Day 10: Decision Context UI & operational state views │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
