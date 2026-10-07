@@ -140,3 +140,57 @@ class SupplierResponse(BaseModel):
             ),
         )
 
+
+# Day 9 Context Engine Response Schemas
+from app.domain.context import (  # noqa: E402
+    ContextStatus,
+    ProductContext,
+    WarehouseContext,
+    InventoryContext,
+    DailyDemandContextPoint,
+    DemandContext,
+    SupplierContext,
+    DerivedContextMetrics,
+    DecisionContext,
+)
+
+ProductContextResponse = ProductContext
+WarehouseContextResponse = WarehouseContext
+InventoryContextResponse = InventoryContext
+DemandContextResponse = DemandContext
+SupplierContextResponse = SupplierContext
+DerivedMetricsResponse = DerivedContextMetrics
+
+
+class DecisionContextResponse(BaseModel):
+    """Unified strongly typed decision context response.
+
+    Combines Inventory, Demand, and Supplier data layers with derived descriptive metrics.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    product_id: str = Field(..., description="Referenced Product identifier")
+    warehouse_id: str = Field(..., description="Referenced Warehouse identifier")
+    product: ProductContext = Field(..., description="Product catalog snapshot")
+    warehouse: WarehouseContext = Field(..., description="Warehouse facility snapshot")
+    inventory: InventoryContext | None = Field(default=None, description="Current inventory position snapshot")
+    demand: DemandContext | None = Field(default=None, description="Historical demand observations and trajectory")
+    supplier: SupplierContext | None = Field(default=None, description="Primary supplier parameters and risk context")
+    metrics: DerivedContextMetrics = Field(..., description="Derived descriptive contextual metrics")
+    status: ContextStatus = Field(..., description="Unified operational context status (NORMAL, ATTENTION, ELEVATED)")
+
+    @classmethod
+    def from_domain(cls, ctx: DecisionContext) -> DecisionContextResponse:
+        return cls(
+            product_id=ctx.product_id,
+            warehouse_id=ctx.warehouse_id,
+            product=ctx.product,
+            warehouse=ctx.warehouse,
+            inventory=ctx.inventory,
+            demand=ctx.demand,
+            supplier=ctx.supplier,
+            metrics=ctx.metrics,
+            status=ctx.status,
+        )
+

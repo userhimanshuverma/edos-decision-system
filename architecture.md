@@ -305,6 +305,71 @@ The repository is structured according to a phased 30-day plan. Here is a detail
 * **Strictly Out of Scope (Deferred to Day 9+)**:
   - No Context Engine, Unified Decision Context, stockout risk prediction, replenishment optimization, LLM explanations, purchase orders, or database migrations.
 
+### 4.9 Day 9: Context Engine (Unified Decision Context)
+* **Objective**:
+  - Unify fragmented operational data layers into a single, deterministic, strongly typed operational decision context:
+    - Inventory Layer (Day 6): *"What do we have?"*
+    - Demand Layer (Day 7): *"How quickly is it being consumed?"*
+    - Supplier Layer (Day 8): *"How reliable is incoming supply?"*
+    - Context Engine (Day 9): *"What do we know about this situation?"*
+  - The LinkedIn narrative: *"From fragmented data to one decision context."*
+  - Context is strictly a **snapshot of operational facts**, NOT a decision:
+    - Answers: *"What do we know?"*
+    - Strictly does NOT answer: *"What should we do?"*
+    - Contains NO candidate actions, replenishment quantity recommendations, stockout probability forecasts, supplier switching suggestions, or machine learning.
+* **Architecture & Aggregation Flow**:
+  ```text
+  InventoryRepository ──┐
+  DemandRepository ─────┼──→ ContextEngine ──→ Derived Metrics ──→ Unified DecisionContext
+  SupplierRepository ───┘
+  ```
+  - In-process modular application/aggregation layer: The Context Engine aggregates from existing repositories on demand. No redundant persistence layer or `context_repository.py` is introduced.
+* **Domain Model (`apps/api/app/domain/context.py`)**:
+  - `DecisionContext`: Strongly typed root snapshot container:
+    - `product_id`: Unique referenced Product ID (`prod-001`).
+    - `warehouse_id`: Unique referenced Warehouse ID (`wh-001`).
+    - `product`: `ProductContext` (id, sku, name, category, unit_cost, selling_price, reorder_point, active).
+    - `warehouse`: `WarehouseContext` (id, code, name, location, capacity, active).
+    - `inventory`: `InventoryContext` (inventory_id, quantity_on_hand, quantity_reserved, available_quantity, reorder_point, updated_at).
+    - `demand`: `DemandContext` (total_demand, average_daily_demand, trend_direction, percentage_change, window_days, history).
+    - `supplier`: `SupplierContext` (supplier_id, code, name, lead_time_days, reliability, active, risk_level).
+    - `metrics`: `DerivedContextMetrics` (coverage_days, lead_time_days, is_below_reorder, net_deficit, context_status).
+    - `status`: `ContextStatus` (`NORMAL`, `ATTENTION`, `ELEVATED`).
+* **Deterministic Supplier Relationship Resolution**:
+  - Does NOT introduce heavy procurement scaffolding (zero `PurchaseOrder`, `Shipment`, `Contract`, `ProcurementWorkflow`, or `SupplierAssignmentService`).
+  - Implements the minimal deterministic relationship:
+    1. Category affinity mapping (`Industrial Electronics` / `Industrial Networking` -> `SUP-PAC-01`, `Mechanical & Motion` / `Hydraulics` -> `SUP-APX-02`, `Power Distribution` / `Safety` -> `SUP-VNG-03`, `Sensors` -> `SUP-OMN-04`) when present.
+    2. Deterministic numeric modulo fallback across sorted supplier list if unmapped.
+    3. Supports optional explicit `supplier_id` override when requested by the caller.
+* **Derived Contextual Metrics**:
+  - Purely descriptive operational calculations:
+    - `coverage_days`: `round(available_quantity / average_daily_demand, 2)` when demand > 0; safely `None` when zero or missing demand.
+    - `is_below_reorder`: Boolean flag (`available_quantity <= reorder_point`).
+    - `net_deficit`: Units below reorder point (`max(0, reorder_point - available_quantity)`).
+    - `context_status`: Simple, deterministic descriptive operational classification:
+      - **`ELEVATED`**: Missing inventory position, available stock <= reorder point, supplier risk HIGH, or inventory coverage shorter than supplier lead time.
+      - **`ATTENTION`**: Available stock approaching reorder buffer (<= 125% of reorder point), supplier risk MEDIUM, or historical demand trend increasing.
+      - **`NORMAL`**: Standard nominal operational buffers.
+* **Context API Endpoints (`apps/api/app/api/context.py`)**:
+  - Mounted at canonical `/api/context` (and alias `/context`):
+    - `GET /api/context/product/{product_id}/warehouse/{warehouse_id}`: Canonical resource-oriented unified context endpoint with optional `supplier_id` query override.
+    - `GET /api/context?product_id=...&warehouse_id=...`: Query parameter convenience alias.
+    - Returns HTTP 404 for unknown product or warehouse IDs.
+    - Fully deterministic: repeated calls return identical results.
+* **Typed Response Schemas (`apps/api/app/api/schemas.py`)**:
+  - `DecisionContextResponse`: Strongly typed Pydantic v2 contract matching domain `DecisionContext`.
+* **Frontend Typing Contracts (`apps/web/lib/types/context.ts`)**:
+  - TypeScript interfaces `DecisionContext`, `ProductContext`, `WarehouseContext`, `InventoryContext`, `DemandContext`, `SupplierContext`, `DerivedContextMetrics`, `ContextStatus` prepared for Day 10 UI.
+  - Zero premature UI components or dashboards implemented.
+* **Automated Test Coverage**:
+  - 22 new unit and integration tests across `test_context.py` and `test_context_api.py`.
+  - Full suite of 177 tests passing in ~2.1 seconds with zero regressions.
+* **Strictly Out of Scope (Deferred to Day 10+)**:
+  - Day 10 UI (Decision Context visualizer, dashboards, widgets, cards).
+  - Days 11–15 Decision Modeling (candidate action generation, hard constraint validation, scenario simulations).
+  - Days 16–20 Decision Execution (scoring, ranking, human approvals).
+  - AI/LLM narrative generation, forecasting models, or external databases.
+
 
 ---
 
@@ -341,19 +406,24 @@ edos-decision-system/
 │   │   ├── app/
 │   │   │   ├── config.py              # Environment configuration & settings class
 │   │   │   ├── main.py                # FastAPI app initialization & /health route
-│   │   │   ├── api/                   # FastAPI route handlers & schemas (Days 6–8)
+│   │   │   ├── api/                   # FastAPI route handlers & schemas (Days 6–9)
 │   │   │   │   ├── __init__.py        # API router & schema exports
-│   │   │   │   ├── schemas.py         # Pydantic v2 Inventory, Demand & Supplier schemas
+│   │   │   │   ├── schemas.py         # Pydantic v2 Inventory, Demand, Supplier & Context schemas
 │   │   │   │   ├── inventory.py       # Inventory HTTP endpoints & dependency injection (Day 6)
 │   │   │   │   ├── demand.py          # Demand HTTP endpoints, filters & trend (Day 7)
-│   │   │   │   └── supplier.py        # Supplier HTTP endpoints & risk context (Day 8)
+│   │   │   │   ├── supplier.py        # Supplier HTTP endpoints & risk context (Day 8)
+│   │   │   │   └── context.py         # Decision Context HTTP endpoint & aggregation (Day 9)
 │   │   │   ├── domain/                # ShopFlow domain models (Pydantic v2)
 │   │   │   │   ├── __init__.py        # Domain package exports
 │   │   │   │   ├── product.py         # Product model & validation
-│   │   │   │   ├── supplier.py        # Supplier model & reliability validation
+│   │   │   │   ├── supplier.py        # Supplier model & risk classification (Day 8)
 │   │   │   │   ├── warehouse.py       # Warehouse model & capacity validation
 │   │   │   │   ├── inventory.py       # Inventory model, stock balances & validation (Day 4)
-│   │   │   │   └── demand.py          # DemandRecord model & calendar date validation (Day 7)
+│   │   │   │   ├── demand.py          # DemandRecord model & calendar date validation (Day 7)
+│   │   │   │   └── context.py         # DecisionContext snapshot & derived metrics (Day 9)
+│   │   │   ├── context/               # Context Engine Application Layer (Day 9)
+│   │   │   │   ├── __init__.py        # Context engine package exports
+│   │   │   │   └── engine.py          # ContextEngine aggregation & state synthesis
 │   │   │   ├── repositories/          # Application data access layer (Days 6–8)
 │   │   │   │   ├── __init__.py        # Repositories exports
 │   │   │   │   ├── inventory_repository.py # In-memory inventory query & filter operations (Day 6)
@@ -377,7 +447,9 @@ edos-decision-system/
 │   │       ├── test_demand_repository.py # Demand repository unit & trend tests (Day 7)
 │   │       ├── test_supplier_api.py   # Supplier API endpoint & risk context tests (Day 8)
 │   │       ├── test_supplier_repository.py # Supplier repository unit & determinism tests (Day 8)
-│   │       └── test_synthetic_data.py # Deterministic data generation, scenarios & demand tests
+│   │       ├── test_synthetic_data.py # Deterministic data generation, scenarios & demand tests
+│   │       ├── test_context.py        # Context Engine unit & aggregation tests (Day 9)
+│   │       └── test_context_api.py    # Context API endpoint & schema tests (Day 9)
 │   └── web/                           # Next.js web frontend service
 │       ├── Dockerfile                 # Web container definition
 │       ├── package.json               # Node.js dependencies & scripts
@@ -401,7 +473,8 @@ edos-decision-system/
 │           └── types/                 # Shared TypeScript interface definitions
 │               ├── inventory.ts       # Inventory operational type contracts (Day 6)
 │               ├── demand.ts          # Demand operational & trend type contracts (Day 7)
-│               └── supplier.ts        # Supplier operational & risk type contracts (Day 8)
+│               ├── supplier.ts        # Supplier operational & risk type contracts (Day 8)
+│               └── context.ts         # Decision Context operational type contracts (Day 9)
 ├── data/                              # Data persistence & fixture directories
 │   ├── raw/                           # Raw input datasets
 │   ├── processed/                     # Sanitized operational data & scenario fixtures
@@ -445,11 +518,11 @@ edos-decision-system/
 │                 │ - ShopFlow Synthetic Data Engine (reproducible seed,    │
 │                 │   scenarios, referential integrity & test suite)        │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
-│ Days 6–10       │ Understand the Situation (Days 6, 7 & 8 Completed)      │
+│ Days 6–10       │ Understand the Situation (Days 6, 7, 8 & 9 Completed)   │
 │                 │ - Day 6: Inventory Data Layer & FastAPI endpoints (Done)│
 │                 │ - Day 7: Demand Data Layer & trend/history APIs (Done)  │
 │                 │ - Day 8: Supplier / lead-time intelligence layer (Done) │
-│                 │ - Day 9: Context Engine & situation synthesis           │
+│                 │ - Day 9: Context Engine & situation synthesis (Done)    │
 │                 │ - Day 10: Decision Context UI & operational state views │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
 │ Days 11–15      │ Model the Decision                                      │

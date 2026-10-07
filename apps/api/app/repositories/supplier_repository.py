@@ -1,45 +1,7 @@
-from __future__ import annotations
-
 from enum import Enum
 from app.data.dataset import ShopFlowDataset
 from app.data.generator import generate_shopflow_dataset
-from app.domain.supplier import Supplier
-
-
-class SupplierRiskLevel(str, Enum):
-    """Deterministic supplier operational risk classification.
-
-    Classification is based purely on the supplier's own observable operational profile:
-    - LOW: Dependable supplier with standard fulfillment speed (reliability >= 0.92, lead_time <= 14 days, active)
-    - MEDIUM: Moderate operational lead time or reliability (lead_time 15–21 days, or reliability 0.85–0.92)
-    - HIGH: Elevated operational risk (reliability < 0.85, lead_time > 21 days, or inactive)
-    """
-
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-
-
-def classify_supplier_risk(
-    lead_time_days: int,
-    reliability: float,
-    active: bool = True,
-) -> SupplierRiskLevel:
-    """Deterministically classifies supplier operational risk based on lead time and reliability.
-
-    Rules:
-    1. Inactive suppliers represent high operational risk if called upon.
-    2. Reliability < 0.85 or lead_time > 21 days indicates high operational risk.
-    3. Reliability < 0.92 or lead_time > 14 days indicates medium (elevated) operational risk.
-    4. Reliability >= 0.92 and lead_time <= 14 days indicates low operational risk.
-    """
-    if not active:
-        return SupplierRiskLevel.HIGH
-    if reliability < 0.85 or lead_time_days > 21:
-        return SupplierRiskLevel.HIGH
-    if reliability < 0.92 or lead_time_days > 14:
-        return SupplierRiskLevel.MEDIUM
-    return SupplierRiskLevel.LOW
+from app.domain.supplier import Supplier, SupplierRiskLevel, classify_supplier_risk
 
 
 class SupplierRepository:
@@ -108,3 +70,49 @@ class SupplierRepository:
             reliability=supplier.reliability,
             active=supplier.active,
         )
+
+    def get_supplier_for_product(
+        self,
+        product_id: str,
+        category: str | None = None,
+    ) -> Supplier | None:
+        """Deterministically resolves the primary operational supplier for a product.
+
+        Uses category affinity mapping when available. If the supplier code
+        is not present in the dataset or category is unspecified, falls back to a
+        stable modulo assignment based on product ID across available suppliers.
+        """
+        if not self._dataset.suppliers:
+            return None
+
+        # 1. Check category affinity mapping if category provided
+        if category and category in CATEGORY_SUPPLIER_MAP:
+            target_code = CATEGORY_SUPPLIER_MAP[category]
+            found = self.get_by_code(target_code)
+            if found is not None:
+                return found
+
+        # 2. Deterministic fallback: modulo across deterministically sorted suppliers
+        sorted_suppliers = self.list_all()
+        if not sorted_suppliers:
+            return None
+
+        digits = "".join(ch for ch in product_id if ch.isdigit())
+        if digits:
+            idx = (int(digits) - 1) % len(sorted_suppliers)
+        else:
+            idx = sum(ord(c) for c in product_id) % len(sorted_suppliers)
+
+        return sorted_suppliers[idx]
+
+
+# Deterministic category to primary supplier code blueprint mapping
+CATEGORY_SUPPLIER_MAP: dict[str, str] = {
+    "Industrial Electronics": "SUP-PAC-01",
+    "Mechanical & Motion": "SUP-APX-02",
+    "Power Distribution": "SUP-VNG-03",
+    "Sensors & Instrumentation": "SUP-OMN-04",
+    "Industrial Networking": "SUP-PAC-01",
+    "Hydraulics & Pneumatics": "SUP-APX-02",
+    "Safety Systems": "SUP-VNG-03",
+}
