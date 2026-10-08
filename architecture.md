@@ -370,6 +370,63 @@ The repository is structured according to a phased 30-day plan. Here is a detail
   - Days 16–20 Decision Execution (scoring, ranking, human approvals).
   - AI/LLM narrative generation, forecasting models, or external databases.
 
+### 4.10 Day 10: Decision Context UI (Operational State Screen)
+* **Objective**:
+  - Transform the stable Day 9 Context Engine API into the first real EDOS operational screen (`/context`).
+  - Answer the fundamental question: *"What do we know about this situation?"*
+  - Strictly does NOT answer: *"What should we do?"* (Decision modeling and candidate actions begin on Day 11+).
+  - Designed as a serious enterprise operations command interface rather than a generic dashboard or marketing showcase.
+* **Architecture & Data Flow**:
+  ```text
+  User Interaction (Situation Selector / Presets)
+         │
+         ▼
+  Next.js Frontend Client (lib/api/context.ts)
+         │  HTTP GET /api/context/product/{product_id}/warehouse/{warehouse_id}
+         ▼
+  Next.js API Rewrite Proxy (/api/:path* -> http://127.0.0.1:8000/api/:path*)
+         │
+         ▼
+  FastAPI Context Engine (app/api/context.py & app/context/engine.py)
+         │
+         ▼
+  Strongly-Typed DecisionContext JSON Payload
+         │
+         ▼
+  UI Presentation Layer (apps/web/app/context/page.tsx)
+  ├── SituationSelector (Target Product / Target Warehouse selectors + preset chips)
+  ├── ContextHeader (SKU, facility, operational status indicator)
+  ├── OperationalSnapshot (4 pillars: Available, Demand Velocity, Supply, Coverage Window)
+  ├── InventoryPositionCard (Allocation breakdown, reorder threshold, descriptive coverage)
+  ├── DemandHistoryChart (Lightweight SVG daily consumption bars + data log toggle)
+  ├── SupplierContextCard (Lead times, OTIF reliability, Day 8 deterministic risk tier)
+  └── ContextSummaryCard (Deterministic situational "Why" factors, zero LLM hallucination)
+  ```
+* **Core Principles & Architectural Boundaries**:
+  1. **Strict Context vs. Decision Boundary**:
+     - The screen exclusively presents known facts and descriptive ratios.
+     - Zero candidate actions (no "Order", "Expedite", "Switch Supplier", "Approve", "Reject", or "Recommended Action").
+     - Zero stockout risk calculation, probability score, predicted stockout date, or forecasting models (deferred to Day 18).
+  2. **Zero Backend Logic Duplication**:
+     - The backend Day 9 Context Engine remains the sole deterministic source of truth.
+     - Frontend TypeScript components consume and present API values without recomputing business rules or inventing metrics.
+  3. **Deterministic Grounding**:
+     - Operational summary factors are deterministic rules derived strictly from API fields (`trend_direction`, `is_below_reorder`, `risk_level`, `coverage_days`).
+     - Zero generative AI or LLM halluncination involved.
+  4. **Design System Consistency**:
+     - Completely built using the enterprise Light Theme design tokens (`apps/web/app/globals.css`).
+     - Reuses design system primitives (`Card`, `Metric`, `Badge`, `StatusIndicator`, `DataTable`, `KeyValue`, `LoadingState`, `ErrorState`, `EmptyState`, `Button`).
+* **Resilient Operational States**:
+  - **Loading State**: Accessible skeleton loading grids simulating header, metrics, and large operational cards.
+  - **Error State**: Contextual HTTP error display with error codes, clear remediation messaging, retry button, and fallback preset reset.
+  - **Empty State**: Guided action prompts when no situation is selected.
+* **Responsive Architecture**:
+  - Responsive multi-column layout collapsing from 4-column metric grids and 2-column detailed analysis on desktop to 2-column and single-column stacks on tablet and laptop screens.
+* **Testing & Verification**:
+  - Automated Node.js frontend test suite in `apps/web/tests/context.test.mjs` verifying input validation, API integration, inventory math, coverage ratios, status classifications, and null-safety.
+  - 100% test pass rate across backend pytest suite (177 tests) and frontend test suite (9 tests).
+* **Strictly Out of Scope (Deferred to Day 11+)**:
+  - Candidate actions, replenishment policies, hard constraints, simulation engine, AI explanations, and human approval state machines.
 
 ---
 
@@ -518,12 +575,12 @@ edos-decision-system/
 │                 │ - ShopFlow Synthetic Data Engine (reproducible seed,    │
 │                 │   scenarios, referential integrity & test suite)        │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
-│ Days 6–10       │ Understand the Situation (Days 6, 7, 8 & 9 Completed)   │
+│ Days 6–10       │ Understand the Situation (Days 6, 7, 8, 9 & 10 Completed)│
 │                 │ - Day 6: Inventory Data Layer & FastAPI endpoints (Done)│
 │                 │ - Day 7: Demand Data Layer & trend/history APIs (Done)  │
 │                 │ - Day 8: Supplier / lead-time intelligence layer (Done) │
 │                 │ - Day 9: Context Engine & situation synthesis (Done)    │
-│                 │ - Day 10: Decision Context UI & operational state views │
+│                 │ - Day 10: Decision Context UI & operational state (Done)│
 ├─────────────────┼─────────────────────────────────────────────────────────┤
 │ Days 11–15      │ Model the Decision                                      │
 │                 │ - Candidate action generation (Expedite, Split, Source) │

@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { Badge } from "../components/ui/badge";
 import { Card } from "../components/ui/card";
 import { StatusIndicator } from "../components/ui/status-indicator";
@@ -13,6 +14,7 @@ export default function OverviewPage() {
         <div className="edos-overview__hero-pre">
           <Badge variant="default">Foundation Phase</Badge>
           <Badge variant="neutral">Day 3</Badge>
+          <Badge variant="success">Day 10 Live</Badge>
         </div>
         <h1 id="overview-title" className="edos-overview__hero-title">
           Overview
@@ -62,6 +64,54 @@ export default function OverviewPage() {
             />
           }
         />
+      </section>
+
+      {/* Operational Situation Context Workspace (Day 10) */}
+      <section className="edos-section" aria-labelledby="context-section-title">
+        <div className="edos-section__header">
+          <h3 id="context-section-title" className="edos-section__title">
+            Operational Situation Context
+          </h3>
+          <span className="edos-section__tag">DAY 10 MILESTONE — LIVE</span>
+        </div>
+
+        <Card
+          title="Product & Warehouse Decision Context Workspace"
+          description="Synthesized operational intelligence across inventory positions, observed demand trends, and upstream supplier parameters."
+          headerAction={
+            <Link
+              href="/context"
+              className="edos-btn edos-btn--primary edos-btn--sm"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "6px 14px",
+                background: "var(--accent)",
+                color: "#ffffff",
+                borderRadius: "var(--radius-md)",
+                fontWeight: 600,
+                fontSize: "0.8125rem",
+              }}
+            >
+              Inspect Decision Context →
+            </Link>
+          }
+        >
+          <div className="edos-overview-context-banner">
+            <div className="edos-overview-context-banner__meta">
+              <span className="edos-overview-context-sku">SKU-ELEC-1001</span>
+              <span className="edos-overview-context-title">
+                Industrial IoT Gateway Edge-X @ Eastern Logistics Hub (WH-EAST-01)
+              </span>
+            </div>
+            <div className="edos-overview-context-banner__badges">
+              <Badge variant="warning">Status: ATTENTION</Badge>
+              <Badge variant="neutral">Coverage: 29.4 days</Badge>
+              <Badge variant="outline">Lead Time: 10 days</Badge>
+            </div>
+          </div>
+        </Card>
       </section>
 
       {/* Recent Operational Activity Section */}

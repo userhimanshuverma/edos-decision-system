@@ -1951,12 +1951,881 @@ a {
 }
 
 /* ==========================================================================
+   Day 10: Decision Context Screen (Enterprise Operations UI)
+   ========================================================================== */
+
+.edos-context-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+}
+
+/* Situation Selector Bar */
+.edos-situation-selector-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-6);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.edos-situation-selector-bar__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.edos-situation-selector-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 240px;
+}
+
+.edos-situation-selector-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.edos-select--compact {
+  height: 36px;
+  padding: 0 var(--space-3);
+  font-size: 0.8125rem;
+}
+
+.edos-situation-selector-actions {
+  display: flex;
+  align-items: center;
+  padding-bottom: 1px;
+}
+
+.edos-situation-refresh-icon {
+  display: inline-block;
+  margin-right: var(--space-1);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Situation Presets */
+.edos-situation-presets {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.edos-situation-presets__label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.edos-situation-presets__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.edos-situation-preset-chip {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease-in-out;
+}
+
+.edos-situation-preset-chip:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.edos-situation-preset-chip--active {
+  background: var(--accent-subtle);
+  border-color: var(--accent);
+  color: var(--accent-hover);
+  font-weight: 600;
+}
+
+.edos-situation-preset-chip__status {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(15, 23, 42, 0.06);
+  text-transform: uppercase;
+}
+
+/* Situation Page Header */
+.edos-situation-header {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.edos-situation-header__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.edos-situation-header__breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.edos-situation-header__tag {
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.edos-situation-header__sep {
+  color: var(--text-disabled);
+}
+
+.edos-situation-header__sku-mono {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.edos-situation-header__wh-mono {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.edos-situation-header__status-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.edos-situation-header__main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.edos-situation-header__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.edos-situation-header__meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.edos-situation-header__sku-pill {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: var(--surface-subtle);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.edos-situation-header__bullet {
+  color: var(--text-disabled);
+}
+
+.edos-situation-header__location {
+  font-weight: 500;
+}
+
+.edos-situation-header__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.edos-situation-header__subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.edos-situation-header__boundary-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-align: right;
+}
+
+.edos-situation-header__boundary-title {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.edos-situation-header__boundary-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Snapshot Section */
+.edos-snapshot-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.edos-snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+
+.edos-snapshot-metric-val {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.edos-snapshot-metric-unit {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+}
+
+.edos-snapshot-note-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.edos-snapshot-note-sep {
+  color: var(--text-disabled);
+}
+
+/* Detailed Two-Column Layout */
+.edos-context-details-layout {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: var(--space-6);
+  align-items: flex-start;
+}
+
+.edos-context-details-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Card Header Tag */
+.edos-card-meta-tag {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+/* Inventory Allocation Progress Bar */
+.edos-inventory-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.edos-inventory-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.edos-inventory-bar-title {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.edos-inventory-bar-legend {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.edos-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 4px;
+}
+
+.edos-legend-dot--available {
+  background: var(--accent);
+}
+
+.edos-legend-dot--reserved {
+  background: var(--border-strong);
+}
+
+.edos-legend-dot--reorder {
+  background: var(--warning);
+}
+
+.edos-inventory-progress-track {
+  position: relative;
+  height: 18px;
+  background: var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  overflow: visible;
+}
+
+.edos-inventory-progress-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.edos-inventory-progress-segment--available {
+  background: var(--accent);
+  border-top-left-radius: var(--radius-sm);
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+.edos-inventory-progress-segment--reserved {
+  background: var(--text-disabled);
+}
+
+.edos-inventory-reorder-marker {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--warning);
+  z-index: 2;
+}
+
+.edos-inventory-reorder-tag {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--warning-subtle);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-hover);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.edos-inventory-kv-grid {
+  margin-top: var(--space-2);
+}
+
+/* Context Callout Box */
+.edos-context-callout {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-4);
+}
+
+.edos-context-callout__icon {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.4;
+}
+
+.edos-context-callout__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.edos-context-callout__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.edos-context-callout__text {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.edos-context-callout__text code {
+  font-family: var(--font-mono);
+  background: rgba(15, 23, 42, 0.05);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.75rem;
+}
+
+/* Demand Header Controls */
+.edos-demand-header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.edos-segmented-control {
+  display: inline-flex;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 2px;
+}
+
+.edos-segmented-btn {
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.edos-segmented-btn:hover {
+  color: var(--text-primary);
+}
+
+.edos-segmented-btn--active {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Demand Summary Strip */
+.edos-demand-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
+.edos-demand-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.edos-demand-summary-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.edos-demand-summary-val {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Demand Chart Visualization */
+.edos-chart-container {
+  position: relative;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
+.edos-demand-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.edos-chart-axis-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: var(--text-muted);
+}
+
+.edos-chart-bar-group {
+  cursor: pointer;
+  outline: none;
+}
+
+.edos-chart-bar {
+  transition: fill 0.15s ease, opacity 0.15s ease;
+}
+
+.edos-chart-bar-group:focus-visible .edos-chart-bar {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.edos-chart-tooltip {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  box-shadow: var(--shadow-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+  font-size: 0.75rem;
+}
+
+.edos-chart-tooltip__date {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.edos-chart-tooltip__val {
+  color: var(--text-primary);
+}
+
+.edos-chart-tooltip__comp {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+}
+
+.edos-demand-table-wrap {
+  margin-top: var(--space-2);
+}
+
+.edos-demand-empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Warning Banner */
+.edos-warning-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--danger-subtle);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-4);
+  color: var(--danger-hover);
+  font-size: 0.8125rem;
+}
+
+.edos-warning-banner__icon {
+  font-size: 1rem;
+}
+
+/* Context Summary Card */
+.edos-summary-badge-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.edos-context-summary-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.edos-context-summary-status-banner {
+  padding: var(--space-4);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.edos-context-summary-status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.edos-context-summary-status-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.edos-context-summary-status-name {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.edos-context-summary-status-desc {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.edos-context-summary-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.edos-context-summary-reasons-title {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.edos-context-summary-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.edos-context-summary-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  border: 1px solid transparent;
+}
+
+.edos-context-summary-item__bullet {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.edos-context-summary-item--danger {
+  background: var(--danger-subtle);
+  border-color: var(--danger-border);
+  color: var(--text-primary);
+}
+
+.edos-context-summary-item--danger .edos-context-summary-item__bullet {
+  background: var(--danger);
+}
+
+.edos-context-summary-item--warning {
+  background: var(--warning-subtle);
+  border-color: var(--warning-border);
+  color: var(--text-primary);
+}
+
+.edos-context-summary-item--warning .edos-context-summary-item__bullet {
+  background: var(--warning);
+}
+
+.edos-context-summary-item--success {
+  background: var(--success-subtle);
+  border-color: var(--success-border);
+  color: var(--text-primary);
+}
+
+.edos-context-summary-item--success .edos-context-summary-item__bullet {
+  background: var(--success);
+}
+
+.edos-context-summary-item--neutral {
+  background: var(--surface-subtle);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.edos-context-summary-item--neutral .edos-context-summary-item__bullet {
+  background: var(--text-disabled);
+}
+
+.edos-context-summary-footer-meta {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.edos-context-summary-footer-note {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+/* Skeleton Loading Helpers */
+.edos-context-loading-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.edos-skeleton-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.edos-skeleton--header-block {
+  height: 110px;
+  border-radius: var(--radius-lg);
+}
+
+.edos-skeleton--metric-card {
+  height: 120px;
+  border-radius: var(--radius-lg);
+}
+
+.edos-skeleton--large-card {
+  height: 320px;
+  border-radius: var(--radius-lg);
+}
+
+/* Error Area */
+.edos-context-error-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.edos-context-error-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* Overview context banner */
+.edos-overview-context-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.edos-overview-context-banner__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.edos-overview-context-sku {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.edos-overview-context-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.edos-overview-context-banner__badges {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ==========================================================================
    Responsive Adaptations
    ========================================================================== */
 
 @media (max-width: 1024px) {
   .edos-metrics-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .edos-snapshot-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .edos-context-details-layout {
+    grid-template-columns: 1fr;
   }
   .edos-header__center {
     display: none;
@@ -2002,6 +2871,14 @@ a {
 
   .edos-metrics-grid {
     grid-template-columns: 1fr;
+  }
+
+  .edos-snapshot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .edos-demand-summary-strip {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .edos-showcase__grid--2,

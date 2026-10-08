@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.context import router as context_router
 from app.api.demand import router as demand_router
 from app.api.inventory import router as inventory_router
@@ -9,6 +10,14 @@ settings = get_settings()
 
 app = FastAPI(
     title=settings.app_name,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

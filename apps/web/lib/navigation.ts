@@ -19,6 +19,12 @@ export const navigationSections: NavSection[] = [
         label: "Overview",
         href: "/",
       },
+      {
+        id: "context",
+        label: "Decision Context",
+        href: "/context",
+        badge: "Live",
+      },
     ],
   },
   {
