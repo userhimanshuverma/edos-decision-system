@@ -428,6 +428,46 @@ The repository is structured according to a phased 30-day plan. Here is a detail
 * **Strictly Out of Scope (Deferred to Day 11+)**:
   - Candidate actions, replenishment policies, hard constraints, simulation engine, AI explanations, and human approval state machines.
 
+### 4.11 Day 11: Decision Model (Identity and Storage Foundation)
+* **Objective**:
+  - Implement the fundamental entity and storage layer establishing that **a business decision needs an identity**.
+  - Provide typed domain models, deterministic unique identifier generation, in-memory repository storage, and REST API endpoints.
+  - Establish the architectural boundary: identity and operational relationship are established first; candidate action generation, scoring, and lifecycle state machines remain strictly deferred to subsequent milestones.
+* **Domain Model (`apps/api/app/domain/decision.py`)**:
+  - `Decision`: Strongly typed Pydantic v2 domain model with `extra="forbid"` and whitespace stripping.
+    - `id`: Unique decision identifier (human-readable format `DEC-XXXX`).
+    - `product_id`: Associated product catalog reference identifier.
+    - `warehouse_id`: Associated warehouse facility reference identifier.
+    - `created_at`: UTC creation timestamp (timezone-aware).
+    - `status`: Minimal initial decision state (`DecisionStatus.DRAFT`).
+  - `DecisionStatus`: Minimal initial status enumeration containing only `DRAFT`. Complete lifecycle transitions remain strictly deferred.
+* **Decision Repository (`apps/api/app/repositories/decision_repository.py`)**:
+  - In-memory data access layer adhering to existing repository design conventions.
+  - Deterministic ID generator producing stable `DEC-XXXX` sequential identifiers.
+  - Storage methods (`create`, `save`, `add`) with duplicate identifier collision protection (`DuplicateDecisionError`).
+  - Single-item retrieval by ID (`get_by_id`) returning `None` for unknown entities.
+  - Deterministic collection query (`list_all`) ordered by `(created_at, id)`, with optional filtering by `product_id` and `warehouse_id`.
+  - Referential integrity checks (`product_exists`, `warehouse_exists`) delegated to the synthetic catalog.
+  - Defensive deep copies on both write and read paths ensuring stored records remain immutable after retrieval.
+* **Decision API Endpoints (`apps/api/app/api/decision.py`)**:
+  - Mounted at canonical `/api/decisions` (with aliases `/decisions`, `/api/decision`, `/decision`):
+    - `POST /api/decisions`: Validates payload (`CreateDecisionRequest`), verifies product and warehouse exist in catalog (returns HTTP 404 for unknown references), generates unique `id`, sets `DRAFT` status, and stores the decision. Returns HTTP 201 Created with `DecisionResponse`.
+    - `GET /api/decisions`: Returns typed collection `list[DecisionResponse]` with deterministic ordering; returns empty list `[]` when no decisions exist.
+    - `GET /api/decisions/{decision_id}`: Retrieves single decision by ID; returns HTTP 404 for unknown IDs.
+* **Testing & Verification**:
+  - 43 new unit and integration tests across:
+    - `test_decision.py`: Domain validation, required fields, whitespace rejection, extra field forbidden check, initial status, and stable serialization.
+    - `test_decision_repository.py`: Creation, retrieval, empty listing, duplicate ID protection, deterministic ordering, and defensive immutability.
+    - `test_decision_api.py`: Creation with HTTP 201, 404 for unknown product/warehouse, empty listing HTTP 200, retrieval HTTP 200/404, query filtering, and payload validation (HTTP 422).
+  - 220 total backend pytest tests passing in ~3.0s with zero regressions.
+  - 100% frontend test pass rate (9 tests) and successful Next.js production build.
+* **Strictly Out of Scope (Deferred to Days 12+)**:
+  - Decision lifecycle transitions (READY, APPROVED, REJECTED, EXECUTED).
+  - Candidate action generation (Do Nothing, Order X, Switch Supplier).
+  - Decision scoring, ranking, or trade-off evaluation.
+  - Decision graph, provenance trees, and audit event streams.
+  - AI/LLM narrative generation or interactive Q&A.
+
 ---
 
 ## 5. Technology Stack & Directory Structure
@@ -463,13 +503,14 @@ edos-decision-system/
 │   │   ├── app/
 │   │   │   ├── config.py              # Environment configuration & settings class
 │   │   │   ├── main.py                # FastAPI app initialization & /health route
-│   │   │   ├── api/                   # FastAPI route handlers & schemas (Days 6–9)
+│   │   │   ├── api/                   # FastAPI route handlers & schemas (Days 6–11)
 │   │   │   │   ├── __init__.py        # API router & schema exports
-│   │   │   │   ├── schemas.py         # Pydantic v2 Inventory, Demand, Supplier & Context schemas
+│   │   │   │   ├── schemas.py         # Pydantic v2 schemas (Inventory, Demand, Supplier, Context, Decision)
 │   │   │   │   ├── inventory.py       # Inventory HTTP endpoints & dependency injection (Day 6)
 │   │   │   │   ├── demand.py          # Demand HTTP endpoints, filters & trend (Day 7)
 │   │   │   │   ├── supplier.py        # Supplier HTTP endpoints & risk context (Day 8)
-│   │   │   │   └── context.py         # Decision Context HTTP endpoint & aggregation (Day 9)
+│   │   │   │   ├── context.py         # Decision Context HTTP endpoint & aggregation (Day 9)
+│   │   │   │   └── decision.py        # Decision HTTP endpoints, create, list & get (Day 11)
 │   │   │   ├── domain/                # ShopFlow domain models (Pydantic v2)
 │   │   │   │   ├── __init__.py        # Domain package exports
 │   │   │   │   ├── product.py         # Product model & validation
@@ -477,15 +518,17 @@ edos-decision-system/
 │   │   │   │   ├── warehouse.py       # Warehouse model & capacity validation
 │   │   │   │   ├── inventory.py       # Inventory model, stock balances & validation (Day 4)
 │   │   │   │   ├── demand.py          # DemandRecord model & calendar date validation (Day 7)
-│   │   │   │   └── context.py         # DecisionContext snapshot & derived metrics (Day 9)
+│   │   │   │   ├── context.py         # DecisionContext snapshot & derived metrics (Day 9)
+│   │   │   │   └── decision.py        # Decision model & status validation (Day 11)
 │   │   │   ├── context/               # Context Engine Application Layer (Day 9)
 │   │   │   │   ├── __init__.py        # Context engine package exports
 │   │   │   │   └── engine.py          # ContextEngine aggregation & state synthesis
-│   │   │   ├── repositories/          # Application data access layer (Days 6–8)
+│   │   │   ├── repositories/          # Application data access layer (Days 6–11)
 │   │   │   │   ├── __init__.py        # Repositories exports
 │   │   │   │   ├── inventory_repository.py # In-memory inventory query & filter operations (Day 6)
 │   │   │   │   ├── demand_repository.py # In-memory demand query, filter & trend operations (Day 7)
-│   │   │   │   └── supplier_repository.py # In-memory supplier query & risk classification (Day 8)
+│   │   │   │   ├── supplier_repository.py # In-memory supplier query & risk classification (Day 8)
+│   │   │   │   └── decision_repository.py # In-memory decision storage, ordering & ID generation (Day 11)
 │   │   │   └── data/                  # ShopFlow Synthetic Data Engine (Days 5 & 7)
 │   │   │       ├── __init__.py        # Engine exports
 │   │   │       ├── dataset.py         # ShopFlowDataset container & Scenario models
@@ -506,7 +549,10 @@ edos-decision-system/
 │   │       ├── test_supplier_repository.py # Supplier repository unit & determinism tests (Day 8)
 │   │       ├── test_synthetic_data.py # Deterministic data generation, scenarios & demand tests
 │   │       ├── test_context.py        # Context Engine unit & aggregation tests (Day 9)
-│   │       └── test_context_api.py    # Context API endpoint & schema tests (Day 9)
+│   │       ├── test_context_api.py    # Context API endpoint & schema tests (Day 9)
+│   │       ├── test_decision.py       # Decision domain validation & serialization tests (Day 11)
+│   │       ├── test_decision_repository.py # Decision repository unit, order & duplicate tests (Day 11)
+│   │       └── test_decision_api.py   # Decision API endpoint, 404 & collection tests (Day 11)
 │   └── web/                           # Next.js web frontend service
 │       ├── Dockerfile                 # Web container definition
 │       ├── package.json               # Node.js dependencies & scripts
@@ -583,6 +629,7 @@ edos-decision-system/
 │                 │ - Day 10: Decision Context UI & operational state (Done)│
 ├─────────────────┼─────────────────────────────────────────────────────────┤
 │ Days 11–15      │ Model the Decision                                      │
+│                 │ - Day 11: Decision Model & identity foundation (Done)   │
 │                 │ - Candidate action generation (Expedite, Split, Source) │
 │                 │ - Rule-based policy validation & hard-constraint checks │
 │                 │ - Counterfactual simulation & scenario impact engine    │

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.context import router as context_router
+from app.api.decision import router as decision_router
 from app.api.demand import router as demand_router
 from app.api.inventory import router as inventory_router
 from app.api.supplier import router as supplier_router
@@ -34,6 +35,7 @@ app.include_router(inventory_router, prefix="/api/inventory", tags=["inventory"]
 app.include_router(demand_router, prefix="/api/demand", tags=["demand"])
 app.include_router(supplier_router, prefix="/api/suppliers", tags=["suppliers"])
 app.include_router(context_router, prefix="/api/context", tags=["context"])
+app.include_router(decision_router, prefix="/api/decisions", tags=["decisions"])
 
 # Direct router aliases
 app.include_router(inventory_router, prefix="/inventory", tags=["inventory"], include_in_schema=False)
@@ -42,4 +44,8 @@ app.include_router(supplier_router, prefix="/suppliers", tags=["suppliers"], inc
 app.include_router(supplier_router, prefix="/api/supplier", tags=["suppliers"], include_in_schema=False)
 app.include_router(supplier_router, prefix="/supplier", tags=["suppliers"], include_in_schema=False)
 app.include_router(context_router, prefix="/context", tags=["context"], include_in_schema=False)
+app.include_router(decision_router, prefix="/decisions", tags=["decisions"], include_in_schema=False)
+app.include_router(decision_router, prefix="/api/decision", tags=["decisions"], include_in_schema=False)
+app.include_router(decision_router, prefix="/decision", tags=["decisions"], include_in_schema=False)
+
 

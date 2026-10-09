@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+from app.domain.decision import Decision, DecisionStatus
 from app.domain.demand import DemandRecord
 from app.domain.inventory import Inventory
 from app.domain.supplier import Supplier
@@ -193,4 +194,50 @@ class DecisionContextResponse(BaseModel):
             metrics=ctx.metrics,
             status=ctx.status,
         )
+
+
+# Day 11 Decision Model Schemas
+class CreateDecisionRequest(BaseModel):
+    """Request payload for creating a new business decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    product_id: str = Field(..., min_length=1, description="Referenced Product identifier")
+    warehouse_id: str = Field(..., min_length=1, description="Referenced Warehouse identifier")
+
+
+class DecisionResponse(BaseModel):
+    """Clean typed response model representing an identifiable business decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique decision identifier")
+    decision_id: str = Field(..., description="Decision identifier (alias for id)")
+    product_id: str = Field(..., description="Referenced Product identifier")
+    warehouse_id: str = Field(..., description="Referenced Warehouse identifier")
+    created_at: datetime = Field(..., description="UTC creation timestamp")
+    status: DecisionStatus = Field(..., description="Current status of the decision")
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "decision_id" not in data and "id" in data:
+                data["decision_id"] = data["id"]
+            elif "id" not in data and "decision_id" in data:
+                data["id"] = data["decision_id"]
+        return data
+
+    @classmethod
+    def from_domain(cls, decision: Decision) -> DecisionResponse:
+        """Constructs a DecisionResponse model from a domain Decision instance."""
+        return cls(
+            id=decision.id,
+            decision_id=decision.id,
+            product_id=decision.product_id,
+            warehouse_id=decision.warehouse_id,
+            created_at=decision.created_at,
+            status=decision.status,
+        )
+
 

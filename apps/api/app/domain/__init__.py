@@ -3,6 +3,7 @@ from app.domain.supplier import Supplier
 from app.domain.warehouse import Warehouse
 from app.domain.inventory import Inventory
 from app.domain.demand import DemandRecord
+from app.domain.decision import Decision, DecisionStatus
 from app.domain.context import (
     ContextStatus,
     ProductContext,
@@ -21,6 +22,8 @@ __all__ = [
     "Warehouse",
     "Inventory",
     "DemandRecord",
+    "Decision",
+    "DecisionStatus",
     "ContextStatus",
     "ProductContext",
     "WarehouseContext",
@@ -31,4 +34,5 @@ __all__ = [
     "DerivedContextMetrics",
     "DecisionContext",
 ]
+
 
