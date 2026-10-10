@@ -147,3 +147,69 @@ def test_decision_naive_timestamp_normalized_to_utc():
     assert decision.created_at.tzinfo == timezone.utc
     assert decision.created_at.year == 2026
     assert decision.created_at.hour == 10
+
+
+def test_decision_status_enum_members():
+    """Verifies all six lifecycle states exist with exact string representations."""
+    expected_statuses = [
+        "DRAFT",
+        "CONTEXTUALIZING",
+        "CONSTRUCTING",
+        "VALIDATING",
+        "EVALUATING",
+        "READY",
+    ]
+    actual_statuses = [status.value for status in DecisionStatus]
+    assert actual_statuses == expected_statuses
+    assert len(DecisionStatus) == 6
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        DecisionStatus.DRAFT,
+        DecisionStatus.CONTEXTUALIZING,
+        DecisionStatus.CONSTRUCTING,
+        DecisionStatus.VALIDATING,
+        DecisionStatus.EVALUATING,
+        DecisionStatus.READY,
+    ],
+)
+def test_decision_creation_all_lifecycle_statuses(status: DecisionStatus):
+    """Verifies that Decision can be created with each of the 6 lifecycle states."""
+    d = Decision(
+        id="DEC-0001",
+        product_id="prod-001",
+        warehouse_id="wh-001",
+        status=status,
+    )
+    assert d.status == status
+
+    # Verify JSON round-trip for each state
+    json_data = d.model_dump_json()
+    reconstructed = Decision.model_validate_json(json_data)
+    assert reconstructed.status == status
+
+
+@pytest.mark.parametrize(
+    "invalid_status",
+    [
+        "APPROVED",
+        "REJECTED",
+        "EXECUTED",
+        "CANCELLED",
+        "PENDING",
+        "UNKNOWN",
+        "",
+        "draft",  # Case-sensitive check
+    ],
+)
+def test_decision_invalid_statuses_rejected(invalid_status: str):
+    """Verifies that unknown or out-of-scope statuses raise ValidationError."""
+    with pytest.raises(ValidationError):
+        Decision(
+            id="DEC-0001",
+            product_id="prod-001",
+            warehouse_id="wh-001",
+            status=invalid_status,
+        )

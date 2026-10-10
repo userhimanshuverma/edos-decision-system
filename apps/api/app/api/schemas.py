@@ -241,3 +241,12 @@ class DecisionResponse(BaseModel):
         )
 
 
+# Day 12 Decision Lifecycle Schemas
+class UpdateDecisionStatusRequest(BaseModel):
+    """Request payload for updating the lifecycle status of an operational decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    status: DecisionStatus = Field(..., description="Target lifecycle status")
+
+

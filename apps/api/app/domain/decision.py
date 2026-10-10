@@ -6,9 +6,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class DecisionStatus(str, Enum):
-    """Minimal initial lifecycle status for an identifiable business decision."""
+    """Lifecycle status for an identifiable business decision."""
 
     DRAFT = "DRAFT"
+    CONTEXTUALIZING = "CONTEXTUALIZING"
+    CONSTRUCTING = "CONSTRUCTING"
+    VALIDATING = "VALIDATING"
+    EVALUATING = "EVALUATING"
+    READY = "READY"
 
 
 class Decision(BaseModel):

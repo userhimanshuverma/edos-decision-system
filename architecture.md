@@ -468,6 +468,61 @@ The repository is structured according to a phased 30-day plan. Here is a detail
   - Decision graph, provenance trees, and audit event streams.
   - AI/LLM narrative generation or interactive Q&A.
 
+### 4.12 Day 12: Decision Lifecycle (State Machine & Transition Engine)
+* **Objective**:
+  - Implement a deterministic, validated lifecycle for every EDOS operational decision, transitioning decisions from `DRAFT` through sequential operational stages.
+  - Enforce the core principle: **Every decision state change must be explicit, valid, and enforced by the backend.**
+* **The Six Lifecycle States**:
+  1. `DRAFT`: Initial operational state upon decision creation.
+  2. `CONTEXTUALIZING`: Aggregating inventory, demand, and supplier intelligence.
+  3. `CONSTRUCTING`: Assembling candidate operational actions and parameter baselines.
+  4. `VALIDATING`: Hard-constraint screening against business policies and operational minimums.
+  5. `EVALUATING`: Deterministic impact simulation and trade-off scoring.
+  6. `READY`: Validated and scored operational decision ready for human review.
+* **Deterministic Transition Sequence**:
+  $$\text{DRAFT} \longrightarrow \text{CONTEXTUALIZING} \longrightarrow \text{CONSTRUCTING} \longrightarrow \text{VALIDATING} \longrightarrow \text{EVALUATING} \longrightarrow \text{READY}$$
+* **Transition Enforcement Rules**:
+  - **Single-step forward only**: Only transitions to the immediately following lifecycle state are permitted.
+  - **Stage skipping forbidden**: Skipping lifecycle stages (e.g., `DRAFT -> READY` or `CONTEXTUALIZING -> VALIDATING`) is strictly rejected.
+  - **Backward movement forbidden**: Reverting to earlier lifecycle states (e.g., `VALIDATING -> CONSTRUCTING` or `READY -> DRAFT`) is strictly rejected.
+  - **Same-state transitions forbidden**: Attempting to transition to the current status (e.g., `DRAFT -> DRAFT`) is rejected as an invalid transition.
+  - **Terminal state protection**: Decisions in `READY` cannot transition to any other status.
+  - **Unknown status rejection**: Status values outside the six canonical enum values are rejected.
+  - **Storage immutability**: Failed or invalid transitions never mutate or partially update stored decisions.
+* **Lifecycle Service (`apps/api/app/lifecycle/service.py`)**:
+  - Dedicated `DecisionLifecycleService` maintaining centralized `ALLOWED_TRANSITIONS` mapping and `LIFECYCLE_ORDER`.
+  - Pure domain service independent of HTTP request/response handling.
+  - Provides `validate_transition`, `is_valid_transition`, `get_allowed_transitions`, and immutable `transition` methods.
+  - Raises domain-specific `InvalidLifecycleTransitionError` with informative diagnostics (current status, target status, permitted next states).
+* **Repository Lifecycle Support (`apps/api/app/repositories/decision_repository.py`)**:
+  - Extended with `update_status(decision_id, new_status)` method.
+  - Enforces transition validation via `DecisionLifecycleService` before writing to storage.
+  - Returns `None` for unknown decision IDs.
+  - Preserves in-memory storage, defensive deep copies on write and read, and deterministic sorting order `(created_at, id)`.
+* **FastAPI Transition API (`apps/api/app/api/decision.py`)**:
+  - Endpoint: `PATCH /api/decisions/{decision_id}/status` (with aliases `/decisions/{id}/status`, `/api/decision/{id}/status`, `/decision/{id}/status`).
+  - Request schema: `UpdateDecisionStatusRequest` (`{"status": "CONTEXTUALIZING"}`) with `extra="forbid"` and strict validation.
+  - Response: `DecisionResponse` with HTTP 200 OK containing updated decision data.
+  - Error responses:
+    - HTTP 404: Unknown decision ID (`"Decision 'DEC-XXXX' not found"`).
+    - HTTP 422: Invalid lifecycle transition (stage skipping, backward transition, same-state transition, terminal transition).
+    - HTTP 422: Malformed or invalid status value rejected by schema validation.
+* **Frontend Typing Preparation (`apps/web/lib/types/decision.ts`)**:
+  - Exported TypeScript contracts: `DecisionStatus` union and `DecisionRecord` interface.
+* **Automated Test Coverage**:
+  - 90 new unit and integration tests across:
+    - `test_decision.py`: Domain validation of all 6 enum values, initial DRAFT default, and rejection of out-of-scope statuses.
+    - `test_lifecycle.py`: Complete lifecycle service coverage: all permitted forward transitions, forbidden stage skips, backward transitions, same-state transitions, terminal READY transitions, and entity immutability.
+    - `test_decision_repository.py`: Status update persistence, full progression pipeline, preservation of stored state on invalid transition, unknown ID handling, defensive copying, and order preservation.
+    - `test_decision_api.py`: Successful PATCH transitions, full progression sequence, HTTP 422 on invalid/skipped/same-state transitions, HTTP 404 for unknown IDs, schema validation rejection, route aliases, and backward compatibility.
+  - Full backend pytest suite: **310 tests passing** in ~3.5s with zero regressions.
+  - Frontend test suite: **9 tests passing** and Next.js production build passing with zero errors.
+* **Strictly Out of Scope (Deferred to Days 13+)**:
+  - Decision event history and audit event streams (Day 13).
+  - Decision versioning (Day 14).
+  - Decision graph and provenance DAG (Day 15).
+  - Candidate action generation, scoring, AI explanations, and human approval workflows.
+
 ---
 
 ## 5. Technology Stack & Directory Structure
@@ -523,12 +578,15 @@ edos-decision-system/
 │   │   │   ├── context/               # Context Engine Application Layer (Day 9)
 │   │   │   │   ├── __init__.py        # Context engine package exports
 │   │   │   │   └── engine.py          # ContextEngine aggregation & state synthesis
-│   │   │   ├── repositories/          # Application data access layer (Days 6–11)
+│   │   │   ├── lifecycle/             # Decision Lifecycle Engine (Day 12)
+│   │   │   │   ├── __init__.py        # Lifecycle package exports
+│   │   │   │   └── service.py         # DecisionLifecycleService & state machine transitions (Day 12)
+│   │   │   ├── repositories/          # Application data access layer (Days 6–12)
 │   │   │   │   ├── __init__.py        # Repositories exports
 │   │   │   │   ├── inventory_repository.py # In-memory inventory query & filter operations (Day 6)
 │   │   │   │   ├── demand_repository.py # In-memory demand query, filter & trend operations (Day 7)
 │   │   │   │   ├── supplier_repository.py # In-memory supplier query & risk classification (Day 8)
-│   │   │   │   └── decision_repository.py # In-memory decision storage, ordering & ID generation (Day 11)
+│   │   │   │   └── decision_repository.py # In-memory decision storage, ordering & lifecycle updates (Days 11–12)
 │   │   │   └── data/                  # ShopFlow Synthetic Data Engine (Days 5 & 7)
 │   │   │       ├── __init__.py        # Engine exports
 │   │   │       ├── dataset.py         # ShopFlowDataset container & Scenario models
@@ -551,8 +609,9 @@ edos-decision-system/
 │   │       ├── test_context.py        # Context Engine unit & aggregation tests (Day 9)
 │   │       ├── test_context_api.py    # Context API endpoint & schema tests (Day 9)
 │   │       ├── test_decision.py       # Decision domain validation & serialization tests (Day 11)
-│   │       ├── test_decision_repository.py # Decision repository unit, order & duplicate tests (Day 11)
-│   │       └── test_decision_api.py   # Decision API endpoint, 404 & collection tests (Day 11)
+│   │       ├── test_lifecycle.py      # Decision Lifecycle transitions & state machine tests (Day 12)
+│   │       ├── test_decision_repository.py # Decision repository unit, order & duplicate tests (Days 11–12)
+│   │       └── test_decision_api.py   # Decision API endpoint, 404 & status patch tests (Days 11–12)
 │   └── web/                           # Next.js web frontend service
 │       ├── Dockerfile                 # Web container definition
 │       ├── package.json               # Node.js dependencies & scripts
@@ -577,7 +636,8 @@ edos-decision-system/
 │               ├── inventory.ts       # Inventory operational type contracts (Day 6)
 │               ├── demand.ts          # Demand operational & trend type contracts (Day 7)
 │               ├── supplier.ts        # Supplier operational & risk type contracts (Day 8)
-│               └── context.ts         # Decision Context operational type contracts (Day 9)
+│               ├── context.ts         # Decision Context operational type contracts (Day 9)
+│               └── decision.ts        # Decision & status operational type contracts (Day 12)
 ├── data/                              # Data persistence & fixture directories
 │   ├── raw/                           # Raw input datasets
 │   ├── processed/                     # Sanitized operational data & scenario fixtures
@@ -630,6 +690,7 @@ edos-decision-system/
 ├─────────────────┼─────────────────────────────────────────────────────────┤
 │ Days 11–15      │ Model the Decision                                      │
 │                 │ - Day 11: Decision Model & identity foundation (Done)   │
+│                 │ - Day 12: Decision Lifecycle & transition engine (Done) │
 │                 │ - Candidate action generation (Expedite, Split, Source) │
 │                 │ - Rule-based policy validation & hard-constraint checks │
 │                 │ - Counterfactual simulation & scenario impact engine    │

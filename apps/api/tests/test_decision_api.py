@@ -205,3 +205,173 @@ def test_decision_route_aliases(prefix: str):
     get_res = client.get(f"{prefix}/{created_id}")
     assert get_res.status_code == 200
     assert get_res.json()["id"] == created_id
+
+
+# ============================================================================
+# 4. PATCH /api/decisions/{decision_id}/status (Lifecycle Transition Endpoint)
+# ============================================================================
+
+
+def test_patch_decision_status_success():
+    """Verifies that a valid transition updates decision status and returns 200."""
+    post_res = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+    assert post_res.status_code == 201
+    decision_id = post_res.json()["id"]
+    assert post_res.json()["status"] == "DRAFT"
+
+    patch_res = client.patch(f"/api/decisions/{decision_id}/status", json={"status": "CONTEXTUALIZING"})
+    assert patch_res.status_code == 200
+
+    data = patch_res.json()
+    assert data["id"] == decision_id
+    assert data["decision_id"] == decision_id
+    assert data["product_id"] == "prod-001"
+    assert data["warehouse_id"] == "wh-001"
+    assert data["status"] == "CONTEXTUALIZING"
+
+    # Verify subsequent GET returns the updated status
+    get_res = client.get(f"/api/decisions/{decision_id}")
+    assert get_res.status_code == 200
+    assert get_res.json()["status"] == "CONTEXTUALIZING"
+
+
+def test_patch_decision_status_full_progression_sequence():
+    """Verifies walking an operational decision through all six lifecycle stages via PATCH."""
+    post_res = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+    decision_id = post_res.json()["id"]
+
+    stages = [
+        "CONTEXTUALIZING",
+        "CONSTRUCTING",
+        "VALIDATING",
+        "EVALUATING",
+        "READY",
+    ]
+
+    for stage in stages:
+        patch_res = client.patch(
+            f"/api/decisions/{decision_id}/status",
+            json={"status": stage},
+        )
+        assert patch_res.status_code == 200
+        assert patch_res.json()["status"] == stage
+
+    # Final state is READY
+    final_res = client.get(f"/api/decisions/{decision_id}")
+    assert final_res.json()["status"] == "READY"
+
+
+@pytest.mark.parametrize(
+    "skipped_target",
+    [
+        "CONSTRUCTING",
+        "VALIDATING",
+        "EVALUATING",
+        "READY",
+    ],
+)
+def test_patch_decision_status_skipped_stages_return_422(skipped_target: str):
+    """Verifies skipping lifecycle stages returns HTTP 422."""
+    post_res = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+    decision_id = post_res.json()["id"]
+
+    patch_res = client.patch(
+        f"/api/decisions/{decision_id}/status",
+        json={"status": skipped_target},
+    )
+    assert patch_res.status_code == 422
+    assert "Invalid lifecycle transition" in patch_res.json()["detail"]
+
+    # Verify decision remains in DRAFT
+    get_res = client.get(f"/api/decisions/{decision_id}")
+    assert get_res.json()["status"] == "DRAFT"
+
+
+def test_patch_decision_status_same_state_rejected():
+    """Verifies requesting a transition to the current status returns HTTP 422."""
+    post_res = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+    decision_id = post_res.json()["id"]
+
+    # DRAFT -> DRAFT
+    patch_res = client.patch(
+        f"/api/decisions/{decision_id}/status",
+        json={"status": "DRAFT"},
+    )
+    assert patch_res.status_code == 422
+    assert "Invalid lifecycle transition" in patch_res.json()["detail"]
+
+
+def test_patch_decision_status_backward_transition_rejected():
+    """Verifies backward transitions return HTTP 422."""
+    post_res = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+    decision_id = post_res.json()["id"]
+
+    # Advance to CONTEXTUALIZING
+    client.patch(f"/api/decisions/{decision_id}/status", json={"status": "CONTEXTUALIZING"})
+
+    # Attempt CONTEXTUALIZING -> DRAFT
+    patch_res = client.patch(f"/api/decisions/{decision_id}/status", json={"status": "DRAFT"})
+    assert patch_res.status_code == 422
+
+    # Status must remain CONTEXTUALIZING
+    assert client.get(f"/api/decisions/{decision_id}").json()["status"] == "CONTEXTUALIZING"
+
+
+def test_patch_decision_status_from_ready_rejected():
+    """Verifies that transitioning from terminal READY status returns HTTP 422."""
+    post_res = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+    decision_id = post_res.json()["id"]
+
+    # Advance to READY
+    for stage in ["CONTEXTUALIZING", "CONSTRUCTING", "VALIDATING", "EVALUATING", "READY"]:
+        client.patch(f"/api/decisions/{decision_id}/status", json={"status": stage})
+
+    # Attempt to transition out of READY
+    patch_res = client.patch(f"/api/decisions/{decision_id}/status", json={"status": "DRAFT"})
+    assert patch_res.status_code == 422
+    assert "Invalid lifecycle transition" in patch_res.json()["detail"]
+
+
+def test_patch_decision_status_unknown_id_returns_404():
+    """Verifies transitioning an unknown decision returns HTTP 404."""
+    response = client.patch(
+        "/api/decisions/DEC-UNKNOWN-999/status",
+        json={"status": "CONTEXTUALIZING"},
+    )
+    assert response.status_code == 404
+    assert "Decision 'DEC-UNKNOWN-999' not found" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "invalid_payload",
+    [
+        {},  # Empty
+        {"status": "NONEXISTENT_STATE"},  # Unknown enum
+        {"status": "APPROVED"},  # Out-of-scope status
+        {"status": "EXECUTED"},  # Out-of-scope status
+        {"status": ""},  # Empty string
+        {"status": "contextualizing"},  # Lowercase
+        {"status": "CONTEXTUALIZING", "extra": "forbidden"},  # Extra field
+    ],
+)
+def test_patch_decision_status_schema_validation_failures(invalid_payload: dict):
+    """Verifies that invalid payloads are rejected with HTTP 422 schema validation error."""
+    post_res = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+    decision_id = post_res.json()["id"]
+
+    response = client.patch(f"/api/decisions/{decision_id}/status", json=invalid_payload)
+    assert response.status_code == 422
+
+    # Status remains DRAFT
+    assert client.get(f"/api/decisions/{decision_id}").json()["status"] == "DRAFT"
+
+
+@pytest.mark.parametrize("prefix", ["/api/decisions", "/decisions", "/api/decision", "/decision"])
+def test_patch_decision_status_aliases(prefix: str):
+    """Verifies that PATCH status works across canonical and alias routes."""
+    post_res = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+    decision_id = post_res.json()["id"]
+
+    patch_res = client.patch(f"{prefix}/{decision_id}/status", json={"status": "CONTEXTUALIZING"})
+    assert patch_res.status_code == 200
+    assert patch_res.json()["status"] == "CONTEXTUALIZING"

@@ -4,7 +4,12 @@ from functools import lru_cache
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.inventory import get_inventory_repository
-from app.api.schemas import CreateDecisionRequest, DecisionResponse
+from app.api.schemas import (
+    CreateDecisionRequest,
+    DecisionResponse,
+    UpdateDecisionStatusRequest,
+)
+from app.lifecycle.service import InvalidLifecycleTransitionError
 from app.repositories.decision_repository import DecisionRepository
 from app.repositories.inventory_repository import InventoryRepository
 
@@ -79,3 +84,38 @@ def get_decision_by_id(
             detail=f"Decision '{decision_id}' not found",
         )
     return DecisionResponse.from_domain(record)
+
+
+@router.patch(
+    "/{decision_id}/status",
+    response_model=DecisionResponse,
+    summary="Update decision lifecycle status",
+    description="Transitions a business decision to the next sequential lifecycle state following deterministic validation rules.",
+)
+def update_decision_status(
+    decision_id: str,
+    payload: UpdateDecisionStatusRequest,
+    repo: DecisionRepository = Depends(get_decision_repository),
+) -> DecisionResponse:
+    existing = repo.get_by_id(decision_id)
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Decision '{decision_id}' not found",
+        )
+
+    try:
+        updated = repo.update_status(decision_id=decision_id, new_status=payload.status)
+    except InvalidLifecycleTransitionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Decision '{decision_id}' not found",
+        )
+
+    return DecisionResponse.from_domain(updated)

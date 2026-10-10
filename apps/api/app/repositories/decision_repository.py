@@ -6,6 +6,7 @@ from typing import Sequence
 from app.data.dataset import ShopFlowDataset
 from app.data.generator import generate_shopflow_dataset
 from app.domain.decision import Decision, DecisionStatus
+from app.lifecycle.service import DecisionLifecycleService
 
 
 class DuplicateDecisionError(ValueError):
@@ -23,6 +24,7 @@ class DecisionRepository:
         self,
         decisions: Sequence[Decision] | None = None,
         dataset: ShopFlowDataset | None = None,
+        lifecycle_service: DecisionLifecycleService | None = None,
     ) -> None:
         """Initializes the repository with optional preloaded decisions and dataset."""
         if dataset is None:
@@ -30,6 +32,7 @@ class DecisionRepository:
         else:
             self._dataset = dataset
 
+        self._lifecycle_service = lifecycle_service or DecisionLifecycleService()
         self._decisions: dict[str, Decision] = {}
         self._counter: int = 0
 
@@ -41,6 +44,11 @@ class DecisionRepository:
     def dataset(self) -> ShopFlowDataset:
         """Returns the underlying ShopFlow dataset container for reference integrity checks."""
         return self._dataset
+
+    @property
+    def lifecycle_service(self) -> DecisionLifecycleService:
+        """Returns the DecisionLifecycleService instance managing state transitions."""
+        return self._lifecycle_service
 
     def generate_id(self) -> str:
         """Generates the next unique, human-readable decision identifier (DEC-XXXX)."""
@@ -116,6 +124,37 @@ class DecisionRepository:
         if record is None:
             return None
         return record.model_copy(deep=True)
+
+    def update_status(
+        self,
+        decision_id: str,
+        new_status: DecisionStatus | str,
+    ) -> Decision | None:
+        """Applies a validated lifecycle status update to an existing decision.
+
+        Validates the requested transition against deterministic lifecycle rules.
+        If the decision does not exist, returns None.
+        If the transition is invalid, raises InvalidLifecycleTransitionError and
+        leaves the stored decision untouched.
+        Returns a defensive deep copy of the updated decision upon success.
+        """
+        norm_id = decision_id.strip()
+        record = self._decisions.get(norm_id)
+        if record is None:
+            return None
+
+        # Validate transition before modifying stored state
+        self._lifecycle_service.validate_transition(record.status, new_status)
+        resolved_status = (
+            new_status
+            if isinstance(new_status, DecisionStatus)
+            else DecisionStatus(new_status)
+        )
+
+        # Store defensive deep copy
+        updated = record.model_copy(update={"status": resolved_status}, deep=True)
+        self._decisions[norm_id] = updated
+        return updated.model_copy(deep=True)
 
     def list_all(
         self,

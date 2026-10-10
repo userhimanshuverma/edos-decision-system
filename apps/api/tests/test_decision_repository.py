@@ -176,3 +176,109 @@ def test_repository_clear():
     # Next created starts at DEC-0001 again
     d2 = repo.create(product_id="prod-002", warehouse_id="wh-002")
     assert d2.id == "DEC-0001"
+
+
+def test_repository_update_status_success():
+    """Verifies that update_status safely transitions a decision and stores the new status."""
+    repo = DecisionRepository()
+    d = repo.create(product_id="prod-001", warehouse_id="wh-001")
+    assert d.status == DecisionStatus.DRAFT
+
+    updated = repo.update_status(d.id, DecisionStatus.CONTEXTUALIZING)
+    assert updated is not None
+    assert updated.id == d.id
+    assert updated.status == DecisionStatus.CONTEXTUALIZING
+
+    # Verify retrieval reflects new status
+    fetched = repo.get_by_id(d.id)
+    assert fetched is not None
+    assert fetched.status == DecisionStatus.CONTEXTUALIZING
+
+
+def test_repository_update_status_full_progression():
+    """Verifies walking a decision through the complete lifecycle pipeline in storage."""
+    repo = DecisionRepository()
+    d = repo.create(product_id="prod-001", warehouse_id="wh-001")
+
+    pipeline = [
+        DecisionStatus.CONTEXTUALIZING,
+        DecisionStatus.CONSTRUCTING,
+        DecisionStatus.VALIDATING,
+        DecisionStatus.EVALUATING,
+        DecisionStatus.READY,
+    ]
+
+    for next_status in pipeline:
+        result = repo.update_status(d.id, next_status)
+        assert result is not None
+        assert result.status == next_status
+        assert repo.get_by_id(d.id).status == next_status
+
+
+def test_repository_update_status_invalid_transition_preserves_stored_state():
+    """Verifies an invalid transition raises an error and leaves stored decision unmodified."""
+    from app.lifecycle.service import InvalidLifecycleTransitionError
+
+    repo = DecisionRepository()
+    d = repo.create(product_id="prod-001", warehouse_id="wh-001")
+    assert d.status == DecisionStatus.DRAFT
+
+    # Attempt stage-skipping transition: DRAFT -> READY
+    with pytest.raises(InvalidLifecycleTransitionError):
+        repo.update_status(d.id, DecisionStatus.READY)
+
+    # Stored decision must remain completely unchanged
+    persisted = repo.get_by_id(d.id)
+    assert persisted is not None
+    assert persisted.status == DecisionStatus.DRAFT
+
+    # Attempt same-state transition: DRAFT -> DRAFT
+    with pytest.raises(InvalidLifecycleTransitionError):
+        repo.update_status(d.id, DecisionStatus.DRAFT)
+
+    persisted_after = repo.get_by_id(d.id)
+    assert persisted_after.status == DecisionStatus.DRAFT
+
+
+def test_repository_update_status_unknown_id_returns_none():
+    """Verifies that update_status returns None when called with a nonexistent ID."""
+    repo = DecisionRepository()
+    result = repo.update_status("DEC-UNKNOWN", DecisionStatus.CONTEXTUALIZING)
+    assert result is None
+
+
+def test_repository_update_status_defensive_copy():
+    """Verifies that mutating the returned object does not corrupt the repository copy."""
+    repo = DecisionRepository()
+    d = repo.create(product_id="prod-001", warehouse_id="wh-001")
+    updated = repo.update_status(d.id, DecisionStatus.CONTEXTUALIZING)
+    assert updated is not None
+
+    # Mutate the returned object's status
+    updated.status = DecisionStatus.READY
+
+    # Verify the stored repository record remains CONTEXTUALIZING
+    persisted = repo.get_by_id(d.id)
+    assert persisted is not None
+    assert persisted.status == DecisionStatus.CONTEXTUALIZING
+
+
+def test_repository_update_status_preserves_deterministic_ordering_and_filters():
+    """Verifies that updating status preserves list_all order and filtering."""
+    repo = DecisionRepository()
+    d1 = repo.create(product_id="prod-001", warehouse_id="wh-001")
+    d2 = repo.create(product_id="prod-001", warehouse_id="wh-002")
+    d3 = repo.create(product_id="prod-002", warehouse_id="wh-001")
+
+    # Update status of middle decision d2
+    repo.update_status(d2.id, DecisionStatus.CONTEXTUALIZING)
+
+    all_items = repo.list_all()
+    assert [item.id for item in all_items] == [d1.id, d2.id, d3.id]
+    assert all_items[1].status == DecisionStatus.CONTEXTUALIZING
+
+    # Filter by product_id
+    filtered = repo.list_all(product_id="prod-001")
+    assert len(filtered) == 2
+    assert filtered[1].id == d2.id
+    assert filtered[1].status == DecisionStatus.CONTEXTUALIZING
