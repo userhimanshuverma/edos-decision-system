@@ -6,7 +6,9 @@ from typing import Sequence
 from app.data.dataset import ShopFlowDataset
 from app.data.generator import generate_shopflow_dataset
 from app.domain.decision import Decision, DecisionStatus
+from app.domain.decision_event import DecisionEvent, DecisionEventType
 from app.lifecycle.service import DecisionLifecycleService
+from app.repositories.decision_event_repository import DecisionEventRepository
 
 
 class DuplicateDecisionError(ValueError):
@@ -25,6 +27,7 @@ class DecisionRepository:
         decisions: Sequence[Decision] | None = None,
         dataset: ShopFlowDataset | None = None,
         lifecycle_service: DecisionLifecycleService | None = None,
+        event_repository: DecisionEventRepository | None = None,
     ) -> None:
         """Initializes the repository with optional preloaded decisions and dataset."""
         if dataset is None:
@@ -32,7 +35,16 @@ class DecisionRepository:
         else:
             self._dataset = dataset
 
-        self._lifecycle_service = lifecycle_service or DecisionLifecycleService()
+        self._lifecycle_service = (
+            lifecycle_service
+            if lifecycle_service is not None
+            else DecisionLifecycleService()
+        )
+        self._event_repository = (
+            event_repository
+            if event_repository is not None
+            else DecisionEventRepository()
+        )
         self._decisions: dict[str, Decision] = {}
         self._counter: int = 0
 
@@ -49,6 +61,11 @@ class DecisionRepository:
     def lifecycle_service(self) -> DecisionLifecycleService:
         """Returns the DecisionLifecycleService instance managing state transitions."""
         return self._lifecycle_service
+
+    @property
+    def event_repository(self) -> DecisionEventRepository:
+        """Returns the DecisionEventRepository instance managing audit history."""
+        return self._event_repository
 
     def generate_id(self) -> str:
         """Generates the next unique, human-readable decision identifier (DEC-XXXX)."""
@@ -68,6 +85,7 @@ class DecisionRepository:
         id: str | None = None,
         created_at: datetime | None = None,
         status: DecisionStatus | None = None,
+        record_event: bool = True,
     ) -> Decision:
         """Creates and stores a decision entity in memory.
 
@@ -107,6 +125,23 @@ class DecisionRepository:
         # Store a defensive deep copy
         stored_copy = resolved_decision.model_copy(deep=True)
         self._decisions[resolved_decision.id] = stored_copy
+
+        # Record initial DECISION_CREATED audit event
+        if record_event:
+            event = DecisionEvent(
+                id=self._event_repository.generate_id(),
+                decision_id=stored_copy.id,
+                event_type=DecisionEventType.DECISION_CREATED,
+                from_status=None,
+                to_status=stored_copy.status,
+                occurred_at=stored_copy.created_at,
+            )
+            try:
+                self._event_repository.record(event)
+            except Exception:
+                del self._decisions[resolved_decision.id]
+                raise
+
         return stored_copy.model_copy(deep=True)
 
     def save(self, decision: Decision) -> Decision:
@@ -136,6 +171,7 @@ class DecisionRepository:
         If the decision does not exist, returns None.
         If the transition is invalid, raises InvalidLifecycleTransitionError and
         leaves the stored decision untouched.
+        Records an audit event upon successful transition.
         Returns a defensive deep copy of the updated decision upon success.
         """
         norm_id = decision_id.strip()
@@ -143,17 +179,31 @@ class DecisionRepository:
         if record is None:
             return None
 
-        # Validate transition before modifying stored state
-        self._lifecycle_service.validate_transition(record.status, new_status)
         resolved_status = (
             new_status
             if isinstance(new_status, DecisionStatus)
             else DecisionStatus(new_status)
         )
 
-        # Store defensive deep copy
-        updated = record.model_copy(update={"status": resolved_status}, deep=True)
-        self._decisions[norm_id] = updated
+        # Validate transition and construct audit event before modifying stored state
+        event = self._lifecycle_service.create_transition_event(
+            decision_id=norm_id,
+            from_status=record.status,
+            to_status=resolved_status,
+            event_id=self._event_repository.generate_id(),
+        )
+
+        # Record event in event repository
+        self._event_repository.record(event)
+
+        try:
+            # Store defensive deep copy of updated decision
+            updated = record.model_copy(update={"status": resolved_status}, deep=True)
+            self._decisions[norm_id] = updated
+        except Exception:
+            self._event_repository.remove(event.id)
+            raise
+
         return updated.model_copy(deep=True)
 
     def list_all(
@@ -188,6 +238,7 @@ class DecisionRepository:
         return self._dataset.get_warehouse(warehouse_id.strip()) is not None
 
     def clear(self) -> None:
-        """Clears all stored decisions and resets ID sequence counter."""
+        """Clears all stored decisions, audit events, and resets sequence counters."""
         self._decisions.clear()
         self._counter = 0
+        self._event_repository.clear()

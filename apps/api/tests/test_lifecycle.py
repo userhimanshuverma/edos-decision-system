@@ -258,3 +258,66 @@ def test_transition_domain_model_invalid_raises_and_preserves(
         lifecycle_service.transition(original, DecisionStatus.READY)
 
     assert original.status == DecisionStatus.DRAFT
+
+
+# ============================================================================
+# 8. Day 13 Decision Lifecycle Event Generation Tests
+# ============================================================================
+
+
+@pytest.mark.parametrize(
+    "current,target",
+    [
+        (DecisionStatus.DRAFT, DecisionStatus.CONTEXTUALIZING),
+        (DecisionStatus.CONTEXTUALIZING, DecisionStatus.CONSTRUCTING),
+        (DecisionStatus.CONSTRUCTING, DecisionStatus.VALIDATING),
+        (DecisionStatus.VALIDATING, DecisionStatus.EVALUATING),
+        (DecisionStatus.EVALUATING, DecisionStatus.READY),
+    ],
+)
+def test_create_transition_event_valid_transitions(
+    lifecycle_service: DecisionLifecycleService,
+    current: DecisionStatus,
+    target: DecisionStatus,
+):
+    """Verifies that create_transition_event constructs valid DecisionEvent for every permitted forward transition."""
+    from app.domain.decision_event import DecisionEventType
+
+    event = lifecycle_service.create_transition_event(
+        decision_id="DEC-0001",
+        from_status=current,
+        to_status=target,
+        event_id=f"EVT-{target.value}",
+    )
+    assert event.id == f"EVT-{target.value}"
+    assert event.decision_id == "DEC-0001"
+    assert event.event_type == DecisionEventType.LIFECYCLE_TRANSITION
+    assert event.from_status == current
+    assert event.to_status == target
+    assert event.occurred_at.tzinfo is not None
+
+
+@pytest.mark.parametrize(
+    "current,target",
+    [
+        (DecisionStatus.DRAFT, DecisionStatus.CONSTRUCTING),  # Skip
+        (DecisionStatus.DRAFT, DecisionStatus.READY),         # Skip to end
+        (DecisionStatus.CONTEXTUALIZING, DecisionStatus.DRAFT),  # Backward
+        (DecisionStatus.VALIDATING, DecisionStatus.VALIDATING),  # Same state
+        (DecisionStatus.READY, DecisionStatus.DRAFT),         # From terminal
+        (DecisionStatus.READY, DecisionStatus.CONTEXTUALIZING), # From terminal
+    ],
+)
+def test_create_transition_event_invalid_transitions_rejected(
+    lifecycle_service: DecisionLifecycleService,
+    current: DecisionStatus,
+    target: DecisionStatus,
+):
+    """Verifies that create_transition_event rejects invalid transitions without creating an event."""
+    with pytest.raises(InvalidLifecycleTransitionError):
+        lifecycle_service.create_transition_event(
+            decision_id="DEC-0001",
+            from_status=current,
+            to_status=target,
+        )
+

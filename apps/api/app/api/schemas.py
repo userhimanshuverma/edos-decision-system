@@ -250,3 +250,47 @@ class UpdateDecisionStatusRequest(BaseModel):
     status: DecisionStatus = Field(..., description="Target lifecycle status")
 
 
+# Day 13 Decision Event Schemas
+from app.domain.decision_event import DecisionEvent, DecisionEventType  # noqa: E402
+
+
+class DecisionEventResponse(BaseModel):
+    """Clean typed response model representing an audit trail event for a business decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique event identifier")
+    event_id: str = Field(..., description="Event identifier (alias for id)")
+    decision_id: str = Field(..., description="Referenced Decision identifier")
+    event_type: DecisionEventType = Field(..., description="Type of event recorded")
+    from_status: DecisionStatus | None = Field(
+        default=None,
+        description="Previous lifecycle status where applicable",
+    )
+    to_status: DecisionStatus = Field(..., description="Target lifecycle status")
+    occurred_at: datetime = Field(..., description="UTC occurrence timestamp")
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "event_id" not in data and "id" in data:
+                data["event_id"] = data["id"]
+            elif "id" not in data and "event_id" in data:
+                data["id"] = data["event_id"]
+        return data
+
+    @classmethod
+    def from_domain(cls, event: DecisionEvent) -> DecisionEventResponse:
+        """Constructs a DecisionEventResponse model from a domain DecisionEvent instance."""
+        return cls(
+            id=event.id,
+            event_id=event.id,
+            decision_id=event.decision_id,
+            event_type=event.event_type,
+            from_status=event.from_status,
+            to_status=event.to_status,
+            occurred_at=event.occurred_at,
+        )
+
+

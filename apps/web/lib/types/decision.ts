@@ -20,3 +20,22 @@ export interface DecisionRecord {
   created_at: string;
   status: DecisionStatus;
 }
+
+/**
+ * Event types matching Day 13 FastAPI DecisionEventType enum.
+ */
+export type DecisionEventType = 'DECISION_CREATED' | 'LIFECYCLE_TRANSITION';
+
+/**
+ * Audit trail event record representation matching Day 13 FastAPI schema.
+ */
+export interface DecisionEventRecord {
+  id: string;
+  event_id: string;
+  decision_id: string;
+  event_type: DecisionEventType;
+  from_status: DecisionStatus | null;
+  to_status: DecisionStatus;
+  occurred_at: string;
+}
+

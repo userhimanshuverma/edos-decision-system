@@ -282,3 +282,163 @@ def test_repository_update_status_preserves_deterministic_ordering_and_filters()
     assert len(filtered) == 2
     assert filtered[1].id == d2.id
     assert filtered[1].status == DecisionStatus.CONTEXTUALIZING
+
+
+# ============================================================================
+# Day 13 Decision Event History Repository Integration Tests
+# ============================================================================
+
+
+def test_repository_create_records_decision_created_event():
+    """Verifies that creating a decision records a DECISION_CREATED event in event_repository."""
+    from app.domain.decision_event import DecisionEventType
+
+    repo = DecisionRepository()
+    decision = repo.create(product_id="prod-001", warehouse_id="wh-001")
+
+    events = repo.event_repository.get_by_decision_id(decision.id)
+    assert len(events) == 1
+    event = events[0]
+    assert event.decision_id == decision.id
+    assert event.event_type == DecisionEventType.DECISION_CREATED
+    assert event.from_status is None
+    assert event.to_status == DecisionStatus.DRAFT
+    assert event.occurred_at == decision.created_at
+
+
+def test_repository_create_with_record_event_false():
+    """Verifies that creating a decision with record_event=False does not create an audit event."""
+    repo = DecisionRepository()
+    decision = repo.create(product_id="prod-001", warehouse_id="wh-001", record_event=False)
+
+    events = repo.event_repository.get_by_decision_id(decision.id)
+    assert len(events) == 0
+
+
+def test_repository_update_status_records_transition_event():
+    """Verifies that update_status records a LIFECYCLE_TRANSITION event upon successful update."""
+    from app.domain.decision_event import DecisionEventType
+
+    repo = DecisionRepository()
+    decision = repo.create(product_id="prod-001", warehouse_id="wh-001")
+    updated = repo.update_status(decision.id, DecisionStatus.CONTEXTUALIZING)
+    assert updated is not None
+
+    events = repo.event_repository.get_by_decision_id(decision.id)
+    assert len(events) == 2
+
+    # 1. Creation event
+    assert events[0].event_type == DecisionEventType.DECISION_CREATED
+    assert events[0].to_status == DecisionStatus.DRAFT
+
+    # 2. Transition event
+    assert events[1].event_type == DecisionEventType.LIFECYCLE_TRANSITION
+    assert events[1].from_status == DecisionStatus.DRAFT
+    assert events[1].to_status == DecisionStatus.CONTEXTUALIZING
+
+
+def test_repository_full_progression_audit_trail():
+    """Verifies walking through all 6 lifecycle stages creates 6 ordered audit events."""
+    from app.domain.decision_event import DecisionEventType
+
+    repo = DecisionRepository()
+    d = repo.create(product_id="prod-001", warehouse_id="wh-001")
+
+    stages = [
+        DecisionStatus.CONTEXTUALIZING,
+        DecisionStatus.CONSTRUCTING,
+        DecisionStatus.VALIDATING,
+        DecisionStatus.EVALUATING,
+        DecisionStatus.READY,
+    ]
+
+    for stage in stages:
+        res = repo.update_status(d.id, stage)
+        assert res is not None
+
+    events = repo.event_repository.get_by_decision_id(d.id)
+    assert len(events) == 6
+
+    # Verify event types and status transitions
+    assert events[0].event_type == DecisionEventType.DECISION_CREATED
+    assert events[0].to_status == DecisionStatus.DRAFT
+
+    expected_transitions = [
+        (DecisionStatus.DRAFT, DecisionStatus.CONTEXTUALIZING),
+        (DecisionStatus.CONTEXTUALIZING, DecisionStatus.CONSTRUCTING),
+        (DecisionStatus.CONSTRUCTING, DecisionStatus.VALIDATING),
+        (DecisionStatus.VALIDATING, DecisionStatus.EVALUATING),
+        (DecisionStatus.EVALUATING, DecisionStatus.READY),
+    ]
+
+    for i, (from_st, to_st) in enumerate(expected_transitions, start=1):
+        assert events[i].event_type == DecisionEventType.LIFECYCLE_TRANSITION
+        assert events[i].from_status == from_st
+        assert events[i].to_status == to_st
+
+
+def test_repository_invalid_transition_creates_no_event():
+    """Verifies that an invalid transition raises error and does NOT record any transition event."""
+    from app.lifecycle.service import InvalidLifecycleTransitionError
+
+    repo = DecisionRepository()
+    d = repo.create(product_id="prod-001", warehouse_id="wh-001")
+    assert len(repo.event_repository.get_by_decision_id(d.id)) == 1
+
+    # Attempt forbidden skip
+    with pytest.raises(InvalidLifecycleTransitionError):
+        repo.update_status(d.id, DecisionStatus.READY)
+
+    # Event count should still be 1 (creation event only)
+    events = repo.event_repository.get_by_decision_id(d.id)
+    assert len(events) == 1
+
+
+def test_repository_unknown_decision_update_creates_no_event():
+    """Verifies that update_status on unknown decision returns None and creates no event."""
+    repo = DecisionRepository()
+    initial_event_count = len(repo.event_repository)
+
+    res = repo.update_status("DEC-NONEXISTENT", DecisionStatus.CONTEXTUALIZING)
+    assert res is None
+    assert len(repo.event_repository) == initial_event_count
+
+
+def test_repository_clear_resets_both_decisions_and_events():
+    """Verifies that repo.clear() resets decisions and audit event repository."""
+    repo = DecisionRepository()
+    d = repo.create(product_id="prod-001", warehouse_id="wh-001")
+    repo.update_status(d.id, DecisionStatus.CONTEXTUALIZING)
+
+    assert len(repo.list_all()) == 1
+    assert len(repo.event_repository) == 2
+
+    repo.clear()
+    assert len(repo.list_all()) == 0
+    assert len(repo.event_repository) == 0
+
+
+def test_repository_update_status_rollback_on_failure(monkeypatch):
+    """Verifies that if updating the decision record fails after recording the event, the event is rolled back."""
+    repo = DecisionRepository()
+    d = repo.create(product_id="prod-001", warehouse_id="wh-001")
+    assert len(repo.event_repository.get_by_decision_id(d.id)) == 1
+
+    orig_copy = Decision.model_copy
+
+    def faulty_model_copy(self, *args, **kwargs):
+        if kwargs.get("update") is not None:
+            raise RuntimeError("Simulated failure during decision update")
+        return orig_copy(self, *args, **kwargs)
+
+    monkeypatch.setattr(Decision, "model_copy", faulty_model_copy)
+
+    with pytest.raises(RuntimeError, match="Simulated failure"):
+        repo.update_status(d.id, DecisionStatus.CONTEXTUALIZING)
+
+    # Confirm event repository was rolled back and contains only the initial creation event
+    events = repo.event_repository.get_by_decision_id(d.id)
+    assert len(events) == 1
+    assert events[0].event_type.value == "DECISION_CREATED"
+
+

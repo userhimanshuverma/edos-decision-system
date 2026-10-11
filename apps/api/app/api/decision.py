@@ -6,10 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.api.inventory import get_inventory_repository
 from app.api.schemas import (
     CreateDecisionRequest,
+    DecisionEventResponse,
     DecisionResponse,
     UpdateDecisionStatusRequest,
 )
 from app.lifecycle.service import InvalidLifecycleTransitionError
+from app.repositories.decision_event_repository import DecisionEventRepository
 from app.repositories.decision_repository import DecisionRepository
 from app.repositories.inventory_repository import InventoryRepository
 
@@ -17,9 +19,15 @@ router = APIRouter()
 
 
 @lru_cache
+def get_decision_event_repository() -> DecisionEventRepository:
+    """Dependency provider returning the singleton DecisionEventRepository instance."""
+    return DecisionEventRepository()
+
+
+@lru_cache
 def get_decision_repository() -> DecisionRepository:
     """Dependency provider returning the singleton DecisionRepository instance."""
-    return DecisionRepository()
+    return DecisionRepository(event_repository=get_decision_event_repository())
 
 
 @router.post(
@@ -119,3 +127,25 @@ def update_decision_status(
         )
 
     return DecisionResponse.from_domain(updated)
+
+
+@router.get(
+    "/{decision_id}/events",
+    response_model=list[DecisionEventResponse],
+    summary="Get decision event history",
+    description="Returns chronological audit trail events for a specific business decision.",
+)
+def get_decision_events(
+    decision_id: str,
+    repo: DecisionRepository = Depends(get_decision_repository),
+    event_repo: DecisionEventRepository = Depends(get_decision_event_repository),
+) -> list[DecisionEventResponse]:
+    record = repo.get_by_id(decision_id)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Decision '{decision_id}' not found",
+        )
+    events = event_repo.get_by_decision_id(decision_id)
+    return [DecisionEventResponse.from_domain(e) for e in events]
+

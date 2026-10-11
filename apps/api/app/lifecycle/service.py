@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from typing import Sequence
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Sequence
 
 from app.domain.decision import Decision, DecisionStatus
+
+if TYPE_CHECKING:
+    from app.domain.decision_event import DecisionEvent
 
 
 class InvalidLifecycleTransitionError(ValueError):
@@ -135,3 +139,31 @@ class DecisionLifecycleService:
         target = normalize_status(target_status)
         self.validate_transition(decision.status, target)
         return decision.model_copy(update={"status": target}, deep=True)
+
+    def create_transition_event(
+        self,
+        decision_id: str,
+        from_status: DecisionStatus | str,
+        to_status: DecisionStatus | str,
+        *,
+        event_id: str | None = None,
+        occurred_at: datetime | None = None,
+    ) -> DecisionEvent:
+        """Validates a status transition and produces an immutable DecisionEvent domain instance.
+
+        Raises InvalidLifecycleTransitionError if the transition is forbidden.
+        """
+        current = normalize_status(from_status)
+        target = normalize_status(to_status)
+        self.validate_transition(current, target)
+
+        from app.domain.decision_event import DecisionEvent, DecisionEventType
+
+        return DecisionEvent(
+            id=event_id or f"EVT-TRANS-{decision_id.strip()}-{target.value}",
+            decision_id=decision_id.strip(),
+            event_type=DecisionEventType.LIFECYCLE_TRANSITION,
+            from_status=current,
+            to_status=target,
+            occurred_at=occurred_at or datetime.now(timezone.utc),
+        )

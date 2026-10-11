@@ -523,6 +523,78 @@ The repository is structured according to a phased 30-day plan. Here is a detail
   - Decision graph and provenance DAG (Day 15).
   - Candidate action generation, scoring, AI explanations, and human approval workflows.
 
+### 4.13 Day 13: Decision Event History & Audit Trail
+* **Objective**:
+  - Implement a reliable, deterministic Decision Event History mechanism recording operational lifecycle transitions and exposing them through an audit API.
+  - Answer the fundamental forensic questions:
+    - *What happened to this decision?*
+    - *Which lifecycle transition occurred?*
+    - *When did it happen?*
+    - *Which decision does the event belong to?*
+* **Decision Event Domain Model (`apps/api/app/domain/decision_event.py`)**:
+  - `DecisionEventType`: Constrained StrEnum representing event categories:
+    - `DECISION_CREATED`: Recorded upon initial decision instantiation in `DRAFT` status (`from_status=None`, `to_status=DRAFT`).
+    - `LIFECYCLE_TRANSITION`: Recorded upon each successful lifecycle progression step (`from_status -> to_status`).
+  - `DecisionEvent`: Immutable domain model capturing:
+    - `id`: Unique, stable event identifier (`EVT-XXXX`).
+    - `decision_id`: ID of the associated decision (`DEC-XXXX`).
+    - `event_type`: Constrained `DecisionEventType`.
+    - `from_status`: Preceding lifecycle status (`DecisionStatus | None`).
+    - `to_status`: Resulting lifecycle status (`DecisionStatus`).
+    - `occurred_at`: Timezone-aware UTC timestamp.
+  - Strict validation conventions:
+    - `ConfigDict(str_strip_whitespace=True, extra="forbid")`.
+    - Non-empty, stripped identifiers validated.
+    - Naive timestamps normalized to UTC; timezone offsets converted to UTC.
+    - Semantic consistency enforced: `DECISION_CREATED` requires `from_status=None` and `to_status=DRAFT`; `LIFECYCLE_TRANSITION` requires non-null `from_status`.
+* **Decision Event Repository (`apps/api/app/repositories/decision_event_repository.py`)**:
+  - Dedicated in-memory data access layer for audit events:
+    - `record(event)` / `append(event)`: Validates identifier uniqueness and appends event.
+    - `get_by_decision_id(decision_id)` / `list_by_decision_id(decision_id)`: Retrieves events filtered by decision.
+    - `get_by_id(event_id)`: Retrieves individual event by ID.
+    - `list_all(decision_id=None)`: Lists all events or filtered events.
+    - `remove(event_id)`: Rollback helper for failure scenarios.
+    - `clear()`: Cleans internal store and resets counter for test isolation.
+  - Deterministic sorting: Primarily ordered by `occurred_at` ascending, secondarily by `id` ascending for events with identical timestamps.
+  - Collision protection: Raises `DuplicateDecisionEventError` on ID conflicts.
+  - Defensive copying: Uses `model_copy(deep=True)` on write and read paths to eliminate mutable state leakage.
+* **Lifecycle Integration & Consistency**:
+  - `DecisionLifecycleService.create_transition_event`: Centralized helper validating state transition rules before constructing immutable `DecisionEvent`.
+  - `DecisionRepository`: Holds singleton `DecisionEventRepository` instance:
+    - `create(record_event=True)`: Records `DECISION_CREATED` event upon successful creation; on failure, rolls back stored decision to prevent orphan records.
+    - `update_status(decision_id, new_status)`: Validates transition rules via `DecisionLifecycleService` before writing; records `LIFECYCLE_TRANSITION` event in event repository before updating stored decision state.
+    - Invalid transitions raise `InvalidLifecycleTransitionError` without modifying decision status or recording events.
+    - Unknown decision IDs return `None` without creating events.
+    - Failed event recording prevents decision state mutation.
+* **FastAPI Event History API (`apps/api/app/api/decision.py`)**:
+  - Endpoint: `GET /api/decisions/{decision_id}/events` (with aliases `/decisions/{id}/events`, `/api/decision/{id}/events`, `/decision/{id}/events`).
+  - Response Schema: `list[DecisionEventResponse]` with `id`, `event_id` alias, `decision_id`, `event_type`, `from_status`, `to_status`, and `occurred_at`.
+  - HTTP Status Codes:
+    - `200 OK`: Existing decision with events; returns events in deterministic chronological order.
+    - `200 OK`: Existing decision with no recorded events; returns empty list `[]`.
+    - `404 Not Found`: Unknown decision ID (`"Decision 'DEC-XXXX' not found"`).
+  - Pure read-only semantics: querying history never mutates stored events.
+  - Decision isolation: queries return strictly events matching the requested `decision_id`.
+* **Frontend Typing Preparation (`apps/web/lib/types/decision.ts`)**:
+  - Exported TypeScript contracts: `DecisionEventType` and `DecisionEventRecord`.
+* **Ordering & Consistency Guarantees**:
+  - Deterministic ordering: Events are ordered by `(occurred_at, id)`.
+  - State consistency: Validation occurs before event creation, and event recording precedes state mutation.
+  - Storage scope: In-memory repository architecture; not persistent across process restarts.
+* **Automated Test Coverage**:
+  - 60 new unit and integration tests across:
+    - `test_decision_event.py`: Domain validation, required fields, whitespace rejection, enum coercion, UTC normalization, extra field forbidden check, same-status transition rejection, and stable serialization.
+    - `test_decision_event_repository.py`: In-memory storage, retrieval, empty history, chronological order, deterministic secondary sort key, duplicate ID protection, defensive copies, and isolation.
+    - `test_lifecycle.py`: Lifecycle transition event generation, valid forward transitions, rejection of invalid transitions.
+    - `test_decision_repository.py`: Creation event recording, full progression audit trail, invalid transition protection, unknown ID handling, rollback on storage failure, clear operations.
+    - `test_decision_api.py`: GET events endpoint, full progression verification, empty history HTTP 200, unknown ID HTTP 404, route aliases, isolation, and read-only semantics.
+  - Full backend pytest suite: **370 tests passing** in ~4.0s with zero regressions.
+  - Frontend test suite: **9 tests passing** and Next.js production build passing with zero errors.
+* **Strictly Out of Scope (Deferred to Days 14+)**:
+  - Decision versioning (Day 14).
+  - Decision graph and provenance DAG (Day 15).
+  - Candidate action generation, scoring, AI explanations, and human approval workflows.
+
 ---
 
 ## 5. Technology Stack & Directory Structure
@@ -558,14 +630,14 @@ edos-decision-system/
 │   │   ├── app/
 │   │   │   ├── config.py              # Environment configuration & settings class
 │   │   │   ├── main.py                # FastAPI app initialization & /health route
-│   │   │   ├── api/                   # FastAPI route handlers & schemas (Days 6–11)
+│   │   │   ├── api/                   # FastAPI route handlers & schemas (Days 6–13)
 │   │   │   │   ├── __init__.py        # API router & schema exports
-│   │   │   │   ├── schemas.py         # Pydantic v2 schemas (Inventory, Demand, Supplier, Context, Decision)
+│   │   │   │   ├── schemas.py         # Pydantic v2 schemas (Inventory, Demand, Supplier, Context, Decision, DecisionEvent)
 │   │   │   │   ├── inventory.py       # Inventory HTTP endpoints & dependency injection (Day 6)
 │   │   │   │   ├── demand.py          # Demand HTTP endpoints, filters & trend (Day 7)
 │   │   │   │   ├── supplier.py        # Supplier HTTP endpoints & risk context (Day 8)
 │   │   │   │   ├── context.py         # Decision Context HTTP endpoint & aggregation (Day 9)
-│   │   │   │   └── decision.py        # Decision HTTP endpoints, create, list & get (Day 11)
+│   │   │   │   └── decision.py        # Decision HTTP endpoints, create, list, patch & events (Days 11–13)
 │   │   │   ├── domain/                # ShopFlow domain models (Pydantic v2)
 │   │   │   │   ├── __init__.py        # Domain package exports
 │   │   │   │   ├── product.py         # Product model & validation
@@ -574,19 +646,21 @@ edos-decision-system/
 │   │   │   │   ├── inventory.py       # Inventory model, stock balances & validation (Day 4)
 │   │   │   │   ├── demand.py          # DemandRecord model & calendar date validation (Day 7)
 │   │   │   │   ├── context.py         # DecisionContext snapshot & derived metrics (Day 9)
-│   │   │   │   └── decision.py        # Decision model & status validation (Day 11)
+│   │   │   │   ├── decision.py        # Decision model & status validation (Day 11)
+│   │   │   │   └── decision_event.py  # DecisionEvent model & event type validation (Day 13)
 │   │   │   ├── context/               # Context Engine Application Layer (Day 9)
 │   │   │   │   ├── __init__.py        # Context engine package exports
 │   │   │   │   └── engine.py          # ContextEngine aggregation & state synthesis
 │   │   │   ├── lifecycle/             # Decision Lifecycle Engine (Day 12)
 │   │   │   │   ├── __init__.py        # Lifecycle package exports
 │   │   │   │   └── service.py         # DecisionLifecycleService & state machine transitions (Day 12)
-│   │   │   ├── repositories/          # Application data access layer (Days 6–12)
+│   │   │   ├── repositories/          # Application data access layer (Days 6–13)
 │   │   │   │   ├── __init__.py        # Repositories exports
 │   │   │   │   ├── inventory_repository.py # In-memory inventory query & filter operations (Day 6)
 │   │   │   │   ├── demand_repository.py # In-memory demand query, filter & trend operations (Day 7)
 │   │   │   │   ├── supplier_repository.py # In-memory supplier query & risk classification (Day 8)
-│   │   │   │   └── decision_repository.py # In-memory decision storage, ordering & lifecycle updates (Days 11–12)
+│   │   │   │   ├── decision_repository.py # In-memory decision storage, ordering & lifecycle updates (Days 11–13)
+│   │   │   │   └── decision_event_repository.py # In-memory decision audit history events & chronological sorting (Day 13)
 │   │   │   └── data/                  # ShopFlow Synthetic Data Engine (Days 5 & 7)
 │   │   │       ├── __init__.py        # Engine exports
 │   │   │       ├── dataset.py         # ShopFlowDataset container & Scenario models
@@ -609,9 +683,11 @@ edos-decision-system/
 │   │       ├── test_context.py        # Context Engine unit & aggregation tests (Day 9)
 │   │       ├── test_context_api.py    # Context API endpoint & schema tests (Day 9)
 │   │       ├── test_decision.py       # Decision domain validation & serialization tests (Day 11)
-│   │       ├── test_lifecycle.py      # Decision Lifecycle transitions & state machine tests (Day 12)
-│   │       ├── test_decision_repository.py # Decision repository unit, order & duplicate tests (Days 11–12)
-│   │       └── test_decision_api.py   # Decision API endpoint, 404 & status patch tests (Days 11–12)
+│   │       ├── test_decision_event.py # Decision event domain validation & serialization tests (Day 13)
+│   │       ├── test_decision_event_repository.py # Decision event repository unit, order & duplicate tests (Day 13)
+│   │       ├── test_lifecycle.py      # Decision Lifecycle transitions & state machine tests (Days 12–13)
+│   │       ├── test_decision_repository.py # Decision repository unit, order & duplicate tests (Days 11–13)
+│   │       └── test_decision_api.py   # Decision API endpoint, 404, status patch & events tests (Days 11–13)
 │   └── web/                           # Next.js web frontend service
 │       ├── Dockerfile                 # Web container definition
 │       ├── package.json               # Node.js dependencies & scripts
@@ -637,7 +713,7 @@ edos-decision-system/
 │               ├── demand.ts          # Demand operational & trend type contracts (Day 7)
 │               ├── supplier.ts        # Supplier operational & risk type contracts (Day 8)
 │               ├── context.ts         # Decision Context operational type contracts (Day 9)
-│               └── decision.ts        # Decision & status operational type contracts (Day 12)
+│               └── decision.ts        # Decision, status & event operational type contracts (Days 12–13)
 ├── data/                              # Data persistence & fixture directories
 │   ├── raw/                           # Raw input datasets
 │   ├── processed/                     # Sanitized operational data & scenario fixtures
@@ -691,6 +767,7 @@ edos-decision-system/
 │ Days 11–15      │ Model the Decision                                      │
 │                 │ - Day 11: Decision Model & identity foundation (Done)   │
 │                 │ - Day 12: Decision Lifecycle & transition engine (Done) │
+│                 │ - Day 13: Decision Event History & audit trail (Done)   │
 │                 │ - Candidate action generation (Expedite, Split, Source) │
 │                 │ - Rule-based policy validation & hard-constraint checks │
 │                 │ - Counterfactual simulation & scenario impact engine    │

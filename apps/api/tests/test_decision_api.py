@@ -375,3 +375,158 @@ def test_patch_decision_status_aliases(prefix: str):
     patch_res = client.patch(f"{prefix}/{decision_id}/status", json={"status": "CONTEXTUALIZING"})
     assert patch_res.status_code == 200
     assert patch_res.json()["status"] == "CONTEXTUALIZING"
+
+
+# ============================================================================
+# 5. GET /api/decisions/{decision_id}/events (Decision Event History Endpoint)
+# ============================================================================
+
+
+def test_get_decision_events_success():
+    """Verifies that GET events returns chronological audit events for a known decision."""
+    post_res = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+    assert post_res.status_code == 201
+    decision_id = post_res.json()["id"]
+
+    patch_res = client.patch(f"/api/decisions/{decision_id}/status", json={"status": "CONTEXTUALIZING"})
+    assert patch_res.status_code == 200
+
+    events_res = client.get(f"/api/decisions/{decision_id}/events")
+    assert events_res.status_code == 200
+
+    events = events_res.json()
+    assert isinstance(events, list)
+    assert len(events) == 2
+
+    # First event: DECISION_CREATED
+    e1 = events[0]
+    assert e1["id"].startswith("EVT-")
+    assert e1["event_id"] == e1["id"]
+    assert e1["decision_id"] == decision_id
+    assert e1["event_type"] == "DECISION_CREATED"
+    assert e1["from_status"] is None
+    assert e1["to_status"] == "DRAFT"
+    parsed_dt1 = datetime.fromisoformat(e1["occurred_at"])
+    assert parsed_dt1.tzinfo is not None
+
+    # Second event: LIFECYCLE_TRANSITION
+    e2 = events[1]
+    assert e2["id"].startswith("EVT-")
+    assert e2["event_id"] == e2["id"]
+    assert e2["decision_id"] == decision_id
+    assert e2["event_type"] == "LIFECYCLE_TRANSITION"
+    assert e2["from_status"] == "DRAFT"
+    assert e2["to_status"] == "CONTEXTUALIZING"
+    parsed_dt2 = datetime.fromisoformat(e2["occurred_at"])
+    assert parsed_dt2.tzinfo is not None
+
+
+def test_get_decision_events_empty_history():
+    """Verifies that an existing decision with no events returns an empty list HTTP 200."""
+    repo = get_decision_repository()
+    decision = repo.create(product_id="prod-001", warehouse_id="wh-001", record_event=False)
+
+    events_res = client.get(f"/api/decisions/{decision.id}/events")
+    assert events_res.status_code == 200
+    assert events_res.json() == []
+
+
+def test_get_decision_events_unknown_decision_returns_404():
+    """Verifies that querying events for an unknown decision returns HTTP 404."""
+    response = client.get("/api/decisions/DEC-NONEXISTENT-999/events")
+    assert response.status_code == 404
+    assert "Decision 'DEC-NONEXISTENT-999' not found" in response.json()["detail"]
+
+
+def test_get_decision_events_full_progression_sequence():
+    """Verifies full lifecycle progression creates 6 ordered events in history API."""
+    post_res = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+    decision_id = post_res.json()["id"]
+
+    stages = [
+        "CONTEXTUALIZING",
+        "CONSTRUCTING",
+        "VALIDATING",
+        "EVALUATING",
+        "READY",
+    ]
+
+    for stage in stages:
+        patch_res = client.patch(f"/api/decisions/{decision_id}/status", json={"status": stage})
+        assert patch_res.status_code == 200
+
+    events_res = client.get(f"/api/decisions/{decision_id}/events")
+    assert events_res.status_code == 200
+
+    events = events_res.json()
+    assert len(events) == 6
+
+    # Verify event types and chronological progression
+    assert events[0]["event_type"] == "DECISION_CREATED"
+    assert events[0]["to_status"] == "DRAFT"
+
+    expected_pairs = [
+        ("DRAFT", "CONTEXTUALIZING"),
+        ("CONTEXTUALIZING", "CONSTRUCTING"),
+        ("CONSTRUCTING", "VALIDATING"),
+        ("VALIDATING", "EVALUATING"),
+        ("EVALUATING", "READY"),
+    ]
+
+    for i, (from_st, to_st) in enumerate(expected_pairs, start=1):
+        assert events[i]["event_type"] == "LIFECYCLE_TRANSITION"
+        assert events[i]["from_status"] == from_st
+        assert events[i]["to_status"] == to_st
+
+
+def test_get_decision_events_isolation_between_decisions():
+    """Verifies that one decision cannot see events belonging to another decision."""
+    d1 = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"}).json()["id"]
+    d2 = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-002"}).json()["id"]
+
+    client.patch(f"/api/decisions/{d1}/status", json={"status": "CONTEXTUALIZING"})
+
+    ev1 = client.get(f"/api/decisions/{d1}/events").json()
+    ev2 = client.get(f"/api/decisions/{d2}/events").json()
+
+    assert len(ev1) == 2
+    assert all(e["decision_id"] == d1 for e in ev1)
+
+    assert len(ev2) == 1
+    assert all(e["decision_id"] == d2 for e in ev2)
+
+
+def test_get_decision_events_invalid_transition_creates_no_events():
+    """Verifies that an invalid transition does not pollute the event history."""
+    d1 = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"}).json()["id"]
+
+    # Attempt forbidden skip
+    bad_res = client.patch(f"/api/decisions/{d1}/status", json={"status": "READY"})
+    assert bad_res.status_code == 422
+
+    # Events count should still be 1
+    events = client.get(f"/api/decisions/{d1}/events").json()
+    assert len(events) == 1
+    assert events[0]["event_type"] == "DECISION_CREATED"
+
+
+@pytest.mark.parametrize("prefix", ["/api/decisions", "/decisions", "/api/decision", "/decision"])
+def test_get_decision_events_route_aliases(prefix: str):
+    """Verifies that GET events works across canonical and alias routes."""
+    post_res = client.post(f"{prefix}", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+    decision_id = post_res.json()["id"]
+
+    events_res = client.get(f"{prefix}/{decision_id}/events")
+    assert events_res.status_code == 200
+    assert len(events_res.json()) == 1
+
+
+def test_get_decision_events_is_read_only():
+    """Verifies that reading events does not mutate repository state."""
+    d1 = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"}).json()["id"]
+
+    res1 = client.get(f"/api/decisions/{d1}/events").json()
+    res2 = client.get(f"/api/decisions/{d1}/events").json()
+
+    assert res1 == res2
+
