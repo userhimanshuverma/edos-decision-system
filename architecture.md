@@ -595,6 +595,77 @@ The repository is structured according to a phased 30-day plan. Here is a detail
   - Decision graph and provenance DAG (Day 15).
   - Candidate action generation, scoring, AI explanations, and human approval workflows.
 
+### 4.14 Day 14: Decision Versioning
+* **Objective**:
+  - Establish a reliable, deterministic foundation for preserving decision versions and their relevant context data, enabling reproducibility, historical inspection, and auditability.
+* **Separation of Concerns in the Decision Domain**:
+  - **Decision State**: The current mutable operational entity and its lifecycle (`Decision`).
+  - **Decision Events**: What happened and when (lifecycle audit trail: `DecisionEvent`).
+  - **Decision Versions**: The historical representation of a decision at a particular point in time (`DecisionVersion` and `DecisionSnapshot`).
+* **Domain Models (`apps/api/app/domain/decision_version.py`)**:
+  - `DecisionSnapshot`: Immutable snapshot model capturing the operational state of a decision:
+    - `decision_id`: Associated decision identifier (`DEC-XXXX`).
+    - `product_id`: Associated product catalog identifier.
+    - `warehouse_id`: Associated warehouse facility identifier.
+    - `status`: Decision lifecycle status at snapshot time (`DecisionStatus`).
+    - `decision_created_at`: UTC timestamp marking when the decision was originally instantiated.
+    - `context`: Optional situational operational context captured at snapshot time (`DecisionContext | None`).
+  - `DecisionVersion`: Domain model representing an identifiable, numbered version snapshot:
+    - `id`: Unique version identifier (`VER-XXXX`).
+    - `decision_id`: Associated decision identifier (`DEC-XXXX`).
+    - `version_number`: Positive sequential integer (`ge=1`).
+    - `created_at`: Timezone-aware UTC timestamp when the version was captured.
+    - `snapshot`: The captured `DecisionSnapshot` instance.
+    - `description`: Optional human-readable change note or reason for this version snapshot.
+  - Strict validation conventions:
+    - `ConfigDict(str_strip_whitespace=True, extra="forbid")`.
+    - Non-empty, stripped identifiers validated.
+    - Strict positive version numbers (`ge=1`).
+    - Naive timestamps normalized to UTC; timezone offsets converted to UTC.
+* **Version Numbering Policy**:
+  - Deterministic, positive monotonic numbering scoped per decision (`1, 2, 3, ...`).
+  - The first version recorded for any decision is assigned version `1`.
+  - Subsequent versions recorded for that decision receive `max(existing_version_numbers) + 1`.
+  - Conflicts or duplicate version numbers within the same decision raise `ConflictingVersionNumberError`.
+* **Version Creation Policy**:
+  - Explicit creation via API (`POST /api/decisions/{decision_id}/versions`) or repository (`create_version`).
+  - Versions are NOT created automatically on every event or lifecycle transition.
+  - Initial decision creation does not automatically generate a version, maintaining backward compatibility and clear domain boundaries.
+* **Snapshot Immutability Guarantees & Reproducibility Limits**:
+  - Deep defensive copying (`model_copy(deep=True)`) on read and write operations.
+  - Subsequent mutations to decision state (e.g. lifecycle transitions) never mutate existing snapshots.
+  - **Limits on Reproducibility**: Current snapshots faithfully preserve the decision entity state and situational context at that point in time. Because candidate generation, scenario evaluations, policy constraints, and DAG graphs are not yet implemented in Days 11–14, a version snapshot preserves what the decision was at that moment, but does NOT yet constitute a full counterfactual or mathematical execution replay artifact (which will be established in later days, e.g., Days 15, 21–25).
+* **Decision Version Repository (`apps/api/app/repositories/decision_version_repository.py`)**:
+  - Dedicated in-memory data access layer for historical versions:
+    - `record(version)`: Validates identifier uniqueness and conflicting version numbers before storing.
+    - `create_version(decision, description, context)`: Convenience builder constructing snapshot and version.
+    - `get_by_id(version_id)`: Retrieves single version by ID.
+    - `get_by_version_number(decision_id, version_number)`: Retrieves specific version for a decision.
+    - `get_by_decision_id(decision_id)` / `list_by_decision_id`: Retrieves all versions for a decision sorted deterministically by `version_number` ascending.
+    - `list_all(decision_id=None)`: Lists all versions sorted by `(decision_id, version_number)`.
+    - `remove(version_id)`: Rollback helper for failure scenarios.
+    - `clear()`: Cleans internal store and resets counter for test isolation.
+  - Deterministic ordering: Versions for a decision are sorted strictly by `version_number` ascending.
+  - Decision isolation: Version queries return strictly records belonging to the requested `decision_id`.
+  - Single-process in-memory scope: Non-persistent across process restarts; no distributed locking.
+* **FastAPI Decision Version APIs (`apps/api/app/api/decision.py`)**:
+  - `POST /api/decisions/{decision_id}/versions`: Explicitly snapshots the decision's current operational state (HTTP 201; HTTP 404 for unknown decision).
+  - `GET /api/decisions/{decision_id}/versions`: Lists historical versions in ascending version order (HTTP 200; HTTP 404 for unknown decision; `[]` for decision with no versions).
+  - `GET /api/decisions/{decision_id}/versions/{version_number}`: Retrieves a specific historical version by version number (HTTP 200; HTTP 404 for unknown decision or version).
+  - Route aliases supported: `/api/decisions`, `/decisions`, `/api/decision`, `/decision`.
+* **Frontend Typing Preparation (`apps/web/lib/types/decision.ts`)**:
+  - Exported TypeScript contracts: `DecisionSnapshotRecord` and `DecisionVersionRecord`.
+* **Automated Test Coverage**:
+  - 42 new unit and integration tests across:
+    - `test_decision_version.py`: Domain validation, positive version numbering, UTC timestamp normalization, snapshot immutability, extra field forbidding, serialization round-trip.
+    - `test_decision_version_repository.py`: In-memory storage, sequence generation, version numbering starting at 1, duplicate ID handling, conflicting version number handling, defensive copies, cross-decision isolation, clear, len.
+    - `test_decision_version_api.py`: POST create version, GET list versions, GET single version by number, 404s, deterministic order, mutation stability across lifecycle transitions, route aliases, backward compatibility with Day 11–13 endpoints.
+  - Full backend pytest suite: **412 tests passing** with zero regressions.
+  - Frontend test suite and Next.js production build passing with zero errors.
+* **Strictly Out of Scope (Deferred to Days 15+)**:
+  - Decision graph and provenance DAG (Day 15).
+  - Candidate action generation, scoring, AI explanations, and human approval workflows.
+
 ---
 
 ## 5. Technology Stack & Directory Structure
@@ -647,20 +718,22 @@ edos-decision-system/
 │   │   │   │   ├── demand.py          # DemandRecord model & calendar date validation (Day 7)
 │   │   │   │   ├── context.py         # DecisionContext snapshot & derived metrics (Day 9)
 │   │   │   │   ├── decision.py        # Decision model & status validation (Day 11)
-│   │   │   │   └── decision_event.py  # DecisionEvent model & event type validation (Day 13)
+│   │   │   │   ├── decision_event.py  # DecisionEvent model & event type validation (Day 13)
+│   │   │   │   └── decision_version.py # DecisionVersion & DecisionSnapshot models (Day 14)
 │   │   │   ├── context/               # Context Engine Application Layer (Day 9)
 │   │   │   │   ├── __init__.py        # Context engine package exports
 │   │   │   │   └── engine.py          # ContextEngine aggregation & state synthesis
 │   │   │   ├── lifecycle/             # Decision Lifecycle Engine (Day 12)
 │   │   │   │   ├── __init__.py        # Lifecycle package exports
 │   │   │   │   └── service.py         # DecisionLifecycleService & state machine transitions (Day 12)
-│   │   │   ├── repositories/          # Application data access layer (Days 6–13)
+│   │   │   ├── repositories/          # Application data access layer (Days 6–14)
 │   │   │   │   ├── __init__.py        # Repositories exports
 │   │   │   │   ├── inventory_repository.py # In-memory inventory query & filter operations (Day 6)
 │   │   │   │   ├── demand_repository.py # In-memory demand query, filter & trend operations (Day 7)
 │   │   │   │   ├── supplier_repository.py # In-memory supplier query & risk classification (Day 8)
-│   │   │   │   ├── decision_repository.py # In-memory decision storage, ordering & lifecycle updates (Days 11–13)
-│   │   │   │   └── decision_event_repository.py # In-memory decision audit history events & chronological sorting (Day 13)
+│   │   │   │   ├── decision_repository.py # In-memory decision storage, ordering & lifecycle updates (Days 11–14)
+│   │   │   │   ├── decision_event_repository.py # In-memory decision audit history events & chronological sorting (Day 13)
+│   │   │   │   └── decision_version_repository.py # In-memory decision version snapshots & deterministic ordering (Day 14)
 │   │   │   └── data/                  # ShopFlow Synthetic Data Engine (Days 5 & 7)
 │   │   │       ├── __init__.py        # Engine exports
 │   │   │       ├── dataset.py         # ShopFlowDataset container & Scenario models
@@ -685,8 +758,11 @@ edos-decision-system/
 │   │       ├── test_decision.py       # Decision domain validation & serialization tests (Day 11)
 │   │       ├── test_decision_event.py # Decision event domain validation & serialization tests (Day 13)
 │   │       ├── test_decision_event_repository.py # Decision event repository unit, order & duplicate tests (Day 13)
+│   │       ├── test_decision_version.py # Decision version domain validation & serialization tests (Day 14)
+│   │       ├── test_decision_version_repository.py # Decision version repository unit & order tests (Day 14)
+│   │       ├── test_decision_version_api.py # Decision version API endpoint & snapshot immutability tests (Day 14)
 │   │       ├── test_lifecycle.py      # Decision Lifecycle transitions & state machine tests (Days 12–13)
-│   │       ├── test_decision_repository.py # Decision repository unit, order & duplicate tests (Days 11–13)
+│   │       ├── test_decision_repository.py # Decision repository unit, order & duplicate tests (Days 11–14)
 │   │       └── test_decision_api.py   # Decision API endpoint, 404, status patch & events tests (Days 11–13)
 │   └── web/                           # Next.js web frontend service
 │       ├── Dockerfile                 # Web container definition
@@ -768,6 +844,7 @@ edos-decision-system/
 │                 │ - Day 11: Decision Model & identity foundation (Done)   │
 │                 │ - Day 12: Decision Lifecycle & transition engine (Done) │
 │                 │ - Day 13: Decision Event History & audit trail (Done)   │
+│                 │ - Day 14: Decision Versioning & snapshots (Done)        │
 │                 │ - Candidate action generation (Expedite, Split, Source) │
 │                 │ - Rule-based policy validation & hard-constraint checks │
 │                 │ - Counterfactual simulation & scenario impact engine    │

@@ -6,13 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.api.inventory import get_inventory_repository
 from app.api.schemas import (
     CreateDecisionRequest,
+    CreateDecisionVersionRequest,
     DecisionEventResponse,
     DecisionResponse,
+    DecisionVersionResponse,
     UpdateDecisionStatusRequest,
 )
 from app.lifecycle.service import InvalidLifecycleTransitionError
 from app.repositories.decision_event_repository import DecisionEventRepository
 from app.repositories.decision_repository import DecisionRepository
+from app.repositories.decision_version_repository import DecisionVersionRepository
 from app.repositories.inventory_repository import InventoryRepository
 
 router = APIRouter()
@@ -25,9 +28,18 @@ def get_decision_event_repository() -> DecisionEventRepository:
 
 
 @lru_cache
+def get_decision_version_repository() -> DecisionVersionRepository:
+    """Dependency provider returning the singleton DecisionVersionRepository instance."""
+    return DecisionVersionRepository()
+
+
+@lru_cache
 def get_decision_repository() -> DecisionRepository:
     """Dependency provider returning the singleton DecisionRepository instance."""
-    return DecisionRepository(event_repository=get_decision_event_repository())
+    return DecisionRepository(
+        event_repository=get_decision_event_repository(),
+        version_repository=get_decision_version_repository(),
+    )
 
 
 @router.post(
@@ -148,4 +160,79 @@ def get_decision_events(
         )
     events = event_repo.get_by_decision_id(decision_id)
     return [DecisionEventResponse.from_domain(e) for e in events]
+
+
+@router.post(
+    "/{decision_id}/versions",
+    response_model=DecisionVersionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new decision version",
+    description="Captures an immutable snapshot of the decision's current operational state.",
+)
+def create_decision_version(
+    decision_id: str,
+    payload: CreateDecisionVersionRequest | None = None,
+    repo: DecisionRepository = Depends(get_decision_repository),
+    version_repo: DecisionVersionRepository = Depends(get_decision_version_repository),
+) -> DecisionVersionResponse:
+    existing = repo.get_by_id(decision_id)
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Decision '{decision_id}' not found",
+        )
+    description = payload.description if payload is not None else None
+    version = version_repo.create_version(
+        decision=existing,
+        description=description,
+    )
+    return DecisionVersionResponse.from_domain(version)
+
+
+@router.get(
+    "/{decision_id}/versions",
+    response_model=list[DecisionVersionResponse],
+    summary="List decision versions",
+    description="Returns all historical versions for a specific business decision sorted by version_number ascending.",
+)
+def list_decision_versions(
+    decision_id: str,
+    repo: DecisionRepository = Depends(get_decision_repository),
+    version_repo: DecisionVersionRepository = Depends(get_decision_version_repository),
+) -> list[DecisionVersionResponse]:
+    existing = repo.get_by_id(decision_id)
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Decision '{decision_id}' not found",
+        )
+    versions = version_repo.get_by_decision_id(decision_id)
+    return [DecisionVersionResponse.from_domain(v) for v in versions]
+
+
+@router.get(
+    "/{decision_id}/versions/{version_number}",
+    response_model=DecisionVersionResponse,
+    summary="Get a specific decision version",
+    description="Retrieves a historical version by version number for an operational decision.",
+)
+def get_decision_version_by_number(
+    decision_id: str,
+    version_number: int,
+    repo: DecisionRepository = Depends(get_decision_repository),
+    version_repo: DecisionVersionRepository = Depends(get_decision_version_repository),
+) -> DecisionVersionResponse:
+    existing = repo.get_by_id(decision_id)
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Decision '{decision_id}' not found",
+        )
+    version = version_repo.get_by_version_number(decision_id, version_number)
+    if version is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Version '{version_number}' for decision '{decision_id}' not found",
+        )
+    return DecisionVersionResponse.from_domain(version)
 

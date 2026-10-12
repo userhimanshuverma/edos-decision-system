@@ -294,3 +294,89 @@ class DecisionEventResponse(BaseModel):
         )
 
 
+# Day 14 Decision Version Schemas
+from app.domain.decision_version import DecisionSnapshot, DecisionVersion  # noqa: E402
+
+
+class DecisionSnapshotResponse(BaseModel):
+    """Clean typed response model representing the snapshotted state of a decision at version creation time."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    decision_id: str = Field(..., description="Referenced Decision identifier")
+    product_id: str = Field(..., description="Snapshot product identifier")
+    warehouse_id: str = Field(..., description="Snapshot warehouse identifier")
+    status: DecisionStatus = Field(..., description="Lifecycle status at snapshot time")
+    decision_created_at: datetime = Field(..., description="Original creation timestamp of the snapshotted decision (UTC)")
+    context: DecisionContextResponse | None = Field(
+        default=None,
+        description="Optional situational operational context captured at snapshot time",
+    )
+
+    @classmethod
+    def from_domain(cls, snapshot: DecisionSnapshot) -> DecisionSnapshotResponse:
+        return cls(
+            decision_id=snapshot.decision_id,
+            product_id=snapshot.product_id,
+            warehouse_id=snapshot.warehouse_id,
+            status=snapshot.status,
+            decision_created_at=snapshot.decision_created_at,
+            context=(
+                DecisionContextResponse.from_domain(snapshot.context)
+                if snapshot.context is not None
+                else None
+            ),
+        )
+
+
+class CreateDecisionVersionRequest(BaseModel):
+    """Request payload for creating a new snapshot version of an operational decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    description: str | None = Field(
+        default=None,
+        description="Optional human-readable explanation or change note for this version snapshot",
+    )
+
+
+class DecisionVersionResponse(BaseModel):
+    """Clean typed response model representing a historical version of a business decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique version identifier")
+    version_id: str = Field(..., description="Version identifier (alias for id)")
+    decision_id: str = Field(..., description="Referenced Decision identifier")
+    version_number: int = Field(..., description="Positive sequential version number")
+    created_at: datetime = Field(..., description="UTC timestamp when the version was captured")
+    snapshot: DecisionSnapshotResponse = Field(..., description="Decision snapshot at version creation time")
+    description: str | None = Field(
+        default=None,
+        description="Optional description or note for this version",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "version_id" not in data and "id" in data:
+                data["version_id"] = data["id"]
+            elif "id" not in data and "version_id" in data:
+                data["id"] = data["version_id"]
+        return data
+
+    @classmethod
+    def from_domain(cls, version: DecisionVersion) -> DecisionVersionResponse:
+        """Constructs a DecisionVersionResponse model from a domain DecisionVersion instance."""
+        return cls(
+            id=version.id,
+            version_id=version.id,
+            decision_id=version.decision_id,
+            version_number=version.version_number,
+            created_at=version.created_at,
+            snapshot=DecisionSnapshotResponse.from_domain(version.snapshot),
+            description=version.description,
+        )
+
+

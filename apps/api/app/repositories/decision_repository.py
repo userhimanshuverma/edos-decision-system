@@ -7,8 +7,10 @@ from app.data.dataset import ShopFlowDataset
 from app.data.generator import generate_shopflow_dataset
 from app.domain.decision import Decision, DecisionStatus
 from app.domain.decision_event import DecisionEvent, DecisionEventType
+from app.domain.decision_version import DecisionVersion
 from app.lifecycle.service import DecisionLifecycleService
 from app.repositories.decision_event_repository import DecisionEventRepository
+from app.repositories.decision_version_repository import DecisionVersionRepository
 
 
 class DuplicateDecisionError(ValueError):
@@ -28,6 +30,7 @@ class DecisionRepository:
         dataset: ShopFlowDataset | None = None,
         lifecycle_service: DecisionLifecycleService | None = None,
         event_repository: DecisionEventRepository | None = None,
+        version_repository: DecisionVersionRepository | None = None,
     ) -> None:
         """Initializes the repository with optional preloaded decisions and dataset."""
         if dataset is None:
@@ -44,6 +47,11 @@ class DecisionRepository:
             event_repository
             if event_repository is not None
             else DecisionEventRepository()
+        )
+        self._version_repository = (
+            version_repository
+            if version_repository is not None
+            else DecisionVersionRepository()
         )
         self._decisions: dict[str, Decision] = {}
         self._counter: int = 0
@@ -66,6 +74,11 @@ class DecisionRepository:
     def event_repository(self) -> DecisionEventRepository:
         """Returns the DecisionEventRepository instance managing audit history."""
         return self._event_repository
+
+    @property
+    def version_repository(self) -> DecisionVersionRepository:
+        """Returns the DecisionVersionRepository instance managing historical versions."""
+        return self._version_repository
 
     def generate_id(self) -> str:
         """Generates the next unique, human-readable decision identifier (DEC-XXXX)."""
@@ -237,8 +250,30 @@ class DecisionRepository:
         """Verifies if the referenced warehouse exists in the facility directory."""
         return self._dataset.get_warehouse(warehouse_id.strip()) is not None
 
+    def create_version(
+        self,
+        decision_id: str,
+        *,
+        description: str | None = None,
+        context: Any = None,
+    ) -> DecisionVersion | None:
+        """Creates a historical version snapshot for an existing decision held in the repository.
+
+        If the decision does not exist, returns None without altering version history.
+        """
+        norm_id = decision_id.strip()
+        record = self._decisions.get(norm_id)
+        if record is None:
+            return None
+        return self._version_repository.create_version(
+            decision=record,
+            description=description,
+            context=context,
+        )
+
     def clear(self) -> None:
-        """Clears all stored decisions, audit events, and resets sequence counters."""
+        """Clears all stored decisions, audit events, versions, and resets sequence counters."""
         self._decisions.clear()
         self._counter = 0
         self._event_repository.clear()
+        self._version_repository.clear()

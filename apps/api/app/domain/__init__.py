@@ -17,6 +17,8 @@ from app.domain.context import (
     DecisionContext,
 )
 
+from app.domain.decision_version import DecisionSnapshot, DecisionVersion
+
 __all__ = [
     "Product",
     "Supplier",
@@ -27,6 +29,8 @@ __all__ = [
     "DecisionStatus",
     "DecisionEvent",
     "DecisionEventType",
+    "DecisionSnapshot",
+    "DecisionVersion",
     "ContextStatus",
     "ProductContext",
     "WarehouseContext",

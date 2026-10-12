@@ -15,12 +15,21 @@ from app.repositories.supplier_repository import (
     classify_supplier_risk,
 )
 
+from app.repositories.decision_version_repository import (
+    DecisionVersionRepository,
+    DuplicateDecisionVersionError,
+    ConflictingVersionNumberError,
+)
+
 __all__ = [
     "DecisionRepository",
     "DuplicateDecisionError",
     "DecisionEventRepository",
     "DuplicateDecisionEventError",
     "DuplicateEventError",
+    "DecisionVersionRepository",
+    "DuplicateDecisionVersionError",
+    "ConflictingVersionNumberError",
     "DemandRepository",
     "InventoryRepository",
     "SupplierRepository",
