@@ -666,7 +666,115 @@ The repository is structured according to a phased 30-day plan. Here is a detail
   - Decision graph and provenance DAG (Day 15).
   - Candidate action generation, scoring, AI explanations, and human approval workflows.
 
+### 4.15 Day 15: Decision Graph & Provenance Foundation
+* **Objective**:
+  - Build the foundational Decision Graph representing how an operational decision and its related information are connected.
+  - Establish the architectural lineage foundation:
+    `Context → Actions → Validation → Scenarios → Result`
+  - Maintain clear separation of concerns across the decision domain:
+    - **Decision State**: Current mutable operational entity and lifecycle status (`Decision`).
+    - **Decision Events**: What happened and when (lifecycle audit trail: `DecisionEvent`).
+    - **Decision Versions**: What the decision represented at a particular point in time (`DecisionVersion` / `DecisionSnapshot`).
+    - **Decision Graph**: How the decision and its related information, context, and future stages are structurally connected (`DecisionGraph`).
+* **Decision Graph Domain Model (`apps/api/app/domain/decision_graph.py`)**:
+  - `GraphNodeType`: Constrained StrEnum representing stage categories and artifacts:
+    - `CONTEXT`: Situational operational context snapshot.
+    - `DECISION_VERSION`: Historical version snapshot reference.
+    - `ACTION`: Candidate replenishment/supplier intervention action (structural placeholder for Day 16+).
+    - `VALIDATION`: Policy constraint screening evaluation (structural placeholder for Day 18+).
+    - `SCENARIO`: Counterfactual impact simulation (structural placeholder for Day 21+).
+    - `RESULT`: Recommended decision outcome (structural placeholder for Day 23+).
+  - `GraphRelationshipType`: Constrained directed edge relationship types:
+    - `GENERATES`: Context generates candidate Actions (`CONTEXT -> ACTION`).
+    - `VALIDATES`: Action undergoes policy Validation (`ACTION -> VALIDATION`).
+    - `SIMULATES`: Validation outcome feeds Scenario simulation (`VALIDATION -> SCENARIO`, `ACTION -> SCENARIO`).
+    - `PRODUCES`: Scenario simulation produces Decision Result (`SCENARIO -> RESULT`, `VALIDATION -> RESULT`, `ACTION -> RESULT`).
+    - `REFERENCES`: Associative reference linking version snapshots or stages (`DECISION_VERSION <-> STAGE`, `CONTEXT <-> CONTEXT`).
+    - `DEPENDS_ON`: Reverse or direct dependency relationship between downstream and upstream nodes.
+    - `DERIVED_FROM`: Reverse provenance lineage relationship (`ACTION -> CONTEXT`, `RESULT -> SCENARIO`, etc.).
+  - `ALLOWED_RELATIONSHIPS`: Deterministic matrix enforcing permitted directed edges between node types, preventing invalid semantic connections while avoiding artificial cycle restrictions on general references.
+  - `GraphNode`: Identifiable node domain model capturing:
+    - `id`: Unique node identifier (`NOD-XXXX` or descriptive identifier).
+    - `node_type`: Constrained `GraphNodeType` (aliased as `type`).
+    - `decision_id`: Associated business decision identifier (`DEC-XXXX`).
+    - `label`: Optional human-readable stage/artifact label.
+    - `metadata`: Structured dictionary for stage-specific metadata.
+    - `created_at`: Timezone-aware UTC timestamp.
+  - `GraphEdge`: Directed edge domain model capturing:
+    - `id`: Unique edge identifier (`EDG-XXXX` or descriptive identifier).
+    - `source_id`: Source node identifier.
+    - `target_id`: Target node identifier.
+    - `relationship_type`: Constrained `GraphRelationshipType`.
+    - `decision_id`: Optional associated decision identifier (validated to match graph if present).
+    - `metadata`: Optional minimal edge metadata.
+  - `DecisionGraph`: Core graph domain model capturing:
+    - `id`: Stable unique graph identifier (`GRA-XXXX`).
+    - `decision_id`: Associated decision identifier (`DEC-XXXX`).
+    - `nodes`: Collection of validated `GraphNode` instances.
+    - `edges`: Collection of validated directed `GraphEdge` instances.
+    - `created_at`: Timezone-aware UTC creation timestamp.
+    - `updated_at`: Timezone-aware UTC update timestamp.
+* **Graph Integrity Guarantees & Provenance Validation**:
+  - Deterministic integrity validation enforced automatically on creation:
+    - `DuplicateGraphNodeError`: Duplicate node IDs within the graph are strictly rejected.
+    - `DuplicateGraphEdgeError`: Duplicate edge IDs or identical directed relationships `(source, target, type)` are rejected.
+    - `InvalidEdgeReferenceError`: Every edge must reference existing nodes within the same graph.
+    - `CrossDecisionGraphError`: Nodes and edges cannot reference another decision's graph.
+    - `InvalidGraphRelationshipError`: Edge relationship types must conform to the allowed relationship matrix.
+    - `SelfLoopEdgeError`: Self-loop edges (`source_id == target_id`) are rejected.
+    - Deep defensive copies on write and read paths prevent internal mutation leakage.
+    - Deterministic sorting: API responses and repository lists sort nodes by `(created_at, id)` and edges by `(source_id, target_id, id)`.
+* **Decision Graph Repository (`apps/api/app/repositories/decision_graph_repository.py`)**:
+  - Dedicated in-memory data access layer for decision graphs:
+    - `record(graph)`: Validates integrity and enforces unique graph ID and one-graph-per-decision constraints.
+    - `create_graph(decision_id, nodes, edges)`: Constructs and stores a custom graph.
+    - `build_default_graph(decision)`: Convenience builder constructing baseline graph with initial `CONTEXT` node.
+    - `get_by_id(graph_id)`: Retrieves single graph by ID.
+    - `get_by_decision_id(decision_id)`: Retrieves graph for a specific decision.
+    - `list_all()`: Lists all graphs sorted deterministically by `(decision_id, id)`.
+    - `remove(graph_id)`: Rollback helper for failure scenarios.
+    - `clear()`: Cleans internal store and resets sequence counters (`GRA-0001`, `NOD-0001`, `EDG-0001`).
+  - Collision protection: Raises `DuplicateDecisionGraphError` on ID or decision ID conflict.
+  - Integrated with `DecisionRepository`: accessible via `decision_repo.graph_repository` and reset during `decision_repo.clear()`.
+* **FastAPI Decision Graph APIs (`apps/api/app/api/decision.py`)**:
+  - `POST /api/decisions/{decision_id}/graph`: Creates or builds the decision graph representation:
+    - If payload is empty or nodes/edges omitted: builds baseline graph with `CONTEXT` node.
+    - If payload contains custom nodes/edges: validates and stores custom graph.
+    - Returns HTTP 201 Created with `DecisionGraphResponse`.
+    - Returns HTTP 404 Not Found if decision does not exist.
+    - Returns HTTP 409 Conflict if graph already exists for this decision.
+    - Returns HTTP 422 Unprocessable Entity for integrity violations, invalid references, or malformed payloads.
+  - `GET /api/decisions/{decision_id}/graph`: Retrieves the graph representation for an operational decision:
+    - Returns HTTP 200 OK with `DecisionGraphResponse`.
+    - Returns HTTP 404 Not Found if decision does not exist.
+    - Returns HTTP 404 Not Found if decision exists but has no graph recorded.
+  - Route aliases supported: `/api/decisions`, `/decisions`, `/api/decision`, `/decision`.
+* **Frontend Typing Preparation (`apps/web/lib/types/decision.ts`)**:
+  - Exported TypeScript contracts: `GraphNodeType`, `GraphRelationshipType`, `GraphNodeRecord`, `GraphEdgeRecord`, `DecisionGraphRecord`.
+* **Distinction Between Graph Data Structure and Future Execution Engine**:
+  - Day 15 implements the **graph data structure, integrity validation, repository, and API contract**.
+  - Future-stage node types (`ACTION`, `VALIDATION`, `SCENARIO`, `RESULT`) are structurally supported as typed placeholders, but do NOT imply that calculation, scoring, candidate generation, or scenario evaluation engines exist today.
+  - Current storage is in-memory and does not persist across process restarts.
+* **Automated Test Coverage**:
+  - 49 new unit and integration tests across:
+    - `test_decision_graph.py`: Valid graph, node, edge creation, whitespace identifier rejection, invalid type rejection, extra field forbidding, duplicate node ID, duplicate edge ID, duplicate relationship, invalid edge reference, cross-decision node/edge, disallowed relationship, self-loop, defensive copies, serialization roundtrip.
+    - `test_decision_graph_repository.py`: In-memory storage, sequence ID generation (GRA-XXXX, NOD-XXXX, EDG-XXXX), retrieval by ID and decision ID, unknown ID handling, build_default_graph, duplicate graph ID rejection, duplicate decision ID rejection, non-corruption on invalid write, defensive copies on read/write, deterministic ordering, rollback remove, clear test isolation, DecisionRepository integration.
+    - `test_decision_graph_api.py`: POST default graph, POST custom graph, GET graph, unknown decision 404, not found graph 404, duplicate graph 409, invalid edge reference 422, cross-decision 422, disallowed relationship 422, self-loop 422, extra fields 422, route aliases, backward compatibility with Day 11–14 endpoints.
+  - Full backend pytest suite: **461 tests passing** (up from 412) with zero regressions.
+  - Frontend test suite: **9 tests passing** and Next.js production build passing with zero errors.
+* **Strictly Out of Scope (Deferred to Days 16+)**:
+  - Candidate-action generation (Day 16).
+  - Replenishment quantity calculations and stockout-risk scoring.
+  - Constraint and policy evaluation engines.
+  - Scenario simulation and recommendation ranking.
+  - Full mathematical provenance or decision replay.
+  - AI explanations and decision Q&A.
+  - Human approval workflows.
+  - Database migrations, graph databases, or distributed infrastructure.
+  - Frontend graph visualization UI.
+
 ---
+
 
 ## 5. Technology Stack & Directory Structure
 

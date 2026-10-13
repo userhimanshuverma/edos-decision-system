@@ -52,15 +52,20 @@ Human Approval
 
 ## Current Status
 
-**Day 4: ShopFlow Domain Model (Foundation Phase)**
+**Day 15: Decision Graph & Provenance Foundation (Model the Decision Phase Complete)**
 
 The repository currently establishes:
 - Standard repository layout and conventions
 - Python + FastAPI backend foundation with `/health` validation
 - Next.js + React + TypeScript web foundation with enterprise light design system
-- ShopFlow operational domain models (`Product`, `Supplier`, `Warehouse`, `Inventory`) using typed Pydantic models with validation
-- Target architecture documentation and operational principles
-- Automated test suites for backend health and domain models
+- ShopFlow operational domain models (`Product`, `Supplier`, `Warehouse`, `Inventory`, `Demand`) with synthetic generator
+- Deterministic Context Engine with unified situational status classification
+- Business Decision identity and lifecycle state management (`DecisionStatus`: DRAFT → CONTEXTUALIZING → CONSTRUCTING → VALIDATING → EVALUATING → READY)
+- Decision Event History and audit trail (`DecisionEvent`, `DecisionEventType`)
+- Historical Decision Version snapshots (`DecisionVersion`, `DecisionSnapshot`)
+- Decision Graph & Provenance Foundation (`DecisionGraph`, `GraphNode`, `GraphEdge`, `GraphNodeType`, `GraphRelationshipType`)
+- In-memory repositories with deep defensive copies and deterministic ordering
+- Comprehensive automated test suites across domain, repository, and API layers (461 backend tests)
 
 ## 30-Day Roadmap
 

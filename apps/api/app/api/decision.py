@@ -2,18 +2,31 @@ from __future__ import annotations
 
 from functools import lru_cache
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import ValidationError
+
 
 from app.api.inventory import get_inventory_repository
 from app.api.schemas import (
+    CreateDecisionGraphRequest,
     CreateDecisionRequest,
     CreateDecisionVersionRequest,
     DecisionEventResponse,
+    DecisionGraphResponse,
     DecisionResponse,
     DecisionVersionResponse,
     UpdateDecisionStatusRequest,
 )
+from app.domain.decision_graph import (
+    GraphEdge,
+    GraphIntegrityError,
+    GraphNode,
+)
 from app.lifecycle.service import InvalidLifecycleTransitionError
 from app.repositories.decision_event_repository import DecisionEventRepository
+from app.repositories.decision_graph_repository import (
+    DecisionGraphRepository,
+    DuplicateDecisionGraphError,
+)
 from app.repositories.decision_repository import DecisionRepository
 from app.repositories.decision_version_repository import DecisionVersionRepository
 from app.repositories.inventory_repository import InventoryRepository
@@ -34,12 +47,20 @@ def get_decision_version_repository() -> DecisionVersionRepository:
 
 
 @lru_cache
+def get_decision_graph_repository() -> DecisionGraphRepository:
+    """Dependency provider returning the singleton DecisionGraphRepository instance."""
+    return DecisionGraphRepository()
+
+
+@lru_cache
 def get_decision_repository() -> DecisionRepository:
     """Dependency provider returning the singleton DecisionRepository instance."""
     return DecisionRepository(
         event_repository=get_decision_event_repository(),
         version_repository=get_decision_version_repository(),
+        graph_repository=get_decision_graph_repository(),
     )
+
 
 
 @router.post(
@@ -235,4 +256,117 @@ def get_decision_version_by_number(
             detail=f"Version '{version_number}' for decision '{decision_id}' not found",
         )
     return DecisionVersionResponse.from_domain(version)
+
+
+@router.post(
+    "/{decision_id}/graph",
+    response_model=DecisionGraphResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create or build decision graph",
+    description="Creates or builds the foundational graph representation connecting a decision and its related information.",
+)
+def create_decision_graph(
+    decision_id: str,
+    payload: CreateDecisionGraphRequest | None = None,
+    repo: DecisionRepository = Depends(get_decision_repository),
+    graph_repo: DecisionGraphRepository = Depends(get_decision_graph_repository),
+) -> DecisionGraphResponse:
+    decision = repo.get_by_id(decision_id)
+    if decision is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Decision '{decision_id}' not found",
+        )
+
+    existing_graph = graph_repo.get_by_decision_id(decision_id)
+    if existing_graph is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Decision graph for decision '{decision_id}' already exists",
+        )
+
+    try:
+        # If payload is empty or nodes & edges are omitted, build baseline default graph
+        if payload is None or (payload.nodes is None and payload.edges is None):
+            graph = graph_repo.build_default_graph(decision=decision)
+        else:
+            norm_dec_id = decision.id
+            domain_nodes: list[GraphNode] = []
+            if payload.nodes is not None:
+                for n_req in payload.nodes:
+                    nid = n_req.id if n_req.id is not None else graph_repo.generate_node_id()
+                    dec_id = n_req.decision_id if n_req.decision_id is not None else norm_dec_id
+                    domain_nodes.append(
+                        GraphNode(
+                            id=nid,
+                            node_type=n_req.node_type,
+                            decision_id=dec_id,
+                            label=n_req.label,
+                            metadata=n_req.metadata,
+                        )
+                    )
+
+            domain_edges: list[GraphEdge] = []
+            if payload.edges is not None:
+                for e_req in payload.edges:
+                    eid = e_req.id if e_req.id is not None else graph_repo.generate_edge_id()
+                    dec_id = e_req.decision_id if e_req.decision_id is not None else norm_dec_id
+                    domain_edges.append(
+                        GraphEdge(
+                            id=eid,
+                            source_id=e_req.source_id,
+                            target_id=e_req.target_id,
+                            relationship_type=e_req.relationship_type,
+                            decision_id=dec_id,
+                            metadata=e_req.metadata,
+                        )
+                    )
+
+            graph = graph_repo.create_graph(
+                decision_id=norm_dec_id,
+                nodes=domain_nodes,
+                edges=domain_edges,
+            )
+    except (GraphIntegrityError, ValidationError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except DuplicateDecisionGraphError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+
+
+    return DecisionGraphResponse.from_domain(graph)
+
+
+@router.get(
+    "/{decision_id}/graph",
+    response_model=DecisionGraphResponse,
+    summary="Get decision graph",
+    description="Retrieves the decision graph connecting a business decision and its related information.",
+)
+def get_decision_graph(
+    decision_id: str,
+    repo: DecisionRepository = Depends(get_decision_repository),
+    graph_repo: DecisionGraphRepository = Depends(get_decision_graph_repository),
+) -> DecisionGraphResponse:
+    decision = repo.get_by_id(decision_id)
+    if decision is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Decision '{decision_id}' not found",
+        )
+
+    graph = graph_repo.get_by_decision_id(decision_id)
+    if graph is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Decision graph for decision '{decision_id}' not found",
+        )
+
+    return DecisionGraphResponse.from_domain(graph)
+
 

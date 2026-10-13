@@ -380,3 +380,175 @@ class DecisionVersionResponse(BaseModel):
         )
 
 
+# Day 15 Decision Graph Schemas
+from app.domain.decision_graph import (  # noqa: E402
+    DecisionGraph,
+    GraphEdge,
+    GraphNode,
+    GraphNodeType,
+    GraphRelationshipType,
+)
+
+
+class GraphNodeCreateRequest(BaseModel):
+    """Request payload for specifying a node when creating a decision graph."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", populate_by_name=True)
+
+    id: str | None = Field(default=None, description="Optional node identifier; generated if omitted")
+    node_type: GraphNodeType = Field(..., alias="type", description="Constrained category of decision node")
+    decision_id: str | None = Field(default=None, description="Optional decision identifier; defaults to graph decision")
+    label: str | None = Field(default=None, description="Optional human-readable label")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Structured metadata for the node")
+
+    @property
+    def type(self) -> GraphNodeType:
+        return self.node_type
+
+
+class GraphEdgeCreateRequest(BaseModel):
+    """Request payload for specifying a directed edge when creating a decision graph."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str | None = Field(default=None, description="Optional edge identifier; generated if omitted")
+    source_id: str = Field(..., min_length=1, description="Source node identifier")
+    target_id: str = Field(..., min_length=1, description="Target node identifier")
+    relationship_type: GraphRelationshipType = Field(..., description="Constrained relationship type")
+    decision_id: str | None = Field(default=None, description="Optional decision identifier; defaults to graph decision")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Optional minimal edge metadata")
+
+
+class CreateDecisionGraphRequest(BaseModel):
+    """Request payload for creating or building a decision graph representation."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    nodes: list[GraphNodeCreateRequest] | None = Field(
+        default=None,
+        description="Optional collection of graph nodes. If omitted, a baseline context node is generated.",
+    )
+    edges: list[GraphEdgeCreateRequest] | None = Field(
+        default=None,
+        description="Optional collection of directed graph edges.",
+    )
+
+
+class GraphNodeResponse(BaseModel):
+    """Clean typed response model representing a node in a decision graph."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique node identifier")
+    node_id: str = Field(..., description="Node identifier (alias for id)")
+    type: GraphNodeType = Field(..., description="Constrained category of decision node")
+    node_type: GraphNodeType = Field(..., description="Node type (alias for type)")
+    decision_id: str = Field(..., description="Referenced Decision identifier")
+    label: str | None = Field(default=None, description="Optional human-readable label")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Structured metadata")
+    created_at: datetime = Field(..., description="UTC creation timestamp")
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "node_id" not in data and "id" in data:
+                data["node_id"] = data["id"]
+            elif "id" not in data and "node_id" in data:
+                data["id"] = data["node_id"]
+            if "node_type" not in data and "type" in data:
+                data["node_type"] = data["type"]
+            elif "type" not in data and "node_type" in data:
+                data["type"] = data["node_type"]
+        return data
+
+    @classmethod
+    def from_domain(cls, node: GraphNode) -> GraphNodeResponse:
+        return cls(
+            id=node.id,
+            node_id=node.id,
+            type=node.node_type,
+            node_type=node.node_type,
+            decision_id=node.decision_id,
+            label=node.label,
+            metadata=node.metadata,
+            created_at=node.created_at,
+        )
+
+
+class GraphEdgeResponse(BaseModel):
+    """Clean typed response model representing a directed edge in a decision graph."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique edge identifier")
+    edge_id: str = Field(..., description="Edge identifier (alias for id)")
+    source_id: str = Field(..., description="Source node identifier")
+    target_id: str = Field(..., min_length=1, description="Target node identifier")
+    relationship_type: GraphRelationshipType = Field(..., description="Constrained relationship type")
+    decision_id: str | None = Field(default=None, description="Optional associated decision identifier")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Minimal edge metadata")
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "edge_id" not in data and "id" in data:
+                data["edge_id"] = data["id"]
+            elif "id" not in data and "edge_id" in data:
+                data["id"] = data["edge_id"]
+        return data
+
+    @classmethod
+    def from_domain(cls, edge: GraphEdge) -> GraphEdgeResponse:
+        return cls(
+            id=edge.id,
+            edge_id=edge.id,
+            source_id=edge.source_id,
+            target_id=edge.target_id,
+            relationship_type=edge.relationship_type,
+            decision_id=edge.decision_id,
+            metadata=edge.metadata,
+        )
+
+
+class DecisionGraphResponse(BaseModel):
+    """Clean typed response model representing the Decision Graph connecting a business decision and its related information."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique graph identifier")
+    graph_id: str = Field(..., description="Graph identifier (alias for id)")
+    decision_id: str = Field(..., description="Referenced Decision identifier")
+    nodes: list[GraphNodeResponse] = Field(..., description="Collection of graph nodes")
+    edges: list[GraphEdgeResponse] = Field(..., description="Collection of directed graph edges")
+    created_at: datetime = Field(..., description="UTC creation timestamp")
+    updated_at: datetime = Field(..., description="UTC last update timestamp")
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "graph_id" not in data and "id" in data:
+                data["graph_id"] = data["id"]
+            elif "id" not in data and "graph_id" in data:
+                data["id"] = data["graph_id"]
+        return data
+
+    @classmethod
+    def from_domain(cls, graph: DecisionGraph) -> DecisionGraphResponse:
+        # Deterministic sorting for repeatable serialization
+        sorted_nodes = sorted(graph.nodes, key=lambda n: (n.created_at, n.id))
+        sorted_edges = sorted(graph.edges, key=lambda e: (e.source_id, e.target_id, e.id))
+        return cls(
+            id=graph.id,
+            graph_id=graph.id,
+            decision_id=graph.decision_id,
+            nodes=[GraphNodeResponse.from_domain(n) for n in sorted_nodes],
+            edges=[GraphEdgeResponse.from_domain(e) for e in sorted_edges],
+            created_at=graph.created_at,
+            updated_at=graph.updated_at,
+        )
+
+
+

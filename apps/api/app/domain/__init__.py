@@ -18,6 +18,20 @@ from app.domain.context import (
 )
 
 from app.domain.decision_version import DecisionSnapshot, DecisionVersion
+from app.domain.decision_graph import (
+    DecisionGraph,
+    GraphNode,
+    GraphEdge,
+    GraphNodeType,
+    GraphRelationshipType,
+    GraphIntegrityError,
+    DuplicateGraphNodeError,
+    DuplicateGraphEdgeError,
+    InvalidEdgeReferenceError,
+    CrossDecisionGraphError,
+    InvalidGraphRelationshipError,
+    SelfLoopEdgeError,
+)
 
 __all__ = [
     "Product",
@@ -31,6 +45,18 @@ __all__ = [
     "DecisionEventType",
     "DecisionSnapshot",
     "DecisionVersion",
+    "DecisionGraph",
+    "GraphNode",
+    "GraphEdge",
+    "GraphNodeType",
+    "GraphRelationshipType",
+    "GraphIntegrityError",
+    "DuplicateGraphNodeError",
+    "DuplicateGraphEdgeError",
+    "InvalidEdgeReferenceError",
+    "CrossDecisionGraphError",
+    "InvalidGraphRelationshipError",
+    "SelfLoopEdgeError",
     "ContextStatus",
     "ProductContext",
     "WarehouseContext",
@@ -41,5 +67,6 @@ __all__ = [
     "DerivedContextMetrics",
     "DecisionContext",
 ]
+
 
 
