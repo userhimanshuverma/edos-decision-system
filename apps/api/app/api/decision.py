@@ -7,6 +7,8 @@ from pydantic import ValidationError
 
 from app.api.inventory import get_inventory_repository
 from app.api.schemas import (
+    CandidateActionResponse,
+    CreateCandidateActionRequest,
     CreateDecisionGraphRequest,
     CreateDecisionRequest,
     CreateDecisionVersionRequest,
@@ -16,12 +18,25 @@ from app.api.schemas import (
     DecisionVersionResponse,
     UpdateDecisionStatusRequest,
 )
+from app.candidate_actions.service import (
+    CandidateActionNotFoundError,
+    CandidateActionService,
+    DecisionNotFoundError,
+)
+from app.domain.candidate_action import (
+    IneligibleSupplierError,
+    SupplierNotFoundError,
+)
 from app.domain.decision_graph import (
     GraphEdge,
     GraphIntegrityError,
     GraphNode,
 )
 from app.lifecycle.service import InvalidLifecycleTransitionError
+from app.repositories.candidate_action_repository import (
+    CandidateActionRepository,
+    DuplicateCandidateActionError,
+)
 from app.repositories.decision_event_repository import DecisionEventRepository
 from app.repositories.decision_graph_repository import (
     DecisionGraphRepository,
@@ -53,11 +68,28 @@ def get_decision_graph_repository() -> DecisionGraphRepository:
 
 
 @lru_cache
+def get_candidate_action_repository() -> CandidateActionRepository:
+    """Dependency provider returning the singleton CandidateActionRepository instance."""
+    return CandidateActionRepository()
+
+
+@lru_cache
 def get_decision_repository() -> DecisionRepository:
     """Dependency provider returning the singleton DecisionRepository instance."""
     return DecisionRepository(
         event_repository=get_decision_event_repository(),
         version_repository=get_decision_version_repository(),
+        graph_repository=get_decision_graph_repository(),
+        action_repository=get_candidate_action_repository(),
+    )
+
+
+@lru_cache
+def get_candidate_action_service() -> CandidateActionService:
+    """Dependency provider returning the singleton CandidateActionService instance."""
+    return CandidateActionService(
+        decision_repository=get_decision_repository(),
+        action_repository=get_candidate_action_repository(),
         graph_repository=get_decision_graph_repository(),
     )
 
@@ -368,5 +400,90 @@ def get_decision_graph(
         )
 
     return DecisionGraphResponse.from_domain(graph)
+
+
+@router.post(
+    "/{decision_id}/actions",
+    response_model=CandidateActionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create candidate action",
+    description="Creates a strongly typed candidate action representing an operational alternative for an existing decision.",
+)
+def create_candidate_action(
+    decision_id: str,
+    payload: CreateCandidateActionRequest,
+    action_service: CandidateActionService = Depends(get_candidate_action_service),
+) -> CandidateActionResponse:
+    try:
+        action = action_service.create_candidate_action(
+            decision_id=decision_id,
+            action_type=payload.action_type,
+            parameters=payload.parameters,
+            description=payload.description,
+        )
+    except DecisionNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except DuplicateCandidateActionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except (IneligibleSupplierError, SupplierNotFoundError, ValidationError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    return CandidateActionResponse.from_domain(action)
+
+
+@router.get(
+    "/{decision_id}/actions",
+    response_model=list[CandidateActionResponse],
+    summary="List candidate actions",
+    description="Retrieves all candidate actions associated with a specific operational decision in deterministic order.",
+)
+def list_candidate_actions(
+    decision_id: str,
+    action_service: CandidateActionService = Depends(get_candidate_action_service),
+) -> list[CandidateActionResponse]:
+    try:
+        actions = action_service.list_candidate_actions(decision_id=decision_id)
+    except DecisionNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    return [CandidateActionResponse.from_domain(a) for a in actions]
+
+
+@router.get(
+    "/{decision_id}/actions/{action_id}",
+    response_model=CandidateActionResponse,
+    summary="Get candidate action by ID",
+    description="Retrieves a specific candidate action belonging to the specified business decision.",
+)
+def get_candidate_action_by_id(
+    decision_id: str,
+    action_id: str,
+    action_service: CandidateActionService = Depends(get_candidate_action_service),
+) -> CandidateActionResponse:
+    try:
+        action = action_service.get_candidate_action(
+            decision_id=decision_id,
+            action_id=action_id,
+        )
+    except (DecisionNotFoundError, CandidateActionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    return CandidateActionResponse.from_domain(action)
+
 
 

@@ -130,4 +130,65 @@ export interface DecisionGraphRecord {
   updated_at: string;
 }
 
+/**
+ * Candidate action operational types matching Day 16 FastAPI ActionType enum.
+ */
+export type CandidateActionType = 'DO_NOTHING' | 'PLACE_ORDER' | 'SWITCH_SUPPLIER';
+
+export type ActionType = CandidateActionType;
+
+/**
+ * Parameters for DO_NOTHING candidate action.
+ */
+export type DoNothingParameters = Record<string, never>;
+
+/**
+ * Parameters for PLACE_ORDER candidate action.
+ */
+export interface PlaceOrderParameters {
+  quantity: number;
+  order_quantity?: number;
+}
+
+/**
+ * Parameters for SWITCH_SUPPLIER candidate action.
+ */
+export interface SwitchSupplierParameters {
+  target_supplier_id: string;
+  supplier_id?: string;
+}
+
+export type CandidateActionParameters =
+  | DoNothingParameters
+  | PlaceOrderParameters
+  | SwitchSupplierParameters;
+
+/**
+ * Candidate action record matching Day 16 FastAPI CandidateActionResponse schema.
+ */
+export interface CandidateActionRecord {
+  id: string;
+  action_id: string;
+  decision_id: string;
+  type: CandidateActionType;
+  action_type: CandidateActionType;
+  parameters: CandidateActionParameters;
+  created_at: string;
+  description: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export type CandidateActionResponse = CandidateActionRecord;
+
+/**
+ * Payload contract for creating a candidate action.
+ */
+export interface CreateCandidateActionRequest {
+  type?: CandidateActionType;
+  action_type?: CandidateActionType;
+  parameters?: Record<string, unknown>;
+  description?: string | null;
+}
+
+
 

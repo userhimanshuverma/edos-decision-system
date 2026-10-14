@@ -9,6 +9,7 @@ from app.domain.decision import Decision, DecisionStatus
 from app.domain.decision_event import DecisionEvent, DecisionEventType
 from app.domain.decision_version import DecisionVersion
 from app.lifecycle.service import DecisionLifecycleService
+from app.repositories.candidate_action_repository import CandidateActionRepository
 from app.repositories.decision_event_repository import DecisionEventRepository
 from app.repositories.decision_graph_repository import DecisionGraphRepository
 from app.repositories.decision_version_repository import DecisionVersionRepository
@@ -33,6 +34,7 @@ class DecisionRepository:
         event_repository: DecisionEventRepository | None = None,
         version_repository: DecisionVersionRepository | None = None,
         graph_repository: DecisionGraphRepository | None = None,
+        action_repository: CandidateActionRepository | None = None,
     ) -> None:
         """Initializes the repository with optional preloaded decisions and dataset."""
         if dataset is None:
@@ -59,6 +61,11 @@ class DecisionRepository:
             graph_repository
             if graph_repository is not None
             else DecisionGraphRepository()
+        )
+        self._action_repository = (
+            action_repository
+            if action_repository is not None
+            else CandidateActionRepository()
         )
         self._decisions: dict[str, Decision] = {}
         self._counter: int = 0
@@ -92,6 +99,11 @@ class DecisionRepository:
     def graph_repository(self) -> DecisionGraphRepository:
         """Returns the DecisionGraphRepository instance managing decision graphs."""
         return self._graph_repository
+
+    @property
+    def action_repository(self) -> CandidateActionRepository:
+        """Returns the CandidateActionRepository instance managing candidate actions."""
+        return self._action_repository
 
 
     def generate_id(self) -> str:
@@ -286,10 +298,11 @@ class DecisionRepository:
         )
 
     def clear(self) -> None:
-        """Clears all stored decisions, audit events, versions, graphs, and resets sequence counters."""
+        """Clears all stored decisions, audit events, versions, graphs, actions, and resets sequence counters."""
         self._decisions.clear()
         self._counter = 0
         self._event_repository.clear()
         self._version_repository.clear()
         self._graph_repository.clear()
+        self._action_repository.clear()
 

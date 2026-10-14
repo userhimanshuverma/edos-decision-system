@@ -52,7 +52,7 @@ Human Approval
 
 ## Current Status
 
-**Day 15: Decision Graph & Provenance Foundation (Model the Decision Phase Complete)**
+**Day 16: Candidate Action Model (Make the Decision Phase Commenced)**
 
 The repository currently establishes:
 - Standard repository layout and conventions
@@ -64,8 +64,9 @@ The repository currently establishes:
 - Decision Event History and audit trail (`DecisionEvent`, `DecisionEventType`)
 - Historical Decision Version snapshots (`DecisionVersion`, `DecisionSnapshot`)
 - Decision Graph & Provenance Foundation (`DecisionGraph`, `GraphNode`, `GraphEdge`, `GraphNodeType`, `GraphRelationshipType`)
-- In-memory repositories with deep defensive copies and deterministic ordering
-- Comprehensive automated test suites across domain, repository, and API layers (461 backend tests)
+- Candidate Action Model representing operational alternatives (`DO_NOTHING`, `PLACE_ORDER`, `SWITCH_SUPPLIER`) with strict parameter typing and supplier eligibility validation
+- In-memory repositories with deep defensive copies, deterministic ordering, and Decision Graph consistency
+- Comprehensive automated test suites across domain, repository, API, and graph integration layers (506 backend tests)
 
 ## 30-Day Roadmap
 

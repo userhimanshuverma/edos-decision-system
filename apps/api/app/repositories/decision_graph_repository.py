@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Sequence
+from datetime import datetime, timezone
+from typing import Any, Sequence
 
 from app.domain.decision import Decision
 from app.domain.decision_graph import (
@@ -8,6 +9,7 @@ from app.domain.decision_graph import (
     GraphEdge,
     GraphNode,
     GraphNodeType,
+    GraphRelationshipType,
 )
 
 
@@ -176,6 +178,115 @@ class DecisionGraphRepository:
         self._counter = 0
         self._node_counter = 0
         self._edge_counter = 0
+
+    def update_graph(self, graph: DecisionGraph) -> DecisionGraph:
+        """Updates an existing stored graph with a new validated version.
+
+        Raises:
+            KeyError: If the graph ID does not exist in repository.
+        """
+        norm_id = graph.id.strip()
+        if norm_id not in self._graphs:
+            raise KeyError(f"Decision graph '{graph.id}' not found")
+        stored_copy = graph.model_copy(deep=True)
+        self._graphs[norm_id] = stored_copy
+        return stored_copy.model_copy(deep=True)
+
+    def attach_action_node(
+        self,
+        decision_id: str,
+        action: Any,
+    ) -> tuple[GraphNode, GraphEdge | None] | tuple[None, None]:
+        """Attaches an ACTION node (and GENERATES edge from CONTEXT if present) to an existing decision graph.
+
+        Returns (action_node, edge) if attached, or (None, None) if no graph exists for the decision.
+        Raises GraphIntegrityError if graph integrity rules are violated.
+        """
+        norm_decision_id = decision_id.strip()
+        graph_id = self._by_decision_id.get(norm_decision_id)
+        if graph_id is None:
+            return None, None
+        graph = self._graphs[graph_id]
+
+        action_node_id = f"{norm_decision_id}-node-{action.id}"
+        action_node = GraphNode(
+            id=action_node_id,
+            node_type=GraphNodeType.ACTION,
+            decision_id=norm_decision_id,
+            label=f"Candidate Action: {action.action_type.value} ({action.id})",
+            metadata={
+                "action_id": action.id,
+                "action_type": action.action_type.value,
+                "parameters": action.parameters.model_dump(mode="json")
+                if hasattr(action.parameters, "model_dump")
+                else action.parameters,
+            },
+            created_at=action.created_at,
+        )
+
+        context_node = next(
+            (n for n in graph.nodes if n.node_type == GraphNodeType.CONTEXT),
+            None,
+        )
+        edge = None
+        if context_node is not None:
+            edge_id = f"EDG-{norm_decision_id}-{action.id}"
+            edge = GraphEdge(
+                id=edge_id,
+                source_id=context_node.id,
+                target_id=action_node.id,
+                relationship_type=GraphRelationshipType.GENERATES,
+                decision_id=norm_decision_id,
+            )
+
+        updated_nodes = list(graph.nodes) + [action_node]
+        updated_edges = list(graph.edges) + ([edge] if edge is not None else [])
+
+        # Validate graph integrity by constructing a new DecisionGraph
+        updated_graph = DecisionGraph(
+            id=graph.id,
+            decision_id=graph.decision_id,
+            nodes=updated_nodes,
+            edges=updated_edges,
+            created_at=graph.created_at,
+            updated_at=datetime.now(timezone.utc),
+        )
+        # Store deep copy only after successful validation
+        self._graphs[graph.id] = updated_graph.model_copy(deep=True)
+        return action_node, edge
+
+    def detach_action_node(
+        self,
+        decision_id: str,
+        action_id: str,
+    ) -> bool:
+        """Detaches an ACTION node and any incident edges from the decision graph (rollback helper)."""
+        norm_decision_id = decision_id.strip()
+        graph_id = self._by_decision_id.get(norm_decision_id)
+        if graph_id is None:
+            return False
+        graph = self._graphs[graph_id]
+        target_node_id = f"{norm_decision_id}-node-{action_id}"
+
+        remaining_nodes = [n for n in graph.nodes if n.id != target_node_id]
+        if len(remaining_nodes) == len(graph.nodes):
+            return False
+
+        remaining_edges = [
+            e for e in graph.edges
+            if e.source_id != target_node_id and e.target_id != target_node_id
+        ]
+
+        updated_graph = DecisionGraph(
+            id=graph.id,
+            decision_id=graph.decision_id,
+            nodes=remaining_nodes,
+            edges=remaining_edges,
+            created_at=graph.created_at,
+            updated_at=datetime.now(timezone.utc),
+        )
+        self._graphs[graph.id] = updated_graph.model_copy(deep=True)
+        return True
 
     def __len__(self) -> int:
         """Returns total number of graphs currently stored."""

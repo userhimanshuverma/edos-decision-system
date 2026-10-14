@@ -773,6 +773,85 @@ The repository is structured according to a phased 30-day plan. Here is a detail
   - Database migrations, graph databases, or distributed infrastructure.
   - Frontend graph visualization UI.
 
+### 4.16 Day 16: Candidate Action Model
+* **Objective**:
+  - Implement a strongly typed **Candidate Action Model** that explicitly represents possible operational interventions associated with a business decision.
+  - Fundamentally answer: **"What could we do?"** while strictly leaving **"Which action should we choose?"** to subsequent milestones (Days 19–20).
+  - Provide typed domain models, deterministic unique identifier generation (`ACT-XXXX`), in-memory repository storage, application coordination service, Decision Graph integration, and REST API endpoints.
+* **Separation of Concerns: Candidate Action vs. Recommendation**:
+  - **Candidate Action**: An intended, explicit operational alternative (e.g., place order for 100 units, switch to supplier B, or do nothing). It has validated parameters but NO calculated scores, rankings, recommendation status, stockout probabilities, constraint simulation results, or AI justifications.
+  - **Recommendation / Selected Action (Day 20)**: The evaluated, scored, and chosen best action backed by evidence and mathematical proof sheets. Day 16 models alternatives without choosing among them.
+* **Domain Models (`apps/api/app/domain/candidate_action.py`)**:
+  - `ActionType` / `CandidateActionType`: Constrained enumeration of candidate operational interventions:
+    - `DO_NOTHING`: Intentional choice to take no operational intervention. Rejects extraneous order or supplier parameters.
+    - `PLACE_ORDER`: Replenishment order with an explicitly specified, validated positive quantity (`quantity > 0`). Rejects zero, negative, or non-integer quantities.
+    - `SWITCH_SUPPLIER`: Proposed operational supplier change identifying the target supplier (`target_supplier_id`). Validates that the referenced supplier exists and is eligible (active) according to domain data.
+  - Strongly typed parameter models with `extra="forbid"`:
+    - `DoNothingParameters`: Empty model strictly forbidding extra parameters.
+    - `PlaceOrderParameters`: Validates strictly positive integer `quantity` (supports `order_quantity` alias).
+    - `SwitchSupplierParameters`: Validates non-empty `target_supplier_id` (supports `supplier_id` alias).
+  - `CandidateAction`: Strongly typed domain model capturing:
+    - `id`: Stable unique action identifier (`ACT-XXXX`).
+    - `decision_id`: Associated business decision identifier (`DEC-XXXX`).
+    - `action_type`: Constrained `ActionType` (aliased as `type`).
+    - `parameters`: Validated, typed parameter model strictly matching `action_type`.
+    - `created_at`: Timezone-aware UTC timestamp.
+    - `description`: Optional human-readable description or label.
+    - `metadata`: Structured dictionary for action metadata.
+* **Supplier Reference & Eligibility Validation**:
+  - `validate_supplier_eligibility`: Domain function validating that proposed target suppliers exist and are active:
+    - `SupplierNotFoundError`: Raised when the referenced supplier ID does not exist in domain data.
+    - `IneligibleSupplierError`: Raised when the referenced supplier exists but is inactive (`active=False`).
+* **Candidate Action Repository (`apps/api/app/repositories/candidate_action_repository.py`)**:
+  - Dedicated in-memory data access layer for candidate actions:
+    - `record(action)`: Stores validated action with duplicate ID protection (`DuplicateCandidateActionError`).
+    - `create_action(decision_id, action_type, parameters, ...)`: Convenience factory generating sequential `ACT-XXXX` IDs.
+    - `get_by_id(action_id)`: Retrieves single action by ID; returns `None` if not found.
+    - `list_by_decision_id(decision_id)`: Retrieves actions filtered by decision sorted deterministically by `(created_at, id)`.
+    - `list_all(decision_id=None)`: Lists all actions or filtered actions with deterministic ordering.
+    - `remove(action_id)`: Rollback helper for failure scenarios.
+    - `clear()`: Clears stored actions and resets sequence counter (`ACT-0001`).
+  - In-memory guarantees: deep defensive copying on read and write, deterministic ordering, and decision isolation.
+* **Decision Graph Integration & Consistency Guarantees**:
+  - Integrated with the existing Decision Graph using the foundational `GraphNodeType.ACTION` node type.
+  - Graph nodes reference candidate actions using the deterministic convention:
+    `node_id = f"{decision_id}-node-{action_id}"`
+    `node_type = GraphNodeType.ACTION`
+    `label = f"Candidate Action: {action_type} ({action_id})"`
+    `metadata = {"action_id": action_id, "action_type": action_type, "parameters": ...}`
+  - Directed edges connect existing `CONTEXT` nodes to the candidate `ACTION` node using `GraphRelationshipType.GENERATES` (`CONTEXT -> ACTION`), conforming to the `ALLOWED_RELATIONSHIPS` matrix.
+  - `CandidateActionService` coordinates persistence and graph synchronization with explicit rollback:
+    - Records candidate action in repository first.
+    - If a decision graph exists, attaches action node and directed edge.
+    - If graph attachment fails, explicitly rolls back and removes the candidate action from repository, ensuring zero state corruption.
+    - If no graph exists for the decision, action persistence succeeds independently.
+* **FastAPI Candidate Action APIs (`apps/api/app/api/decision.py`)**:
+  - `POST /api/decisions/{decision_id}/actions`: Creates a candidate action for an existing decision (HTTP 201 Created; HTTP 404 for unknown decision; HTTP 422 for malformed parameters, invalid quantities, or ineligible suppliers).
+  - `GET /api/decisions/{decision_id}/actions`: Lists candidate actions for a decision in deterministic order (HTTP 200 OK; HTTP 404 for unknown decision; `[]` for decision with no actions).
+  - `GET /api/decisions/{decision_id}/actions/{action_id}`: Retrieves a specific candidate action belonging to the decision (HTTP 200 OK; HTTP 404 for unknown decision, unknown action, or cross-decision mismatch).
+  - Route aliases fully preserved: `/api/decisions`, `/decisions`, `/api/decision`, `/decision`.
+* **Frontend Typing Preparation (`apps/web/lib/types/decision.ts`)**:
+  - Exported TypeScript contracts: `CandidateActionType`, `DoNothingParameters`, `PlaceOrderParameters`, `SwitchSupplierParameters`, `CandidateActionParameters`, `CandidateActionRecord`, `CandidateActionResponse`, and `CreateCandidateActionRequest`.
+* **Automated Test Coverage**:
+  - 45 new unit, repository, API, and graph integration tests across:
+    - `test_candidate_action.py`: Domain validation for all 3 action types, parameter typing, positive quantity checks, parameter mismatch rejection, extra field forbidding, supplier eligibility, and serialization round-trips.
+    - `test_candidate_action_repository.py`: Sequential ID generation (ACT-XXXX), duplicate protection, defensive copies, cross-decision isolation, deterministic ordering, unknown ID handling, rollback, and clear resets.
+    - `test_candidate_action_api.py`: POST creation, GET listing, GET single action, HTTP 404 on unknown decision/action/cross-decision, HTTP 422 on invalid parameters/suppliers, empty listing HTTP 200, route aliases, and backward compatibility with Days 11–15 endpoints.
+    - `test_decision_graph_action_integration.py`: Conformance to `ALLOWED_RELATIONSHIPS` matrix, graph node attachment, GENERATES edge creation, persistence without graph, rollback on simulated graph failure, and preservation of decision events and versions.
+  - Full backend pytest suite: **506 tests passing** with zero regressions.
+  - Frontend test suite (9 tests passing) and Next.js production build passing with zero errors.
+* **Strictly Out of Scope (Deferred to Days 17+)**:
+  - Automatic replenishment quantity calculations (Day 17).
+  - Stockout-risk calculation (Day 18).
+  - Action scoring and ranking (Day 19).
+  - Recommendation selection (Day 20).
+  - Constraint and policy evaluation engines.
+  - Scenario simulation.
+  - Mathematical evidence and provenance execution.
+  - AI explanations and decision Q&A.
+  - Human approval workflows.
+  - Frontend Candidate Action Workspace UI.
+
 ---
 
 
@@ -809,14 +888,14 @@ edos-decision-system/
 │   │   ├── app/
 │   │   │   ├── config.py              # Environment configuration & settings class
 │   │   │   ├── main.py                # FastAPI app initialization & /health route
-│   │   │   ├── api/                   # FastAPI route handlers & schemas (Days 6–13)
+│   │   │   ├── api/                   # FastAPI route handlers & schemas (Days 6–16)
 │   │   │   │   ├── __init__.py        # API router & schema exports
-│   │   │   │   ├── schemas.py         # Pydantic v2 schemas (Inventory, Demand, Supplier, Context, Decision, DecisionEvent)
+│   │   │   │   ├── schemas.py         # Pydantic v2 schemas (Inventory, Demand, Supplier, Context, Decision, Events, Graphs, Actions)
 │   │   │   │   ├── inventory.py       # Inventory HTTP endpoints & dependency injection (Day 6)
 │   │   │   │   ├── demand.py          # Demand HTTP endpoints, filters & trend (Day 7)
 │   │   │   │   ├── supplier.py        # Supplier HTTP endpoints & risk context (Day 8)
 │   │   │   │   ├── context.py         # Decision Context HTTP endpoint & aggregation (Day 9)
-│   │   │   │   └── decision.py        # Decision HTTP endpoints, create, list, patch & events (Days 11–13)
+│   │   │   │   └── decision.py        # Decision HTTP endpoints, lifecycle, events, versions, graphs & candidate actions (Days 11–16)
 │   │   │   ├── domain/                # ShopFlow domain models (Pydantic v2)
 │   │   │   │   ├── __init__.py        # Domain package exports
 │   │   │   │   ├── product.py         # Product model & validation
@@ -827,21 +906,28 @@ edos-decision-system/
 │   │   │   │   ├── context.py         # DecisionContext snapshot & derived metrics (Day 9)
 │   │   │   │   ├── decision.py        # Decision model & status validation (Day 11)
 │   │   │   │   ├── decision_event.py  # DecisionEvent model & event type validation (Day 13)
-│   │   │   │   └── decision_version.py # DecisionVersion & DecisionSnapshot models (Day 14)
+│   │   │   │   ├── decision_version.py # DecisionVersion & DecisionSnapshot models (Day 14)
+│   │   │   │   ├── decision_graph.py  # DecisionGraph, GraphNode, GraphEdge models (Day 15)
+│   │   │   │   └── candidate_action.py # CandidateAction & parameter models (Day 16)
 │   │   │   ├── context/               # Context Engine Application Layer (Day 9)
 │   │   │   │   ├── __init__.py        # Context engine package exports
 │   │   │   │   └── engine.py          # ContextEngine aggregation & state synthesis
 │   │   │   ├── lifecycle/             # Decision Lifecycle Engine (Day 12)
 │   │   │   │   ├── __init__.py        # Lifecycle package exports
 │   │   │   │   └── service.py         # DecisionLifecycleService & state machine transitions (Day 12)
-│   │   │   ├── repositories/          # Application data access layer (Days 6–14)
+│   │   │   ├── candidate_actions/     # Candidate Action Service Layer (Day 16)
+│   │   │   │   ├── __init__.py        # Candidate action package exports
+│   │   │   │   └── service.py         # CandidateActionService & graph coordination (Day 16)
+│   │   │   ├── repositories/          # Application data access layer (Days 6–16)
 │   │   │   │   ├── __init__.py        # Repositories exports
 │   │   │   │   ├── inventory_repository.py # In-memory inventory query & filter operations (Day 6)
 │   │   │   │   ├── demand_repository.py # In-memory demand query, filter & trend operations (Day 7)
 │   │   │   │   ├── supplier_repository.py # In-memory supplier query & risk classification (Day 8)
-│   │   │   │   ├── decision_repository.py # In-memory decision storage, ordering & lifecycle updates (Days 11–14)
+│   │   │   │   ├── decision_repository.py # In-memory decision storage, ordering & lifecycle updates (Days 11–16)
 │   │   │   │   ├── decision_event_repository.py # In-memory decision audit history events & chronological sorting (Day 13)
-│   │   │   │   └── decision_version_repository.py # In-memory decision version snapshots & deterministic ordering (Day 14)
+│   │   │   │   ├── decision_version_repository.py # In-memory decision version snapshots & deterministic ordering (Day 14)
+│   │   │   │   ├── decision_graph_repository.py # In-memory decision graphs & node/edge relationships (Days 15–16)
+│   │   │   │   └── candidate_action_repository.py # In-memory candidate action storage & deterministic ordering (Day 16)
 │   │   │   └── data/                  # ShopFlow Synthetic Data Engine (Days 5 & 7)
 │   │   │       ├── __init__.py        # Engine exports
 │   │   │       ├── dataset.py         # ShopFlowDataset container & Scenario models
@@ -869,9 +955,16 @@ edos-decision-system/
 │   │       ├── test_decision_version.py # Decision version domain validation & serialization tests (Day 14)
 │   │       ├── test_decision_version_repository.py # Decision version repository unit & order tests (Day 14)
 │   │       ├── test_decision_version_api.py # Decision version API endpoint & snapshot immutability tests (Day 14)
+│   │       ├── test_decision_graph.py # Decision graph domain validation & graph integrity tests (Day 15)
+│   │       ├── test_decision_graph_repository.py # Decision graph repository unit & order tests (Day 15)
+│   │       ├── test_decision_graph_api.py # Decision graph API endpoint & routing tests (Day 15)
+│   │       ├── test_candidate_action.py # Candidate action domain validation & parameter tests (Day 16)
+│   │       ├── test_candidate_action_repository.py # Candidate action repository unit & order tests (Day 16)
+│   │       ├── test_candidate_action_api.py # Candidate action API endpoint & error handling tests (Day 16)
+│   │       ├── test_decision_graph_action_integration.py # Graph action node attachment & rollback tests (Day 16)
 │   │       ├── test_lifecycle.py      # Decision Lifecycle transitions & state machine tests (Days 12–13)
-│   │       ├── test_decision_repository.py # Decision repository unit, order & duplicate tests (Days 11–14)
-│   │       └── test_decision_api.py   # Decision API endpoint, 404, status patch & events tests (Days 11–13)
+│   │       ├── test_decision_repository.py # Decision repository unit, order & duplicate tests (Days 11–16)
+│   │       └── test_decision_api.py   # Decision API endpoint, 404, status patch & events tests (Days 11–16)
 │   └── web/                           # Next.js web frontend service
 │       ├── Dockerfile                 # Web container definition
 │       ├── package.json               # Node.js dependencies & scripts
@@ -897,7 +990,7 @@ edos-decision-system/
 │               ├── demand.ts          # Demand operational & trend type contracts (Day 7)
 │               ├── supplier.ts        # Supplier operational & risk type contracts (Day 8)
 │               ├── context.ts         # Decision Context operational type contracts (Day 9)
-│               └── decision.ts        # Decision, status & event operational type contracts (Days 12–13)
+│               └── decision.ts        # Decision, status, event, version, graph & candidate action contracts (Days 12–16)
 ├── data/                              # Data persistence & fixture directories
 │   ├── raw/                           # Raw input datasets
 │   ├── processed/                     # Sanitized operational data & scenario fixtures
@@ -948,19 +1041,19 @@ edos-decision-system/
 │                 │ - Day 9: Context Engine & situation synthesis (Done)    │
 │                 │ - Day 10: Decision Context UI & operational state (Done)│
 ├─────────────────┼─────────────────────────────────────────────────────────┤
-│ Days 11–15      │ Model the Decision                                      │
+│ Days 11–15      │ Model the Decision (Days 11, 12, 13, 14 & 15 Completed) │
 │                 │ - Day 11: Decision Model & identity foundation (Done)   │
 │                 │ - Day 12: Decision Lifecycle & transition engine (Done) │
 │                 │ - Day 13: Decision Event History & audit trail (Done)   │
 │                 │ - Day 14: Decision Versioning & snapshots (Done)        │
-│                 │ - Candidate action generation (Expedite, Split, Source) │
-│                 │ - Rule-based policy validation & hard-constraint checks │
-│                 │ - Counterfactual simulation & scenario impact engine    │
+│                 │ - Day 15: Decision Graph & provenance foundation (Done) │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
 │ Days 16–20      │ Make the Decision                                       │
-│                 │ - Deterministic scoring & decision ranking runtime      │
-│                 │ - Trade-off comparison matrix                           │
-│                 │ - Human-in-the-loop approval & rejection state machine  │
+│                 │ - Day 16: Candidate Action Model (Done)                 │
+│                 │ - Day 17: Replenishment quantity calculation logic      │
+│                 │ - Day 18: Stockout risk calculation engine              │
+│                 │ - Day 19: Action scoring & decision ranking runtime     │
+│                 │ - Day 20: Recommendation selection & trade-offs         │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
 │ Days 21–25      │ Trust the Decision                                      │
 │                 │ - Evidence sheets & formula proof calculation views     │
@@ -973,3 +1066,4 @@ edos-decision-system/
 │                 │ - End-to-end integration polish & final demo scenarios │
 └─────────────────┴─────────────────────────────────────────────────────────┘
 ```
+

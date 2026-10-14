@@ -25,6 +25,11 @@ from app.repositories.decision_graph_repository import (
     DuplicateDecisionGraphError,
 )
 
+from app.repositories.candidate_action_repository import (
+    CandidateActionRepository,
+    DuplicateCandidateActionError,
+)
+
 __all__ = [
     "DecisionRepository",
     "DuplicateDecisionError",
@@ -36,6 +41,8 @@ __all__ = [
     "ConflictingVersionNumberError",
     "DecisionGraphRepository",
     "DuplicateDecisionGraphError",
+    "CandidateActionRepository",
+    "DuplicateCandidateActionError",
     "DemandRepository",
     "InventoryRepository",
     "SupplierRepository",

@@ -551,4 +551,69 @@ class DecisionGraphResponse(BaseModel):
         )
 
 
+# Day 16 Candidate Action Schemas
+from app.domain.candidate_action import ActionType, CandidateAction  # noqa: E402
+
+
+class CreateCandidateActionRequest(BaseModel):
+    """Request payload for creating a candidate action for a business decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", populate_by_name=True)
+
+    action_type: ActionType = Field(..., alias="type", description="Constrained category of candidate action")
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Action-specific parameters")
+    description: str | None = Field(default=None, description="Optional human-readable label or description")
+
+    @property
+    def type(self) -> ActionType:
+        return self.action_type
+
+
+class CandidateActionResponse(BaseModel):
+    """Clean typed response model representing a candidate operational action."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", populate_by_name=True)
+
+    id: str = Field(..., description="Unique action identifier")
+    action_id: str = Field(..., description="Action identifier (alias for id)")
+    decision_id: str = Field(..., description="Referenced Decision identifier")
+    type: ActionType = Field(..., description="Constrained category of candidate action")
+    action_type: ActionType = Field(..., description="Action type (alias for type)")
+    parameters: dict[str, Any] = Field(..., description="Validated action-specific parameters")
+    created_at: datetime = Field(..., description="UTC creation timestamp")
+    description: str | None = Field(default=None, description="Optional human-readable label or description")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Structured metadata")
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "action_id" not in data and "id" in data:
+                data["action_id"] = data["id"]
+            elif "id" not in data and "action_id" in data:
+                data["id"] = data["action_id"]
+            if "action_type" not in data and "type" in data:
+                data["action_type"] = data["type"]
+            elif "type" not in data and "action_type" in data:
+                data["type"] = data["action_type"]
+        return data
+
+    @classmethod
+    def from_domain(cls, action: CandidateAction) -> CandidateActionResponse:
+        return cls(
+            id=action.id,
+            action_id=action.id,
+            decision_id=action.decision_id,
+            type=action.action_type,
+            action_type=action.action_type,
+            parameters=action.parameters.model_dump(mode="json")
+            if hasattr(action.parameters, "model_dump")
+            else action.parameters,
+            created_at=action.created_at,
+            description=action.description,
+            metadata=action.metadata,
+        )
+
+
+
 

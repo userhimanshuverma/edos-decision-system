@@ -32,6 +32,18 @@ from app.domain.decision_graph import (
     InvalidGraphRelationshipError,
     SelfLoopEdgeError,
 )
+from app.domain.candidate_action import (
+    ActionParameters,
+    ActionType,
+    CandidateAction,
+    CandidateActionType,
+    DoNothingParameters,
+    IneligibleSupplierError,
+    PlaceOrderParameters,
+    SupplierNotFoundError,
+    SwitchSupplierParameters,
+    validate_supplier_eligibility,
+)
 
 __all__ = [
     "Product",
@@ -66,7 +78,14 @@ __all__ = [
     "SupplierContext",
     "DerivedContextMetrics",
     "DecisionContext",
+    "ActionParameters",
+    "ActionType",
+    "CandidateAction",
+    "CandidateActionType",
+    "DoNothingParameters",
+    "IneligibleSupplierError",
+    "PlaceOrderParameters",
+    "SupplierNotFoundError",
+    "SwitchSupplierParameters",
+    "validate_supplier_eligibility",
 ]
-
-
-
