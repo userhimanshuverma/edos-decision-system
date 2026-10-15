@@ -854,6 +854,89 @@ The repository is structured according to a phased 30-day plan. Here is a detail
 
 ---
 
+### 4.17 Day 17: Replenishment Quantity Calculation Logic
+
+Day 17 introduces deterministic replenishment calculation logic that answers the question:
+> **"How much should we order under an explicitly defined replenishment policy?"**
+
+It strictly does NOT evaluate alternatives or select which candidate action is optimal (deferred to Days 18–20).
+
+* **Implemented Business Formulas & Policies**:
+  - **Missing Parameter Identification**: The existing EDOS domain entities (`Product`, `Inventory`) explicitly store `reorder_point` ($s$), physical/reserved quantities, historical demand, and supplier lead times, but do not persist an arbitrary `target_stock` ($S$) or batch size. Day 17 formalizes this constraint into three deterministic, auditable policies:
+  1. `REORDER_POINT_DEFICIT` (Baseline Minimum Buffer Policy):
+     - Uses only immediate operational data without assuming missing parameters or arbitrary multipliers:
+       $$\text{deficit} = \max(0, \text{reorder\_point} - \text{available\_quantity})$$
+       $$\text{replenishment\_quantity} = \text{deficit} \quad \text{if } \text{available\_quantity} \le \text{reorder\_point} \text{ else } 0$$
+     - Target stock level: $\text{target\_stock} = \text{reorder\_point}$.
+     - Assumptions: The operational goal is to restore inventory back to the safe replenishment threshold.
+     - Limitations: Does not buffer against demand consumption during supplier fulfillment transit.
+  2. `LEAD_TIME_DEMAND` (Lead Time Demand Buffer Policy):
+     - Uses observed consumption velocity and primary supplier fulfillment latency:
+       $$\text{lead\_time\_demand} = \lceil \text{average\_daily\_demand} \times \text{lead\_time\_days} \rceil$$
+       $$\text{target\_stock} = \text{reorder\_point} + \text{lead\_time\_demand}$$
+       $$\text{replenishment\_quantity} = \max(0, \text{target\_stock} - \text{available\_quantity}) \quad \text{if } \text{available\_quantity} \le \text{reorder\_point} \text{ else } 0$$
+     - Edge Cases: Safe handling of zero demand ($\text{lead\_time\_demand} = 0$), zero lead time, and fractional rounding ($\lceil \cdot \rceil$).
+     - Assumptions: Historical average daily demand is representative of consumption over the stated supplier lead time; lead time is deterministic.
+     - Limitations: Does not calculate stochastic safety stock z-scores or model lead time variance (deferred to Day 18 stockout-risk modeling).
+  3. `TARGET_STOCK` (Explicit Order-Up-To Level Policy):
+     - Applies when an operator or upstream rule explicitly supplies the target stock level:
+       $$\text{replenishment\_quantity} = \max(0, \text{target\_stock} - \text{available\_quantity}) \quad \text{if } \text{available\_quantity} \le \text{reorder\_point} \text{ else } 0$$
+     - Enforces invariant: $\text{target\_stock} \ge \text{reorder\_point}$.
+     - Limitations: Requires external definition of target stock.
+
+* **Domain Model & Pure Calculation Function (`app/domain/replenishment.py`)**:
+  - `ReplenishmentPolicyType`: Enum representing `REORDER_POINT_DEFICIT`, `LEAD_TIME_DEMAND`, `TARGET_STOCK`.
+  - `ReplenishmentCalculationInputs`: Strongly typed Pydantic input model validating non-negative quantities, policy prerequisites, and trigger flags.
+  - `ReplenishmentBreakdown`: Auditable step-by-step mathematical breakdown including `available_quantity`, `reorder_point`, `target_stock`, `net_deficit`, `gross_deficit`, `lead_time_days`, `average_daily_demand`, `lead_time_demand`, `warehouse_capacity`, and `policy_notes`.
+  - `ReplenishmentCalculationResult`: Strongly typed result containing the calculated integer quantity ($\ge 0$), policy metadata, formula description, and breakdown.
+  - `calculate_replenishment_quantity(inputs)`: Pure function with zero HTTP, database, or network dependencies. Completely deterministic and reproducible.
+
+* **Application Orchestration Service (`app/replenishment/service.py`)**:
+  - `ReplenishmentService`: Coordinates inventory, demand, supplier, and decision repositories without duplicating Context Engine classification logic.
+  - Methods:
+    - `calculate_for_product_warehouse(product_id, warehouse_id, policy_type, ...)`
+    - `calculate_for_decision(decision_id, policy_type, ...)`
+  - Error Handling: Raises typed domain exceptions (`ProductNotFoundError`, `WarehouseNotFoundError`, `DecisionNotFoundError`, `MissingReplenishmentDataError`).
+  - Immutability: Guarantees zero mutation of operational inventory records, decisions, versions, events, or graph nodes during calculation.
+
+* **Integration with Candidate Actions (`CandidateActionService`)**:
+  - Maintains strict conceptual boundaries: calculation determines quantity; candidate action represents proposed operational intervention.
+  - `CandidateActionService.create_replenishment_candidate_action(decision_id, calculation_result)`: Explicitly creates a `PLACE_ORDER` action using the calculated quantity, attaching auditable calculation metadata (`source`, `policy_type`, `formula`, `target_stock`).
+  - Rejects zero replenishment quantities (reorder not triggered or inventory sufficient).
+  - Does NOT automatically generate candidate actions during calculation runs.
+
+* **API Endpoints (`apps/api/app/api/`)**:
+  - `POST /api/inventory/replenishment`: Calculates replenishment for a given `product_id` and `warehouse_id` with typed request payload (`CalculateReplenishmentRequest`).
+  - `GET /api/inventory/replenishment`: Query-parameter endpoint for ad-hoc calculation.
+  - `POST /api/decisions/{decision_id}/replenishment`: Calculates replenishment directly for the product and warehouse tied to an existing business decision.
+  - `GET /api/decisions/{decision_id}/replenishment`: Query-parameter alias for decision replenishment.
+  - Standardized HTTP status codes: 200 OK, 404 Not Found (unknown product, warehouse, or decision), 422 Unprocessable Entity (invalid policy parameters or missing required policy data).
+
+* **Frontend Typing Preparation (`apps/web/lib/types/inventory.ts`)**:
+  - Exported TypeScript contracts: `ReplenishmentPolicyType`, `ReplenishmentBreakdown`, `ReplenishmentResponse`, and `CalculateReplenishmentRequest`.
+
+* **Automated Test Coverage**:
+  - 46 new unit, service, API, and candidate action integration tests across:
+    - `test_replenishment.py`: Pure domain formula validation, input bounds, boundary conditions (at, below, above reorder point, zero inventory, negative inventory/backorders, zero demand, zero lead time), invariant checking, and determinism across 50 iterations.
+    - `test_replenishment_service.py`: Repository orchestration, product/warehouse/decision resolution, missing supplier handling, and zero mutation guarantees.
+    - `test_replenishment_api.py`: FastAPI endpoints, POST and GET methods, HTTP 404/422 status codes, and schema validation.
+    - `test_candidate_action_replenishment.py`: `PLACE_ORDER` action creation, metadata attachment, zero-quantity rejection, and decoupled execution.
+  - Full backend pytest suite: **552 tests passing** with zero warnings or regressions.
+  - Full frontend validation: ESLint passed with 0 warnings, Next.js production build passed.
+
+* **Strictly Out of Scope (Deferred to Days 18+)**:
+  - Stockout-risk calculation (Day 18).
+  - Action scoring and ranking (Day 19).
+  - Recommendation selection (Day 20).
+  - Constraint and policy evaluation engines.
+  - Scenario simulation.
+  - Mathematical evidence and provenance execution.
+  - AI explanations and decision Q&A.
+  - Human approval workflows.
+  - Frontend Candidate Action Workspace UI.
+
+---
+
 
 ## 5. Technology Stack & Directory Structure
 
@@ -1050,7 +1133,7 @@ edos-decision-system/
 ├─────────────────┼─────────────────────────────────────────────────────────┤
 │ Days 16–20      │ Make the Decision                                       │
 │                 │ - Day 16: Candidate Action Model (Done)                 │
-│                 │ - Day 17: Replenishment quantity calculation logic      │
+│                 │ - Day 17: Replenishment quantity calculation (Done)     │
 │                 │ - Day 18: Stockout risk calculation engine              │
 │                 │ - Day 19: Action scoring & decision ranking runtime     │
 │                 │ - Day 20: Recommendation selection & trade-offs         │

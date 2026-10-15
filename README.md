@@ -52,7 +52,7 @@ Human Approval
 
 ## Current Status
 
-**Day 16: Candidate Action Model (Make the Decision Phase Commenced)**
+**Day 17: Replenishment Quantity Calculation Logic (Make the Decision Phase)**
 
 The repository currently establishes:
 - Standard repository layout and conventions
@@ -65,8 +65,10 @@ The repository currently establishes:
 - Historical Decision Version snapshots (`DecisionVersion`, `DecisionSnapshot`)
 - Decision Graph & Provenance Foundation (`DecisionGraph`, `GraphNode`, `GraphEdge`, `GraphNodeType`, `GraphRelationshipType`)
 - Candidate Action Model representing operational alternatives (`DO_NOTHING`, `PLACE_ORDER`, `SWITCH_SUPPLIER`) with strict parameter typing and supplier eligibility validation
+- Deterministic Replenishment Quantity Calculation Logic under explicit policies (`REORDER_POINT_DEFICIT`, `LEAD_TIME_DEMAND`, `TARGET_STOCK`) with auditable mathematical breakdown
+- Decoupled Candidate Action integration generating explicit `PLACE_ORDER` actions from calculated quantities with complete provenance metadata
 - In-memory repositories with deep defensive copies, deterministic ordering, and Decision Graph consistency
-- Comprehensive automated test suites across domain, repository, API, and graph integration layers (506 backend tests)
+- Comprehensive automated test suites across domain, repository, service, API, and graph integration layers (552 backend tests)
 
 ## 30-Day Roadmap
 

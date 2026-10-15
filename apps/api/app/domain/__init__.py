@@ -44,6 +44,13 @@ from app.domain.candidate_action import (
     SwitchSupplierParameters,
     validate_supplier_eligibility,
 )
+from app.domain.replenishment import (
+    ReplenishmentBreakdown,
+    ReplenishmentCalculationInputs,
+    ReplenishmentCalculationResult,
+    ReplenishmentPolicyType,
+    calculate_replenishment_quantity,
+)
 
 __all__ = [
     "Product",
@@ -88,4 +95,9 @@ __all__ = [
     "SupplierNotFoundError",
     "SwitchSupplierParameters",
     "validate_supplier_eligibility",
+    "ReplenishmentPolicyType",
+    "ReplenishmentBreakdown",
+    "ReplenishmentCalculationInputs",
+    "ReplenishmentCalculationResult",
+    "calculate_replenishment_quantity",
 ]

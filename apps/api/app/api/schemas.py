@@ -615,5 +615,140 @@ class CandidateActionResponse(BaseModel):
         )
 
 
+# Day 17 Replenishment Schemas
+from app.domain.replenishment import (  # noqa: E402
+    ReplenishmentBreakdown,
+    ReplenishmentCalculationResult,
+    ReplenishmentPolicyType,
+)
+
+
+class CalculateReplenishmentRequest(BaseModel):
+    """Request payload for deterministic replenishment quantity calculation."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    product_id: str = Field(..., min_length=1, description="Referenced Product identifier")
+    warehouse_id: str = Field(..., min_length=1, description="Referenced Warehouse identifier")
+    policy_type: ReplenishmentPolicyType = Field(
+        default=ReplenishmentPolicyType.REORDER_POINT_DEFICIT,
+        description="Replenishment policy formula to apply",
+    )
+    target_stock: int | None = Field(
+        default=None,
+        ge=0,
+        description="Explicit target stock level (required if policy_type is TARGET_STOCK)",
+    )
+    supplier_id: str | None = Field(
+        default=None,
+        description="Optional supplier ID override for lead time demand calculation",
+    )
+    enforce_reorder_trigger: bool = Field(
+        default=True,
+        description="If True, only replenishes when available_quantity <= reorder_point",
+    )
+
+
+class DecisionReplenishmentRequest(BaseModel):
+    """Request payload for calculating replenishment for an existing business decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    policy_type: ReplenishmentPolicyType = Field(
+        default=ReplenishmentPolicyType.REORDER_POINT_DEFICIT,
+        description="Replenishment policy formula to apply",
+    )
+    target_stock: int | None = Field(
+        default=None,
+        ge=0,
+        description="Explicit target stock level (required if policy_type is TARGET_STOCK)",
+    )
+    supplier_id: str | None = Field(
+        default=None,
+        description="Optional supplier ID override for lead time demand calculation",
+    )
+    enforce_reorder_trigger: bool = Field(
+        default=True,
+        description="If True, only replenishes when available_quantity <= reorder_point",
+    )
+
+
+class ReplenishmentBreakdownResponse(BaseModel):
+    """Detailed deterministic mathematical calculation breakdown."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    available_quantity: int = Field(..., description="Available unreserved inventory units")
+    reorder_point: int = Field(..., ge=0, description="Replenishment trigger threshold")
+    is_below_reorder: bool = Field(..., description="True if available_quantity <= reorder_point")
+    target_stock: int = Field(..., ge=0, description="Target stock level determined by policy")
+    net_deficit: int = Field(
+        ...,
+        ge=0,
+        description="Units below reorder point: max(0, reorder_point - available_quantity)",
+    )
+    gross_deficit: int = Field(
+        ...,
+        ge=0,
+        description="Units below target stock: max(0, target_stock - available_quantity)",
+    )
+    lead_time_days: int | None = Field(default=None, ge=0, description="Supplier lead time in days, if applicable")
+    average_daily_demand: float | None = Field(
+        default=None,
+        ge=0.0,
+        description="Observed average daily demand, if applicable",
+    )
+    lead_time_demand: int | None = Field(
+        default=None,
+        ge=0,
+        description="Demand during lead time: ceil(average_daily_demand * lead_time_days)",
+    )
+    warehouse_capacity: int | None = Field(default=None, ge=0, description="Warehouse total storage capacity, if known")
+    policy_notes: list[str] = Field(default_factory=list, description="Step-by-step auditable calculation notes")
+
+
+class ReplenishmentResponse(BaseModel):
+    """Clean, typed response model representing deterministic replenishment calculation result."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    product_id: str = Field(..., description="Referenced Product identifier")
+    warehouse_id: str = Field(..., description="Referenced Warehouse identifier")
+    policy_type: ReplenishmentPolicyType = Field(..., description="Replenishment policy applied")
+    replenishment_quantity: int = Field(..., ge=0, description="Calculated deterministic order quantity")
+    is_replenishment_needed: bool = Field(..., description="True if replenishment quantity > 0")
+    available_quantity: int = Field(..., description="Available inventory units used by calculation")
+    target_stock: int = Field(..., ge=0, description="Target stock level determined by policy")
+    formula: str = Field(..., description="Textual description of the mathematical formula applied")
+    breakdown: ReplenishmentBreakdownResponse = Field(..., description="Detailed deterministic calculation breakdown")
+
+    @classmethod
+    def from_domain(cls, result: ReplenishmentCalculationResult) -> ReplenishmentResponse:
+        return cls(
+            product_id=result.product_id,
+            warehouse_id=result.warehouse_id,
+            policy_type=result.policy_type,
+            replenishment_quantity=result.replenishment_quantity,
+            is_replenishment_needed=result.is_replenishment_needed,
+            available_quantity=result.available_quantity,
+            target_stock=result.target_stock,
+            formula=result.formula,
+            breakdown=ReplenishmentBreakdownResponse(
+                available_quantity=result.breakdown.available_quantity,
+                reorder_point=result.breakdown.reorder_point,
+                is_below_reorder=result.breakdown.is_below_reorder,
+                target_stock=result.breakdown.target_stock,
+                net_deficit=result.breakdown.net_deficit,
+                gross_deficit=result.breakdown.gross_deficit,
+                lead_time_days=result.breakdown.lead_time_days,
+                average_daily_demand=result.breakdown.average_daily_demand,
+                lead_time_demand=result.breakdown.lead_time_demand,
+                warehouse_capacity=result.breakdown.warehouse_capacity,
+                policy_notes=result.breakdown.policy_notes,
+            ),
+        )
+
+
+
 
 

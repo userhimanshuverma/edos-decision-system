@@ -14,14 +14,24 @@ from app.api.schemas import (
     CreateDecisionVersionRequest,
     DecisionEventResponse,
     DecisionGraphResponse,
+    DecisionReplenishmentRequest,
     DecisionResponse,
     DecisionVersionResponse,
+    ReplenishmentPolicyType,
+    ReplenishmentResponse,
     UpdateDecisionStatusRequest,
 )
 from app.candidate_actions.service import (
     CandidateActionNotFoundError,
     CandidateActionService,
     DecisionNotFoundError,
+)
+from app.replenishment.service import (
+    DecisionNotFoundError as ReplenishmentDecisionNotFoundError,
+    MissingReplenishmentDataError,
+    ProductNotFoundError,
+    ReplenishmentService,
+    WarehouseNotFoundError,
 )
 from app.domain.candidate_action import (
     IneligibleSupplierError,
@@ -44,7 +54,9 @@ from app.repositories.decision_graph_repository import (
 )
 from app.repositories.decision_repository import DecisionRepository
 from app.repositories.decision_version_repository import DecisionVersionRepository
+from app.repositories.demand_repository import DemandRepository
 from app.repositories.inventory_repository import InventoryRepository
+from app.repositories.supplier_repository import SupplierRepository
 
 router = APIRouter()
 
@@ -91,6 +103,19 @@ def get_candidate_action_service() -> CandidateActionService:
         decision_repository=get_decision_repository(),
         action_repository=get_candidate_action_repository(),
         graph_repository=get_decision_graph_repository(),
+    )
+
+
+@lru_cache
+def get_decision_replenishment_service() -> ReplenishmentService:
+    """Dependency provider returning ReplenishmentService wired to decision repository."""
+    dec_repo = get_decision_repository()
+    shared_dataset = dec_repo.dataset
+    return ReplenishmentService(
+        inventory_repo=get_inventory_repository(),
+        demand_repo=DemandRepository(dataset=shared_dataset),
+        supplier_repo=SupplierRepository(dataset=shared_dataset),
+        decision_repo=dec_repo,
     )
 
 
@@ -484,6 +509,108 @@ def get_candidate_action_by_id(
         ) from exc
 
     return CandidateActionResponse.from_domain(action)
+
+
+@router.post(
+    "/{decision_id}/replenishment",
+    response_model=ReplenishmentResponse,
+    summary="Calculate replenishment for a decision",
+    description="Deterministically calculates replenishment order quantity under an explicit policy for a decision's product and warehouse.",
+)
+def calculate_decision_replenishment(
+    decision_id: str,
+    payload: DecisionReplenishmentRequest | None = None,
+    service: ReplenishmentService = Depends(get_decision_replenishment_service),
+) -> ReplenishmentResponse:
+    req = payload or DecisionReplenishmentRequest()
+    try:
+        result = service.calculate_for_decision(
+            decision_id=decision_id,
+            policy_type=req.policy_type,
+            target_stock=req.target_stock,
+            supplier_id=req.supplier_id,
+            enforce_reorder_trigger=req.enforce_reorder_trigger,
+        )
+        return ReplenishmentResponse.from_domain(result)
+    except (DecisionNotFoundError, ReplenishmentDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ProductNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except WarehouseNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (MissingReplenishmentDataError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/replenishment",
+    response_model=ReplenishmentResponse,
+    summary="Calculate replenishment for a decision via query parameters",
+    description="Query-parameter endpoint for calculating deterministic replenishment order quantity for a decision.",
+)
+def get_decision_replenishment(
+    decision_id: str,
+    policy_type: ReplenishmentPolicyType = Query(
+        default=ReplenishmentPolicyType.REORDER_POINT_DEFICIT,
+        description="Replenishment policy formula to apply",
+    ),
+    target_stock: int | None = Query(
+        default=None,
+        ge=0,
+        description="Explicit target stock level (required if policy_type is TARGET_STOCK)",
+    ),
+    supplier_id: str | None = Query(
+        default=None,
+        description="Optional supplier ID override for lead time demand calculation",
+    ),
+    enforce_reorder_trigger: bool = Query(
+        default=True,
+        description="If True, only replenishes when available_quantity <= reorder_point",
+    ),
+    service: ReplenishmentService = Depends(get_decision_replenishment_service),
+) -> ReplenishmentResponse:
+    try:
+        result = service.calculate_for_decision(
+            decision_id=decision_id,
+            policy_type=policy_type,
+            target_stock=target_stock,
+            supplier_id=supplier_id,
+            enforce_reorder_trigger=enforce_reorder_trigger,
+        )
+        return ReplenishmentResponse.from_domain(result)
+    except (DecisionNotFoundError, ReplenishmentDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ProductNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except WarehouseNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (MissingReplenishmentDataError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
 
 
 
