@@ -16,9 +16,12 @@ from app.api.schemas import (
     DecisionGraphResponse,
     DecisionReplenishmentRequest,
     DecisionResponse,
+    DecisionStockoutRiskRequest,
     DecisionVersionResponse,
     ReplenishmentPolicyType,
     ReplenishmentResponse,
+    StockoutRiskModelType,
+    StockoutRiskResponse,
     UpdateDecisionStatusRequest,
 )
 from app.candidate_actions.service import (
@@ -32,6 +35,13 @@ from app.replenishment.service import (
     ProductNotFoundError,
     ReplenishmentService,
     WarehouseNotFoundError,
+)
+from app.stockout_risk.service import (
+    DecisionNotFoundError as StockoutRiskDecisionNotFoundError,
+    MissingStockoutRiskDataError,
+    ProductNotFoundError as RiskProductNotFoundError,
+    StockoutRiskService,
+    WarehouseNotFoundError as RiskWarehouseNotFoundError,
 )
 from app.domain.candidate_action import (
     IneligibleSupplierError,
@@ -112,6 +122,19 @@ def get_decision_replenishment_service() -> ReplenishmentService:
     dec_repo = get_decision_repository()
     shared_dataset = dec_repo.dataset
     return ReplenishmentService(
+        inventory_repo=get_inventory_repository(),
+        demand_repo=DemandRepository(dataset=shared_dataset),
+        supplier_repo=SupplierRepository(dataset=shared_dataset),
+        decision_repo=dec_repo,
+    )
+
+
+@lru_cache
+def get_decision_stockout_risk_service() -> StockoutRiskService:
+    """Dependency provider returning StockoutRiskService wired to decision repository."""
+    dec_repo = get_decision_repository()
+    shared_dataset = dec_repo.dataset
+    return StockoutRiskService(
         inventory_repo=get_inventory_repository(),
         demand_repo=DemandRepository(dataset=shared_dataset),
         supplier_repo=SupplierRepository(dataset=shared_dataset),
@@ -610,6 +633,95 @@ def get_decision_replenishment(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
+
+@router.post(
+    "/{decision_id}/stockout-risk",
+    response_model=StockoutRiskResponse,
+    summary="Calculate stockout risk for a decision",
+    description="Deterministically calculates stockout risk and lead-time exposure for a decision's product and warehouse.",
+)
+def calculate_decision_stockout_risk(
+    decision_id: str,
+    payload: DecisionStockoutRiskRequest | None = None,
+    service: StockoutRiskService = Depends(get_decision_stockout_risk_service),
+) -> StockoutRiskResponse:
+    req = payload or DecisionStockoutRiskRequest()
+    try:
+        result = service.calculate_for_decision(
+            decision_id=decision_id,
+            model_type=req.model_type,
+            supplier_id=req.supplier_id,
+        )
+        return StockoutRiskResponse.from_domain(result)
+    except (DecisionNotFoundError, StockoutRiskDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (ProductNotFoundError, RiskProductNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (WarehouseNotFoundError, RiskWarehouseNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (MissingStockoutRiskDataError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/stockout-risk",
+    response_model=StockoutRiskResponse,
+    summary="Calculate stockout risk for a decision via query parameters",
+    description="Query-parameter endpoint for calculating deterministic stockout risk and lead-time exposure for a decision.",
+)
+def get_decision_stockout_risk(
+    decision_id: str,
+    model_type: StockoutRiskModelType = Query(
+        default=StockoutRiskModelType.DETERMINISTIC_LEAD_TIME_EXPOSURE,
+        description="Deterministic stockout-risk calculation model to apply",
+    ),
+    supplier_id: str | None = Query(
+        default=None,
+        description="Optional supplier ID override for lead-time resolution",
+    ),
+    service: StockoutRiskService = Depends(get_decision_stockout_risk_service),
+) -> StockoutRiskResponse:
+    try:
+        result = service.calculate_for_decision(
+            decision_id=decision_id,
+            model_type=model_type,
+            supplier_id=supplier_id,
+        )
+        return StockoutRiskResponse.from_domain(result)
+    except (DecisionNotFoundError, StockoutRiskDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (ProductNotFoundError, RiskProductNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (WarehouseNotFoundError, RiskWarehouseNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (MissingStockoutRiskDataError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
 
 
 

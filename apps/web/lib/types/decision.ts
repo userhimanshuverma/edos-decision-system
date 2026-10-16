@@ -190,5 +190,23 @@ export interface CreateCandidateActionRequest {
   description?: string | null;
 }
 
+/**
+ * Payload contract for calculating replenishment for an existing decision.
+ */
+export interface DecisionReplenishmentRequest {
+  policy_type?: import('./inventory').ReplenishmentPolicyType;
+  target_stock?: number;
+  supplier_id?: string;
+  enforce_reorder_trigger?: boolean;
+}
+
+/**
+ * Payload contract for calculating stockout risk for an existing decision.
+ */
+export interface DecisionStockoutRiskRequest {
+  supplier_id?: string;
+  model_type?: import('./inventory').StockoutRiskModelType;
+}
+
 
 

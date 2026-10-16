@@ -64,3 +64,66 @@ export interface CalculateReplenishmentRequest {
   supplier_id?: string;
   enforce_reorder_trigger?: boolean;
 }
+
+/**
+ * Supported stockout risk calculation model types matching Day 18 domain.
+ */
+export type StockoutRiskModelType = "DETERMINISTIC_LEAD_TIME_EXPOSURE";
+
+/**
+ * Deterministic operational stockout risk classification levels matching Day 18 domain.
+ */
+export type StockoutRiskLevel =
+  | "CRITICAL"
+  | "HIGH"
+  | "MEDIUM"
+  | "LOW"
+  | "NO_DEMAND";
+
+/**
+ * Detailed auditable calculation breakdown for stockout risk matching Day 18 schema.
+ */
+export interface StockoutRiskBreakdown {
+  available_quantity: number;
+  reorder_point: number;
+  average_daily_demand: number;
+  lead_time_days: number;
+  coverage_days?: number | null;
+  lead_time_demand: number;
+  exposure_deficit: number;
+  buffer_days?: number | null;
+  exposure_index: number;
+  is_below_reorder: boolean;
+  demand_std_dev?: number | null;
+  demand_coefficient_of_variation?: number | null;
+  supplier_reliability?: number | null;
+  calculation_notes: string[];
+}
+
+/**
+ * Response model for stockout risk calculation matching Day 18 API contract.
+ */
+export interface StockoutRiskResponse {
+  product_id: string;
+  warehouse_id: string;
+  model_type: StockoutRiskModelType;
+  risk_level: StockoutRiskLevel;
+  exposure_index: number;
+  is_stockout_predicted: boolean;
+  is_probability: boolean;
+  formula: string;
+  assumptions: string[];
+  limitations: string[];
+  breakdown: StockoutRiskBreakdown;
+}
+
+/**
+ * Request payload for stockout risk calculation.
+ */
+export interface CalculateStockoutRiskRequest {
+  product_id: string;
+  warehouse_id: string;
+  supplier_id?: string;
+  model_type?: StockoutRiskModelType;
+}
+

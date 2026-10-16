@@ -51,6 +51,14 @@ from app.domain.replenishment import (
     ReplenishmentPolicyType,
     calculate_replenishment_quantity,
 )
+from app.domain.stockout_risk import (
+    StockoutRiskBreakdown,
+    StockoutRiskCalculationInputs,
+    StockoutRiskCalculationResult,
+    StockoutRiskLevel,
+    StockoutRiskModelType,
+    calculate_stockout_risk,
+)
 
 __all__ = [
     "Product",
@@ -100,4 +108,11 @@ __all__ = [
     "ReplenishmentCalculationInputs",
     "ReplenishmentCalculationResult",
     "calculate_replenishment_quantity",
+    "StockoutRiskBreakdown",
+    "StockoutRiskCalculationInputs",
+    "StockoutRiskCalculationResult",
+    "StockoutRiskLevel",
+    "StockoutRiskModelType",
+    "calculate_stockout_risk",
 ]
+

@@ -749,6 +749,158 @@ class ReplenishmentResponse(BaseModel):
         )
 
 
+# Day 18 Stockout Risk Schemas
+from app.domain.stockout_risk import (  # noqa: E402
+    StockoutRiskBreakdown,
+    StockoutRiskCalculationResult,
+    StockoutRiskLevel,
+    StockoutRiskModelType,
+)
 
 
+class CalculateStockoutRiskRequest(BaseModel):
+    """Request payload for deterministic stockout-risk calculation."""
 
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", protected_namespaces=())
+
+    product_id: str = Field(..., min_length=1, description="Referenced Product identifier")
+    warehouse_id: str = Field(..., min_length=1, description="Referenced Warehouse identifier")
+    supplier_id: str | None = Field(
+        default=None,
+        description="Optional supplier ID override for lead-time resolution",
+    )
+    model_type: StockoutRiskModelType = Field(
+        default=StockoutRiskModelType.DETERMINISTIC_LEAD_TIME_EXPOSURE,
+        description="Deterministic stockout-risk calculation model to apply",
+    )
+
+
+class DecisionStockoutRiskRequest(BaseModel):
+    """Request payload for calculating stockout risk for an existing business decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", protected_namespaces=())
+
+    supplier_id: str | None = Field(
+        default=None,
+        description="Optional supplier ID override for lead-time resolution",
+    )
+    model_type: StockoutRiskModelType = Field(
+        default=StockoutRiskModelType.DETERMINISTIC_LEAD_TIME_EXPOSURE,
+        description="Deterministic stockout-risk calculation model to apply",
+    )
+
+
+class StockoutRiskBreakdownResponse(BaseModel):
+    """Detailed deterministic mathematical breakdown of stockout-risk calculation."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    available_quantity: int = Field(..., description="Available unreserved inventory units")
+    reorder_point: int = Field(..., ge=0, description="Reorder trigger threshold")
+    average_daily_demand: float = Field(..., ge=0.0, description="Observed historical average daily demand (units/day)")
+    lead_time_days: int = Field(..., ge=0, description="Supplier fulfillment lead time (days)")
+    coverage_days: float | None = Field(
+        default=None,
+        description="Runway in days: available_quantity / average_daily_demand, or None if zero demand",
+    )
+    lead_time_demand: float = Field(
+        ...,
+        ge=0.0,
+        description="Projected demand during lead time: average_daily_demand * lead_time_days",
+    )
+    exposure_deficit: float = Field(
+        ...,
+        ge=0.0,
+        description="Shortfall units exposed to stockout during lead time",
+    )
+    buffer_days: float | None = Field(
+        default=None,
+        description="Runway buffer beyond lead time: coverage_days - lead_time_days",
+    )
+    exposure_index: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Normalized stockout exposure ratio in [0.0, 1.0]",
+    )
+    is_below_reorder: bool = Field(..., description="True if available_quantity <= reorder_point")
+    demand_std_dev: float | None = Field(
+        default=None,
+        ge=0.0,
+        description="Sample standard deviation of daily demand when historical observations are provided",
+    )
+    demand_coefficient_of_variation: float | None = Field(
+        default=None,
+        ge=0.0,
+        description="Dispersion ratio (demand_std_dev / average_daily_demand)",
+    )
+    supplier_reliability: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Primary supplier reliability score in [0.0, 1.0], if available",
+    )
+    calculation_notes: list[str] = Field(
+        default_factory=list,
+        description="Auditable step-by-step mathematical derivation notes",
+    )
+
+
+class StockoutRiskResponse(BaseModel):
+    """Clean, typed response model representing deterministic stockout-risk calculation result."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", protected_namespaces=())
+
+    product_id: str = Field(..., description="Referenced Product identifier")
+    warehouse_id: str = Field(..., description="Referenced Warehouse identifier")
+    model_type: StockoutRiskModelType = Field(..., description="Risk model applied")
+    risk_level: StockoutRiskLevel = Field(..., description="Deterministic operational stockout risk classification")
+    exposure_index: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Normalized stockout exposure ratio in [0.0, 1.0]. 0.0 = fully covered, 1.0 = fully exposed",
+    )
+    is_stockout_predicted: bool = Field(
+        ...,
+        description="True if inventory runs out before replenishment lead time or is currently exhausted",
+    )
+    is_probability: bool = Field(
+        default=False,
+        description="Always False. Clarifies that exposure_index is a deterministic physical exposure ratio, not an empirical probability.",
+    )
+    formula: str = Field(..., description="Textual description of the mathematical formula applied")
+    assumptions: list[str] = Field(..., description="Explicit operational assumptions behind the calculation")
+    limitations: list[str] = Field(..., description="Known model limitations and boundary conditions")
+    breakdown: StockoutRiskBreakdownResponse = Field(..., description="Detailed deterministic calculation breakdown")
+
+    @classmethod
+    def from_domain(cls, result: StockoutRiskCalculationResult) -> StockoutRiskResponse:
+        return cls(
+            product_id=result.product_id,
+            warehouse_id=result.warehouse_id,
+            model_type=result.model_type,
+            risk_level=result.risk_level,
+            exposure_index=result.exposure_index,
+            is_stockout_predicted=result.is_stockout_predicted,
+            is_probability=result.is_probability,
+            formula=result.formula,
+            assumptions=result.assumptions,
+            limitations=result.limitations,
+            breakdown=StockoutRiskBreakdownResponse(
+                available_quantity=result.breakdown.available_quantity,
+                reorder_point=result.breakdown.reorder_point,
+                average_daily_demand=result.breakdown.average_daily_demand,
+                lead_time_days=result.breakdown.lead_time_days,
+                coverage_days=result.breakdown.coverage_days,
+                lead_time_demand=result.breakdown.lead_time_demand,
+                exposure_deficit=result.breakdown.exposure_deficit,
+                buffer_days=result.breakdown.buffer_days,
+                exposure_index=result.breakdown.exposure_index,
+                is_below_reorder=result.breakdown.is_below_reorder,
+                demand_std_dev=result.breakdown.demand_std_dev,
+                demand_coefficient_of_variation=result.breakdown.demand_coefficient_of_variation,
+                supplier_reliability=result.breakdown.supplier_reliability,
+                calculation_notes=result.breakdown.calculation_notes,
+            ),
+        )

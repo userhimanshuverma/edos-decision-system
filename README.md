@@ -52,7 +52,7 @@ Human Approval
 
 ## Current Status
 
-**Day 17: Replenishment Quantity Calculation Logic (Make the Decision Phase)**
+**Day 18: Stockout-Risk Calculation Engine (Make the Decision Phase)**
 
 The repository currently establishes:
 - Standard repository layout and conventions
@@ -67,8 +67,10 @@ The repository currently establishes:
 - Candidate Action Model representing operational alternatives (`DO_NOTHING`, `PLACE_ORDER`, `SWITCH_SUPPLIER`) with strict parameter typing and supplier eligibility validation
 - Deterministic Replenishment Quantity Calculation Logic under explicit policies (`REORDER_POINT_DEFICIT`, `LEAD_TIME_DEMAND`, `TARGET_STOCK`) with auditable mathematical breakdown
 - Decoupled Candidate Action integration generating explicit `PLACE_ORDER` actions from calculated quantities with complete provenance metadata
+- Deterministic Stockout-Risk Calculation Engine (`StockoutRiskService`, `calculate_stockout_risk`) evaluating lead-time demand exposure, coverage runway buffer, and stockout deficit
 - In-memory repositories with deep defensive copies, deterministic ordering, and Decision Graph consistency
-- Comprehensive automated test suites across domain, repository, service, API, and graph integration layers (552 backend tests)
+- Comprehensive automated test suites across domain, repository, service, API, and graph integration layers (598 backend tests, 9 frontend tests)
+
 
 ## 30-Day Roadmap
 

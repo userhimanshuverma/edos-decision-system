@@ -1134,7 +1134,7 @@ edos-decision-system/
 │ Days 16–20      │ Make the Decision                                       │
 │                 │ - Day 16: Candidate Action Model (Done)                 │
 │                 │ - Day 17: Replenishment quantity calculation (Done)     │
-│                 │ - Day 18: Stockout risk calculation engine              │
+│                 │ - Day 18: Stockout risk calculation engine (Done)       │
 │                 │ - Day 19: Action scoring & decision ranking runtime     │
 │                 │ - Day 20: Recommendation selection & trade-offs         │
 ├─────────────────┼─────────────────────────────────────────────────────────┤
@@ -1149,4 +1149,143 @@ edos-decision-system/
 │                 │ - End-to-end integration polish & final demo scenarios │
 └─────────────────┴─────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 8. Day 18: Stockout-Risk Calculation Engine
+
+### 8.1 Objective and Philosophy
+The Day 18 Stockout-Risk Calculation Engine answers:
+> **"How exposed is this inventory position to a potential stockout, based on the operational data and assumptions available to EDOS?"**
+
+EDOS operates on the core principle: **"The system calculates. AI explains. Humans approve."**
+Stockout-risk calculation is decoupled from replenishment ordering (Day 17), action scoring (Day 19), and recommendation selection (Day 20). It does not evaluate alternatives, suggest candidate interventions, or mutate operational state.
+
+### 8.2 Model Definition & Critical Semantic Distinction
+A deterministic risk indicator is **not** an empirical stockout probability.
+In retail operations with fixed supplier lead times and historical demand averages, statistical probability estimation requires parametric assumptions (e.g. normality of lead-time demand, known lead-time variance, stationary distributions) that existing operational datasets cannot rigorously substantiate.
+
+Instead of fabricating pseudo-probabilities, EDOS implements a mathematically rigorous **Deterministic Lead-Time Exposure Model** (`StockoutRiskModelType.DETERMINISTIC_LEAD_TIME_EXPOSURE`).
+The result explicitly includes `is_probability: False` and provides clear physical metrics:
+1. **Coverage Runway ($T_{cov}$)**: Days until existing unreserved stock is depleted.
+2. **Lead-Time Demand ($D_{LTD}$)**: Expected consumption during the supplier fulfillment cycle.
+3. **Exposure Deficit ($G_{exposure}$)**: Quantity of units expected to go unfulfilled before an order could arrive.
+4. **Buffer Days ($\Delta_{days}$)**: Runway margin remaining beyond lead time (negative indicates stockout occurs before arrival).
+5. **Exposure Index ($I_{exposure} \in [0.0, 1.0]$)**: Proportion of lead-time demand unprotected by available inventory.
+6. **Risk Level (`StockoutRiskLevel`)**: Deterministic operational classification (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `NO_DEMAND`).
+
+### 8.3 Exact Mathematical Formula
+
+Given:
+- $Q_{avail}$: Available inventory (units, integer $\ge 0$)
+- $ROP$: Reorder point threshold (units, integer $\ge 0$)
+- $D_{daily}$: Historical average daily demand (units/day, float $\ge 0.0$)
+- $L$: Supplier fulfillment lead time (days, integer $\ge 0$)
+
+The calculation evaluates:
+1. **Runout Coverage**:
+   $$T_{cov} = \begin{cases} \frac{Q_{avail}}{D_{daily}} & \text{if } D_{daily} > 0 \\ \text{None} & \text{if } D_{daily} = 0 \end{cases}$$
+
+2. **Expected Lead-Time Demand**:
+   $$D_{LTD} = D_{daily} \times L$$
+
+3. **Lead-Time Exposure Deficit**:
+   $$G_{exposure} = \max(0.0, D_{LTD} - Q_{avail})$$
+
+4. **Runway Buffer Days**:
+   $$\Delta_{days} = \begin{cases} T_{cov} - L & \text{if } T_{cov} \text{ is not None} \\ \text{None} & \text{if } T_{cov} \text{ is None} \end{cases}$$
+
+5. **Normalized Stockout Exposure Index**:
+   $$I_{exposure} = \begin{cases} \min\left(1.0, \frac{G_{exposure}}{D_{LTD}}\right) & \text{if } D_{LTD} > 0 \\ 1.0 & \text{if } D_{LTD} = 0 \land Q_{avail} = 0 \land D_{daily} > 0 \\ 0.0 & \text{otherwise} \end{cases}$$
+
+6. **Operational Classification**:
+   - `NO_DEMAND`: $D_{daily} = 0.0$
+   - `CRITICAL`: $Q_{avail} = 0$ with $D_{daily} > 0$, OR $\Delta_{days} < 0.0$ ($T_{cov} < L$, i.e. $I_{exposure} > 0$)
+   - `HIGH`: $\Delta_{days} \ge 0.0$, BUT $Q_{avail} \le ROP$ OR $\Delta_{days} \le 3.0$ days
+   - `MEDIUM`: $Q_{avail} \le 1.25 \times ROP$ OR primary supplier reliability $< 0.90$
+   - `LOW`: Healthy coverage ($\Delta_{days} > 3.0$, $Q_{avail} > 1.25 \times ROP$, supplier reliability $\ge 0.90$)
+
+### 8.4 Assumptions and Limitations
+**Assumptions**:
+1. Demand continues at historical average daily consumption rate across the supplier lead time.
+2. Supplier lead time is deterministic and represents the complete procurement cycle.
+3. Available unreserved inventory represents all immediately accessible stock.
+4. No unobserved orders or inter-warehouse transfers arrive prior to the supplier lead time.
+
+**Limitations**:
+1. Does not compute statistical CDF probabilities; $I_{exposure}$ is a physical exposure proportion.
+2. Does not model intraday volatility, batch customer orders, or seasonal spikes.
+3. Does not simulate stochastic supply disruption or delivery delays.
+4. Does not optimize candidate actions or select interventions.
+
+### 8.5 Decision Graph Integration Decision
+Day 15 established `GraphNodeType` (`CONTEXT`, `DECISION_VERSION`, `ACTION`, `VALIDATION`, `SCENARIO`, `RESULT`). Standalone stockout-risk calculation is a pure analytical query. Mutating the graph during raw risk calculation without evaluating candidate actions would introduce orphaned nodes and violate graph lineage invariants. Graph integration is deferred to the validation and evaluation phases (Days 19-21), where risk calculations substantiate candidate evaluation results.
+
+### 8.6 API Endpoints & Example Usage
+
+#### Endpoints:
+- `POST /api/inventory/stockout-risk`: Calculate stockout risk for product & warehouse payload.
+- `GET /api/inventory/stockout-risk`: Calculate stockout risk via query parameters (`product_id`, `warehouse_id`, optional `supplier_id`).
+- `POST /api/decisions/{decision_id}/stockout-risk`: Calculate stockout risk for a business decision.
+- `GET /api/decisions/{decision_id}/stockout-risk`: Calculate stockout risk for a decision via query parameters.
+
+#### Realistic Request & Response Example:
+**Request (`POST /api/inventory/stockout-risk`)**:
+```json
+{
+  "product_id": "prod-001",
+  "warehouse_id": "wh-001"
+}
+```
+
+**Response (`200 OK`)**:
+```json
+{
+  "product_id": "prod-001",
+  "warehouse_id": "wh-001",
+  "model_type": "DETERMINISTIC_LEAD_TIME_EXPOSURE",
+  "risk_level": "CRITICAL",
+  "exposure_index": 0.60,
+  "is_stockout_predicted": true,
+  "is_probability": false,
+  "formula": "lead_time_demand = average_daily_demand * lead_time_days; coverage_days = available_quantity / average_daily_demand if average_daily_demand > 0 else None; buffer_days = coverage_days - lead_time_days if coverage_days is not None else None; exposure_deficit = max(0.0, lead_time_demand - available_quantity); exposure_index = min(1.0, exposure_deficit / lead_time_demand) if lead_time_demand > 0 else (1.0 if available == 0 and average_daily_demand > 0 else 0.0)",
+  "assumptions": [
+    "Historical average daily demand remains the expected consumption rate over the supplier lead-time window.",
+    "Supplier lead time is constant and reflects the full procurement and fulfillment cycle.",
+    "Available inventory (on-hand minus reserved) accurately represents unallocated stock.",
+    "No unobserved replenishment orders or inbound transfers will arrive prior to the stated supplier lead time."
+  ],
+  "limitations": [
+    "Does not compute statistical probability; the exposure_index represents the deterministic proportion of lead-time demand unfulfilled by current inventory.",
+    "Does not account for non-stationary demand spikes, batch customer orders, or seasonal intraday shifts.",
+    "Does not simulate stochastic lead-time distribution or random supply disruption events.",
+    "Does not evaluate or recommend candidate actions; decision optimization is strictly deferred to downstream modules."
+  ],
+  "breakdown": {
+    "available_quantity": 20,
+    "reorder_point": 30,
+    "average_daily_demand": 10.0,
+    "lead_time_days": 5,
+    "coverage_days": 2.0,
+    "lead_time_demand": 50.0,
+    "exposure_deficit": 30.0,
+    "buffer_days": -3.0,
+    "exposure_index": 0.60,
+    "is_below_reorder": true,
+    "demand_std_dev": 2.45,
+    "demand_coefficient_of_variation": 0.25,
+    "supplier_reliability": 0.95,
+    "calculation_notes": [
+      "Coverage days: 20 units / 10.00 units/day = 2.00 days.",
+      "Lead-time demand: 10.00 units/day * 5 days = 50.00 units.",
+      "Exposure deficit: max(0.0, 50.00 lead-time demand - 20 available) = 30.00 units.",
+      "Negative runway buffer: coverage (2.00d) is 3.00 days shorter than lead time (5d).",
+      "Exposure index: min(1.0, 30.00 deficit / 50.00 lead-time demand) = 0.6000.",
+      "Demand dispersion (N=30 days): sample std_dev=2.45, coefficient_of_variation=0.25.",
+      "Classification: CRITICAL (coverage 2.00d < lead time 5d; stockout projected before replenishment arrives)."
+    ]
+  }
+}
+```
+
 

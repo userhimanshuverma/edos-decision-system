@@ -1,29 +1,38 @@
 from app.api.context import get_context_engine, router as context_router
 from app.api.decision import (
     get_decision_event_repository,
+    get_decision_replenishment_service,
     get_decision_repository,
+    get_decision_stockout_risk_service,
     router as decision_router,
 )
 from app.api.demand import get_demand_repository, router as demand_router
 from app.api.inventory import (
     get_inventory_repository,
     get_replenishment_service,
+    get_stockout_risk_service,
     router as inventory_router,
 )
 from app.api.schemas import (
     CalculateReplenishmentRequest,
+    CalculateStockoutRiskRequest,
     CreateDecisionRequest,
     DailyDemandPoint,
     DecisionContextResponse,
     DecisionEventResponse,
     DecisionReplenishmentRequest,
     DecisionResponse,
+    DecisionStockoutRiskRequest,
+    DecisionVersionResponse,
     DemandResponse,
     DemandTrendResponse,
     InventoryResponse,
     ReplenishmentBreakdownResponse,
     ReplenishmentPolicyType,
     ReplenishmentResponse,
+    StockoutRiskBreakdownResponse,
+    StockoutRiskModelType,
+    StockoutRiskResponse,
     SupplierResponse,
     SupplierRiskLevel,
 )
@@ -31,18 +40,24 @@ from app.api.supplier import get_supplier_repository, router as supplier_router
 
 __all__ = [
     "CalculateReplenishmentRequest",
+    "CalculateStockoutRiskRequest",
     "CreateDecisionRequest",
     "DailyDemandPoint",
     "DecisionContextResponse",
     "DecisionEventResponse",
     "DecisionReplenishmentRequest",
     "DecisionResponse",
+    "DecisionStockoutRiskRequest",
+    "DecisionVersionResponse",
     "DemandResponse",
     "DemandTrendResponse",
     "InventoryResponse",
     "ReplenishmentBreakdownResponse",
     "ReplenishmentPolicyType",
     "ReplenishmentResponse",
+    "StockoutRiskBreakdownResponse",
+    "StockoutRiskModelType",
+    "StockoutRiskResponse",
     "SupplierResponse",
     "SupplierRiskLevel",
     "context_router",
@@ -50,13 +65,17 @@ __all__ = [
     "demand_router",
     "get_context_engine",
     "get_decision_event_repository",
+    "get_decision_replenishment_service",
     "get_decision_repository",
+    "get_decision_stockout_risk_service",
     "get_demand_repository",
     "get_inventory_repository",
     "get_replenishment_service",
+    "get_stockout_risk_service",
     "get_supplier_repository",
     "inventory_router",
     "supplier_router",
 ]
+
 
 

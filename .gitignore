@@ -47,3 +47,8 @@ desktop.ini
 
 # Logs
 *.log
+
+# Agent & Skill Customizations
+.agents/
+skills-lock.json
+
