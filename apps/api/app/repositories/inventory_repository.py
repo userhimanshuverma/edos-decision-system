@@ -52,6 +52,15 @@ class InventoryRepository:
         """Retrieves all inventory positions belonging to a specific warehouse."""
         return [inv for inv in self._dataset.inventory if inv.warehouse_id == warehouse_id]
 
+    def get_by_product_and_warehouse(
+        self,
+        product_id: str,
+        warehouse_id: str,
+    ) -> Inventory | None:
+        """Retrieves a single inventory position for a product at a specific warehouse."""
+        return self._dataset.get_inventory(product_id.strip(), warehouse_id.strip())
+
+
     def product_exists(self, product_id: str) -> bool:
         """Checks if a product exists in the underlying catalog."""
         return self._dataset.get_product(product_id) is not None

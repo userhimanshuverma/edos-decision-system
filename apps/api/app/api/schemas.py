@@ -904,3 +904,285 @@ class StockoutRiskResponse(BaseModel):
                 calculation_notes=result.breakdown.calculation_notes,
             ),
         )
+
+
+# Day 19 Action Evaluation Schemas
+from app.domain.action_evaluation import (  # noqa: E402
+    ActionEvaluationResult,
+    CostImpactEvaluation,
+    DecisionEvaluationReport,
+    EvaluationCostStatus,
+    EvaluationEvidence,
+    ReplenishmentImpactEvaluation,
+    StockoutExposureEvaluation,
+    SupplierImpactEvaluation,
+)
+
+
+class EvaluateActionRequest(BaseModel):
+    """Request payload for evaluating an individual candidate action."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    policy_type: ReplenishmentPolicyType = Field(
+        default=ReplenishmentPolicyType.REORDER_POINT_DEFICIT,
+        description="Replenishment policy formula to evaluate against",
+    )
+    target_stock: int | None = Field(
+        default=None,
+        ge=0,
+        description="Explicit target stock level (required if policy_type is TARGET_STOCK)",
+    )
+    enforce_reorder_trigger: bool = Field(
+        default=True,
+        description="When True, replenishment need is 0 unless available <= reorder_point",
+    )
+    record_to_graph: bool = Field(
+        default=False,
+        description="When True, attaches evaluation RESULT node to the Decision Graph",
+    )
+
+
+class EvaluateDecisionActionsRequest(BaseModel):
+    """Request payload for evaluating all candidate actions of a business decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    policy_type: ReplenishmentPolicyType = Field(
+        default=ReplenishmentPolicyType.REORDER_POINT_DEFICIT,
+        description="Replenishment policy formula to evaluate against",
+    )
+    target_stock: int | None = Field(
+        default=None,
+        ge=0,
+        description="Explicit target stock level (required if policy_type is TARGET_STOCK)",
+    )
+    enforce_reorder_trigger: bool = Field(
+        default=True,
+        description="When True, replenishment need is 0 unless available <= reorder_point",
+    )
+    record_to_graph: bool = Field(
+        default=False,
+        description="When True, attaches evaluation RESULT nodes to the Decision Graph",
+    )
+
+
+class StockoutExposureEvaluationResponse(BaseModel):
+    """Evaluation of an action's relationship to inventory stockout exposure."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    is_probability: bool = Field(..., description="Always False: deterministic physical exposure ratio")
+    current_risk_level: StockoutRiskLevel = Field(..., description="Baseline stockout risk classification")
+    current_exposure_index: float = Field(..., ge=0.0, le=1.0, description="Baseline exposure index in [0.0, 1.0]")
+    current_exposure_deficit: float = Field(..., ge=0.0, description="Baseline lead-time exposed deficit units")
+    current_buffer_days: float | None = Field(default=None, description="Baseline runway buffer beyond lead time")
+    projected_risk_level: StockoutRiskLevel = Field(..., description="Projected stockout risk level")
+    projected_exposure_index: float = Field(..., ge=0.0, le=1.0, description="Projected exposure index in [0.0, 1.0]")
+    projected_exposure_deficit: float = Field(..., ge=0.0, description="Projected lead-time exposed deficit units")
+    projected_buffer_days: float | None = Field(default=None, description="Projected runway buffer beyond lead time")
+    exposure_index_delta: float = Field(..., description="Exposure change: projected - current")
+    is_stockout_prevented_in_lead_time: bool = Field(..., description="True if stockout is avoided during lead time")
+    post_arrival_coverage_days: float | None = Field(default=None, ge=0.0, description="Projected coverage after delivery")
+    notes: list[str] = Field(default_factory=list, description="Stockout derivation notes")
+
+
+class ReplenishmentImpactEvaluationResponse(BaseModel):
+    """Evaluation of how an action addresses the calculated replenishment shortfall."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    policy_type: ReplenishmentPolicyType = Field(..., description="Replenishment policy applied")
+    target_stock: int = Field(..., ge=0, description="Target stock level determined by policy")
+    available_quantity: int = Field(..., description="Current available unreserved units")
+    reorder_point: int = Field(..., ge=0, description="Reorder trigger threshold")
+    recommended_replenishment_quantity: int = Field(..., ge=0, description="Calculated deterministic shortfall")
+    is_replenishment_needed: bool = Field(..., description="True if replenishment quantity > 0")
+    action_order_quantity: int | None = Field(default=None, ge=0, description="Order quantity proposed by the action")
+    shortfall_addressed: int = Field(..., ge=0, description="Calculated shortfall units addressed by action")
+    remaining_shortfall: int = Field(..., ge=0, description="Shortfall units remaining after action")
+    excess_quantity: int = Field(..., ge=0, description="Quantity ordered in excess of target")
+    shortfall_satisfaction_ratio: float | None = Field(default=None, ge=0.0, description="Shortfall satisfaction ratio")
+    notes: list[str] = Field(default_factory=list, description="Replenishment derivation notes")
+
+
+class SupplierImpactEvaluationResponse(BaseModel):
+    """Evaluation of supplier, lead-time, and reliability parameters affected by an action."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    current_supplier_id: str = Field(..., description="Baseline primary supplier identifier")
+    current_supplier_name: str = Field(..., description="Baseline primary supplier name")
+    current_lead_time_days: int = Field(..., ge=0, description="Baseline lead time (days)")
+    current_reliability: float = Field(..., ge=0.0, le=1.0, description="Baseline supplier reliability")
+    current_supplier_risk: SupplierRiskLevel = Field(..., description="Baseline supplier risk classification")
+    effective_supplier_id: str = Field(..., description="Effective supplier identifier under action")
+    effective_supplier_name: str = Field(..., description="Effective supplier name under action")
+    effective_lead_time_days: int = Field(..., ge=0, description="Effective lead time (days)")
+    effective_reliability: float = Field(..., ge=0.0, le=1.0, description="Effective supplier reliability")
+    effective_supplier_risk: SupplierRiskLevel = Field(..., description="Effective supplier risk classification")
+    is_supplier_switched: bool = Field(..., description="True if supplier was switched")
+    lead_time_delta_days: int = Field(..., description="Lead time delta: effective - current")
+    reliability_delta: float = Field(..., description="Reliability delta: effective - current")
+    notes: list[str] = Field(default_factory=list, description="Supplier impact notes")
+
+
+class CostImpactEvaluationResponse(BaseModel):
+    """Evaluation of defensible monetary procurement cost implications."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    is_cost_calculable: bool = Field(..., description="True if defensible monetary calculation can be made")
+    unit_cost: float | None = Field(default=None, ge=0.0, description="Product unit cost")
+    order_quantity: int | None = Field(default=None, ge=0, description="Order quantity evaluated")
+    direct_procurement_cost: float | None = Field(default=None, ge=0.0, description="Direct purchase cost")
+    currency: str = Field(default="USD", description="Currency identifier")
+    cost_status: EvaluationCostStatus = Field(..., description="Cost classification status")
+    unavailability_reason: str | None = Field(default=None, description="Explanation when cost cannot be calculated")
+    notes: list[str] = Field(default_factory=list, description="Cost evaluation notes")
+
+
+class EvaluationEvidenceResponse(BaseModel):
+    """Audit evidence supporting an action evaluation result."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    action_id: str = Field(..., description="Evaluated action identifier")
+    action_type: ActionType = Field(..., description="Evaluated action category")
+    decision_id: str = Field(..., description="Referenced decision identifier")
+    product_id: str = Field(..., description="Referenced product identifier")
+    warehouse_id: str = Field(..., description="Referenced warehouse identifier")
+    inputs_summary: dict[str, Any] = Field(..., description="Summary of input measurements")
+    formulas: dict[str, str] = Field(..., description="Mathematical formulas applied")
+    assumptions: list[str] = Field(..., description="Operational assumptions")
+    limitations: list[str] = Field(..., description="Known boundaries and limitations")
+    calculation_notes: list[str] = Field(..., description="Derivation notes")
+
+
+class ActionEvaluationResponse(BaseModel):
+    """Deterministic, transparent evaluation of an individual candidate action."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    action_id: str = Field(..., description="Evaluated candidate action identifier")
+    action_type: ActionType = Field(..., description="Evaluated candidate action category")
+    decision_id: str = Field(..., description="Associated business decision identifier")
+    product_id: str = Field(..., description="Referenced Product identifier")
+    warehouse_id: str = Field(..., description="Referenced Warehouse identifier")
+    evaluated_at: datetime = Field(..., description="UTC evaluation timestamp")
+    stockout_exposure: StockoutExposureEvaluationResponse = Field(..., description="Stockout exposure evaluation")
+    replenishment_impact: ReplenishmentImpactEvaluationResponse = Field(..., description="Replenishment shortfall impact")
+    supplier_impact: SupplierImpactEvaluationResponse = Field(..., description="Supplier and lead-time evaluation")
+    cost_impact: CostImpactEvaluationResponse = Field(..., description="Defensible cost evaluation")
+    evidence: EvaluationEvidenceResponse = Field(..., description="Audit evidence and notes")
+    overall_score: float | None = Field(default=None, description="Composite score (None when unweighted)")
+    scoring_status: str = Field(..., description="Scoring status explanation")
+    scoring_rationale: str = Field(..., description="Rationale for scoring status")
+
+    @classmethod
+    def from_domain(cls, eval_res: ActionEvaluationResult) -> ActionEvaluationResponse:
+        return cls(
+            action_id=eval_res.action_id,
+            action_type=eval_res.action_type,
+            decision_id=eval_res.decision_id,
+            product_id=eval_res.product_id,
+            warehouse_id=eval_res.warehouse_id,
+            evaluated_at=eval_res.evaluated_at,
+            stockout_exposure=StockoutExposureEvaluationResponse(
+                is_probability=eval_res.stockout_exposure.is_probability,
+                current_risk_level=eval_res.stockout_exposure.current_risk_level,
+                current_exposure_index=eval_res.stockout_exposure.current_exposure_index,
+                current_exposure_deficit=eval_res.stockout_exposure.current_exposure_deficit,
+                current_buffer_days=eval_res.stockout_exposure.current_buffer_days,
+                projected_risk_level=eval_res.stockout_exposure.projected_risk_level,
+                projected_exposure_index=eval_res.stockout_exposure.projected_exposure_index,
+                projected_exposure_deficit=eval_res.stockout_exposure.projected_exposure_deficit,
+                projected_buffer_days=eval_res.stockout_exposure.projected_buffer_days,
+                exposure_index_delta=eval_res.stockout_exposure.exposure_index_delta,
+                is_stockout_prevented_in_lead_time=eval_res.stockout_exposure.is_stockout_prevented_in_lead_time,
+                post_arrival_coverage_days=eval_res.stockout_exposure.post_arrival_coverage_days,
+                notes=eval_res.stockout_exposure.notes,
+            ),
+            replenishment_impact=ReplenishmentImpactEvaluationResponse(
+                policy_type=eval_res.replenishment_impact.policy_type,
+                target_stock=eval_res.replenishment_impact.target_stock,
+                available_quantity=eval_res.replenishment_impact.available_quantity,
+                reorder_point=eval_res.replenishment_impact.reorder_point,
+                recommended_replenishment_quantity=eval_res.replenishment_impact.recommended_replenishment_quantity,
+                is_replenishment_needed=eval_res.replenishment_impact.is_replenishment_needed,
+                action_order_quantity=eval_res.replenishment_impact.action_order_quantity,
+                shortfall_addressed=eval_res.replenishment_impact.shortfall_addressed,
+                remaining_shortfall=eval_res.replenishment_impact.remaining_shortfall,
+                excess_quantity=eval_res.replenishment_impact.excess_quantity,
+                shortfall_satisfaction_ratio=eval_res.replenishment_impact.shortfall_satisfaction_ratio,
+                notes=eval_res.replenishment_impact.notes,
+            ),
+            supplier_impact=SupplierImpactEvaluationResponse(
+                current_supplier_id=eval_res.supplier_impact.current_supplier_id,
+                current_supplier_name=eval_res.supplier_impact.current_supplier_name,
+                current_lead_time_days=eval_res.supplier_impact.current_lead_time_days,
+                current_reliability=eval_res.supplier_impact.current_reliability,
+                current_supplier_risk=eval_res.supplier_impact.current_supplier_risk,
+                effective_supplier_id=eval_res.supplier_impact.effective_supplier_id,
+                effective_supplier_name=eval_res.supplier_impact.effective_supplier_name,
+                effective_lead_time_days=eval_res.supplier_impact.effective_lead_time_days,
+                effective_reliability=eval_res.supplier_impact.effective_reliability,
+                effective_supplier_risk=eval_res.supplier_impact.effective_supplier_risk,
+                is_supplier_switched=eval_res.supplier_impact.is_supplier_switched,
+                lead_time_delta_days=eval_res.supplier_impact.lead_time_delta_days,
+                reliability_delta=eval_res.supplier_impact.reliability_delta,
+                notes=eval_res.supplier_impact.notes,
+            ),
+            cost_impact=CostImpactEvaluationResponse(
+                is_cost_calculable=eval_res.cost_impact.is_cost_calculable,
+                unit_cost=eval_res.cost_impact.unit_cost,
+                order_quantity=eval_res.cost_impact.order_quantity,
+                direct_procurement_cost=eval_res.cost_impact.direct_procurement_cost,
+                currency=eval_res.cost_impact.currency,
+                cost_status=eval_res.cost_impact.cost_status,
+                unavailability_reason=eval_res.cost_impact.unavailability_reason,
+                notes=eval_res.cost_impact.notes,
+            ),
+            evidence=EvaluationEvidenceResponse(
+                action_id=eval_res.evidence.action_id,
+                action_type=eval_res.evidence.action_type,
+                decision_id=eval_res.evidence.decision_id,
+                product_id=eval_res.evidence.product_id,
+                warehouse_id=eval_res.evidence.warehouse_id,
+                inputs_summary=eval_res.evidence.inputs_summary,
+                formulas=eval_res.evidence.formulas,
+                assumptions=eval_res.evidence.assumptions,
+                limitations=eval_res.evidence.limitations,
+                calculation_notes=eval_res.evidence.calculation_notes,
+            ),
+            overall_score=eval_res.overall_score,
+            scoring_status=eval_res.scoring_status,
+            scoring_rationale=eval_res.scoring_rationale,
+        )
+
+
+class DecisionEvaluationReportResponse(BaseModel):
+    """Decision-level collection of evaluations for all applicable candidate actions."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    decision_id: str = Field(..., description="Associated business decision identifier")
+    product_id: str = Field(..., description="Referenced Product identifier")
+    warehouse_id: str = Field(..., description="Referenced Warehouse identifier")
+    evaluated_at: datetime = Field(..., description="UTC evaluation timestamp")
+    total_actions_evaluated: int = Field(..., ge=0, description="Total count of candidate actions evaluated")
+    evaluations: list[ActionEvaluationResponse] = Field(..., description="Individual evaluations for each action")
+    summary_notes: list[str] = Field(default_factory=list, description="Summary notes regarding the evaluation run")
+
+    @classmethod
+    def from_domain(cls, report: DecisionEvaluationReport) -> DecisionEvaluationReportResponse:
+        return cls(
+            decision_id=report.decision_id,
+            product_id=report.product_id,
+            warehouse_id=report.warehouse_id,
+            evaluated_at=report.evaluated_at,
+            total_actions_evaluated=report.total_actions_evaluated,
+            evaluations=[ActionEvaluationResponse.from_domain(e) for e in report.evaluations],
+            summary_notes=report.summary_notes,
+        )
+

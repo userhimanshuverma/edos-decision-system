@@ -1288,4 +1288,217 @@ Day 15 established `GraphNodeType` (`CONTEXT`, `DECISION_VERSION`, `ACTION`, `VA
 }
 ```
 
+---
+
+## 9. Day 19: Action Evaluation Engine
+
+### 9.1 Objective and Scope Boundaries
+The Day 19 Action Evaluation Engine answers:
+> **"What are the quantifiable operational impacts and trade-offs of each candidate action, based on the deterministic calculations and available domain data?"**
+
+EDOS operates on the core principle: **"The system calculates. AI explains. Humans approve."**
+
+#### Strict Scope Boundaries:
+1. **Candidate-Level Evaluation**: Day 19 evaluates supported candidate actions (`DO_NOTHING`, `PLACE_ORDER`, `SWITCH_SUPPLIER`) individually across explicit operational dimensions.
+2. **No Final Recommendation Selection**: Day 19 evaluates each action on its own merits without ranking or choosing the best action. Final recommendation selection belongs strictly to Day 20.
+3. **No Arbitrary Scoring Weights**: EDOS strictly refuses to invent arbitrary composite scoring weights (e.g., $0.4 \times \text{exposure} + 0.3 \times \text{cost} + 0.3 \times \text{supplier}$) without documented executive business policies. The composite score is explicitly recorded as `None` with `scoring_status: "UNRESOLVED_MULTI_CRITERIA_DECISION"`.
+4. **No Unintended Mutations**: Action evaluation is a pure, reproducible analytical calculation. It does not alter candidate actions, inventory positions, supplier records, or decision lifecycle states.
+
+### 9.2 Supported Actions and Evaluation Dimensions
+
+| Candidate Action | Stockout Exposure Dimension | Replenishment Impact Dimension | Supplier Impact Dimension | Cost Impact Dimension |
+| :--- | :--- | :--- | :--- | :--- |
+| **`DO_NOTHING`** | Trajectory unchanged; current deficit and exposure index persist. | 0 units ordered; calculated shortfall is 0% addressed. | Retains current primary supplier; $\Delta L = 0, \Delta R = 0.0$. | $0.00 direct procurement cost (`ZERO_COST`). |
+| **`PLACE_ORDER`** | Evaluates lead-time exposure (delivery arrives in $L$ days) and post-arrival inventory coverage. | Compares order quantity against policy shortfall; computes satisfied units, remaining deficit, and excess. | Retains current primary supplier; $\Delta L = 0, \Delta R = 0.0$. | $Q \times \text{unit\_cost}$ calculated from catalog (`CALCULATED`). |
+| **`SWITCH_SUPPLIER`** | Re-benchmarks lead-time demand and exposure index under target supplier lead time. | Re-calculates replenishment shortfall under new lead time; 0 units placed. | Computes lead-time delta ($\Delta L$) and reliability delta ($\Delta R$). | Marked `UNAVAILABLE` because supplier-specific pricing is unobserved. |
+
+### 9.3 Exact Mathematical Formulas and Derivations
+
+#### 1. Stockout Exposure Dimension
+Given available inventory $Q_{avail}$, daily demand $D_{daily}$, supplier lead time $L$, and action order quantity $Q$:
+- **Baseline Lead-Time Demand**: $D_{LTD} = D_{daily} \times L$
+- **Lead-Time Exposure Deficit**: $G_{exposure} = \max(0.0, D_{LTD} - Q_{avail})$
+- **Lead-Time Exposure Index**: $I_{exposure} = \min(1.0, G_{exposure} / D_{LTD})$ if $D_{LTD} > 0$ else 0.0
+- **Lead-Time Stockout Prevention**: $\text{is\_prevented} = (G_{exposure} == 0.0)$
+  *(An order placed today arrives in $L$ days; if $Q_{avail} < D_{LTD}$, stockout occurs prior to delivery regardless of order size).*
+- **Post-Arrival Available Stock**: $Q_{post} = \max(0, Q_{avail}) + Q$
+- **Post-Arrival Coverage Runway**: $T_{post} = \frac{Q_{post}}{D_{daily}}$ (if $D_{daily} > 0$ else None)
+- **Post-Arrival Exposure Deficit**: $G_{post} = \max(0.0, D_{LTD} - Q_{post})$
+- **Post-Arrival Exposure Index**: $I_{post} = \min(1.0, G_{post} / D_{LTD})$ if $D_{LTD} > 0$ else 0.0
+- **Exposure Index Delta**: $\Delta I_{exposure} = I_{post} - I_{exposure}$ (negative indicates improvement)
+
+#### 2. Replenishment Impact Dimension
+Given calculated recommended replenishment quantity $Q_{rec}$ under policy $P \in \{\text{ROP\_DEFICIT}, \text{LEAD\_TIME\_DEMAND}, \text{TARGET\_STOCK}\}$:
+- **Shortfall Addressed**: $Q_{addressed} = \min(Q, Q_{rec})$
+- **Remaining Shortfall**: $Q_{remaining} = \max(0, Q_{rec} - Q)$
+- **Excess Above Target**: $Q_{excess} = \max(0, Q - Q_{rec})$
+- **Shortfall Satisfaction Ratio**:
+  $$S_{ratio} = \begin{cases} \frac{Q_{addressed}}{Q_{rec}} & \text{if } Q_{rec} > 0 \\ 1.0 & \text{if } Q_{rec} = 0 \end{cases}$$
+
+#### 3. Supplier Impact Dimension
+Given current supplier $S_{curr} = (L_{curr}, R_{curr})$ and effective supplier $S_{eff} = (L_{eff}, R_{eff})$:
+- **Lead-Time Delta**: $\Delta L = L_{eff} - L_{curr}$ (negative indicates accelerated fulfillment)
+- **Reliability Delta**: $\Delta R = R_{eff} - R_{curr}$ (positive indicates higher fulfillment dependability)
+- **Supplier Operational Risk**: Deterministically classified via `classify_supplier_risk(L, R, active)`.
+
+#### 4. Cost Impact Dimension
+Given product unit cost $C_{unit}$ from domain catalog:
+- For `PLACE_ORDER`: $\text{Cost}_{direct} = Q \times C_{unit}$ (`CALCULATED`)
+- For `DO_NOTHING`: $\text{Cost}_{direct} = 0.0$ (`ZERO_COST`)
+- For `SWITCH_SUPPLIER`: `cost_status = UNAVAILABLE`, $\text{Cost}_{direct} = \text{None}$.
+  *(Supplier pricing differentials, contract switching fees, and transition penalties are unobserved in domain data and must not be fabricated).*
+
+### 9.4 Critical Semantic Distinctions
+1. **Exposure vs Probability**: The stockout exposure index ($I_{exposure} \in [0.0, 1.0]$) is a physical ratio representing the proportion of lead-time demand unfulfilled by current inventory. It explicitly sets `is_probability: False`.
+2. **Defensible Costing**: Cost impact includes only direct procurement expenses ($Q \times C_{unit}$) that are directly verifiable from catalog data. Carrying costs, stockout goodwill penalties, and shipping surcharges are not fabricated.
+3. **Traceability**: All evaluations generate structured `EvaluationEvidence` capturing input values, formula text, explicit operational assumptions, known model limitations, and an auditable step-by-step calculation log.
+
+### 9.5 Decision Graph Integration
+Evaluating candidate actions does not mutate the graph by default. When explicitly requested via `record_to_graph=True`, the service attaches a `GraphNodeType.RESULT` node representing the action evaluation to the decision graph, connected via a `GraphRelationshipType.PRODUCES` directed edge originating from the corresponding `GraphNodeType.ACTION` node. This maintains complete graph lineage without violating graph invariants.
+
+### 9.6 API Endpoints & Example Usage
+
+#### Endpoints:
+- `POST /api/decisions/{decision_id}/actions/{action_id}/evaluate`: Evaluates an individual candidate action.
+- `GET /api/decisions/{decision_id}/actions/{action_id}/evaluate`: Evaluates an individual action via query parameters.
+- `POST /api/decisions/{decision_id}/actions/evaluate`: Evaluates all candidate actions for a decision.
+- `GET /api/decisions/{decision_id}/actions/evaluate`: Evaluates all candidate actions via query parameters.
+- `POST /api/decisions/{decision_id}/evaluation` & `GET /api/decisions/{decision_id}/evaluation`: Canonical decision-level aliases.
+
+#### Example Request (`POST /api/decisions/DEC-0001/actions/ACT-0002/evaluate`):
+```json
+{
+  "policy_type": "REORDER_POINT_DEFICIT",
+  "enforce_reorder_trigger": true,
+  "record_to_graph": false
+}
+```
+
+#### Example Response (`200 OK`):
+```json
+{
+  "action_id": "ACT-0002",
+  "action_type": "PLACE_ORDER",
+  "decision_id": "DEC-0001",
+  "product_id": "prod-001",
+  "warehouse_id": "wh-001",
+  "evaluated_at": "2026-10-17T16:30:00Z",
+  "stockout_exposure": {
+    "is_probability": false,
+    "current_risk_level": "CRITICAL",
+    "current_exposure_index": 0.60,
+    "current_exposure_deficit": 30.0,
+    "current_buffer_days": -3.0,
+    "projected_risk_level": "HIGH",
+    "projected_exposure_index": 0.10,
+    "projected_exposure_deficit": 5.0,
+    "projected_buffer_days": -0.5,
+    "exposure_index_delta": -0.50,
+    "is_stockout_prevented_in_lead_time": false,
+    "post_arrival_coverage_days": 4.5,
+    "notes": [
+      "Proposed replenishment order of 25 units with supplier 'Acme Industrial'.",
+      "Stockout during fulfillment lead time is NOT prevented: current inventory exhausts before order arrives.",
+      "Post-arrival inventory (45 units) provides 4.50 days of demand runway.",
+      "Post-arrival exposure index is 0.1000 (risk level: HIGH), delta: -0.5000."
+    ]
+  },
+  "replenishment_impact": {
+    "policy_type": "REORDER_POINT_DEFICIT",
+    "target_stock": 30,
+    "available_quantity": 20,
+    "reorder_point": 30,
+    "recommended_replenishment_quantity": 10,
+    "is_replenishment_needed": true,
+    "action_order_quantity": 25,
+    "shortfall_addressed": 10,
+    "remaining_shortfall": 0,
+    "excess_quantity": 15,
+    "shortfall_satisfaction_ratio": 1.0,
+    "notes": [
+      "Replenishment shortfall is 10 units under REORDER_POINT_DEFICIT.",
+      "Proposed order of 25 units satisfies 10 units (100.0%) of calculated shortfall.",
+      "Order fully eliminates shortfall (excess above target: 15 units)."
+    ]
+  },
+  "supplier_impact": {
+    "current_supplier_id": "sup-001",
+    "current_supplier_name": "Acme Industrial",
+    "current_lead_time_days": 5,
+    "current_reliability": 0.95,
+    "current_supplier_risk": "LOW",
+    "effective_supplier_id": "sup-001",
+    "effective_supplier_name": "Acme Industrial",
+    "effective_lead_time_days": 5,
+    "effective_reliability": 0.95,
+    "effective_supplier_risk": "LOW",
+    "is_supplier_switched": false,
+    "lead_time_delta_days": 0,
+    "reliability_delta": 0.0,
+    "notes": [
+      "Order sourced from primary supplier 'Acme Industrial' (sup-001).",
+      "Lead time: 5 days, Reliability: 0.95."
+    ]
+  },
+  "cost_impact": {
+    "is_cost_calculable": true,
+    "unit_cost": 15.50,
+    "order_quantity": 25,
+    "direct_procurement_cost": 387.50,
+    "currency": "USD",
+    "cost_status": "CALCULATED",
+    "unavailability_reason": null,
+    "notes": [
+      "Direct procurement cost: 25 units * $15.50/unit = $387.50.",
+      "Carrying cost, shipping fees, and bulk discount structures are unobserved in catalog data and not fabricated."
+    ]
+  },
+  "evidence": {
+    "action_id": "ACT-0002",
+    "action_type": "PLACE_ORDER",
+    "decision_id": "DEC-0001",
+    "product_id": "prod-001",
+    "warehouse_id": "wh-001",
+    "inputs_summary": {
+      "available_quantity": 20,
+      "reorder_point": 30,
+      "average_daily_demand": 10.0,
+      "product_unit_cost": 15.50,
+      "current_supplier_id": "sup-001",
+      "current_lead_time_days": 5,
+      "current_supplier_reliability": 0.95,
+      "action_parameters": { "quantity": 25 },
+      "replenishment_policy": "REORDER_POINT_DEFICIT"
+    },
+    "formulas": {
+      "post_arrival_exposure": "post_exposure_deficit = max(0.0, lead_time_demand - (available + quantity))",
+      "shortfall_addressed": "shortfall_addressed = min(order_quantity, recommended_replenishment_quantity)",
+      "remaining_shortfall": "remaining_shortfall = max(0, recommended_replenishment_quantity - order_quantity)",
+      "direct_procurement_cost": "direct_procurement_cost = order_quantity * product.unit_cost"
+    },
+    "assumptions": [
+      "Historical average daily demand represents the expected rate of inventory consumption.",
+      "Supplier lead times and reliability metrics are deterministic and represent complete fulfillment cycles.",
+      "Available unreserved inventory accurately reflects immediately deployable stock.",
+      "Composite multi-criteria scoring weights are not arbitrarily fabricated without documented executive rules."
+    ],
+    "limitations": [
+      "Stockout exposure index is a deterministic physical exposure ratio, not an empirical probability distribution.",
+      "Supplier contract switching fees and transport tariffs are unobserved in existing datasets.",
+      "Action evaluation evaluates candidate actions individually; recommendation selection is strictly deferred to Day 20."
+    ],
+    "calculation_notes": [
+      "Evaluated PLACE_ORDER candidate action (quantity=25).",
+      "Direct procurement cost calculated as $387.50.",
+      "Shortfall satisfaction ratio: 100.00%.",
+      "Post-delivery exposure index improves by -0.5000."
+    ]
+  },
+  "overall_score": null,
+  "scoring_status": "UNRESOLVED_MULTI_CRITERIA_DECISION",
+  "scoring_rationale": "Overall composite score is not arbitrarily weighted. Transparent multidimensional evaluation is provided; recommendation selection is deferred to Day 20."
+}
+```
+
+
 

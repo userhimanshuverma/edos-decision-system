@@ -59,6 +59,18 @@ from app.domain.stockout_risk import (
     StockoutRiskModelType,
     calculate_stockout_risk,
 )
+from app.domain.action_evaluation import (
+    ActionEvaluationInputs,
+    ActionEvaluationResult,
+    CostImpactEvaluation,
+    DecisionEvaluationReport,
+    EvaluationCostStatus,
+    EvaluationEvidence,
+    ReplenishmentImpactEvaluation,
+    StockoutExposureEvaluation,
+    SupplierImpactEvaluation,
+    evaluate_candidate_action,
+)
 
 __all__ = [
     "Product",
@@ -114,5 +126,16 @@ __all__ = [
     "StockoutRiskLevel",
     "StockoutRiskModelType",
     "calculate_stockout_risk",
+    "EvaluationCostStatus",
+    "StockoutExposureEvaluation",
+    "ReplenishmentImpactEvaluation",
+    "SupplierImpactEvaluation",
+    "CostImpactEvaluation",
+    "EvaluationEvidence",
+    "ActionEvaluationResult",
+    "DecisionEvaluationReport",
+    "ActionEvaluationInputs",
+    "evaluate_candidate_action",
 ]
+
 

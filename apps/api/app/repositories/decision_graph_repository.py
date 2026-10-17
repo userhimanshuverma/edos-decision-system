@@ -288,6 +288,86 @@ class DecisionGraphRepository:
         self._graphs[graph.id] = updated_graph.model_copy(deep=True)
         return True
 
+    def attach_evaluation_node(
+        self,
+        decision_id: str,
+        evaluation: Any,
+    ) -> tuple[GraphNode, GraphEdge | None] | tuple[None, None]:
+        """Attaches a RESULT node representing an action evaluation to the graph (and PRODUCES edge from ACTION).
+
+        Returns (eval_node, edge) if attached, or (None, None) if no graph or action node exists.
+        Raises GraphIntegrityError if graph integrity rules are violated.
+        """
+        norm_decision_id = decision_id.strip()
+        graph_id = self._by_decision_id.get(norm_decision_id)
+        if graph_id is None:
+            return None, None
+        graph = self._graphs[graph_id]
+
+        action_id = evaluation.action_id
+        action_node_id = f"{norm_decision_id}-node-{action_id}"
+        action_node = next((n for n in graph.nodes if n.id == action_node_id), None)
+        if action_node is None:
+            return None, None
+
+        eval_node_id = f"{norm_decision_id}-node-eval-{action_id}"
+        existing_node = next((n for n in graph.nodes if n.id == eval_node_id), None)
+        if existing_node is not None:
+            existing_edge = next((e for e in graph.edges if e.target_id == eval_node_id), None)
+            return existing_node, existing_edge
+
+        cost_status_val = (
+            evaluation.cost_impact.cost_status.value
+            if hasattr(evaluation.cost_impact.cost_status, "value")
+            else str(evaluation.cost_impact.cost_status)
+        )
+        action_type_val = (
+            evaluation.action_type.value
+            if hasattr(evaluation.action_type, "value")
+            else str(evaluation.action_type)
+        )
+
+        eval_node = GraphNode(
+            id=eval_node_id,
+            node_type=GraphNodeType.RESULT,
+            decision_id=norm_decision_id,
+            label=f"Evaluation Result: {action_type_val} ({action_id})",
+            metadata={
+                "action_id": action_id,
+                "action_type": action_type_val,
+                "exposure_index_delta": evaluation.stockout_exposure.exposure_index_delta,
+                "shortfall_addressed": evaluation.replenishment_impact.shortfall_addressed,
+                "cost_status": cost_status_val,
+                "overall_score": evaluation.overall_score,
+                "scoring_status": evaluation.scoring_status,
+            },
+            created_at=evaluation.evaluated_at,
+        )
+
+        edge_id = f"EDG-PROD-{norm_decision_id}-{action_id}"
+        edge = GraphEdge(
+            id=edge_id,
+            source_id=action_node.id,
+            target_id=eval_node.id,
+            relationship_type=GraphRelationshipType.PRODUCES,
+            decision_id=norm_decision_id,
+        )
+
+        updated_nodes = list(graph.nodes) + [eval_node]
+        updated_edges = list(graph.edges) + [edge]
+
+        updated_graph = DecisionGraph(
+            id=graph.id,
+            decision_id=graph.decision_id,
+            nodes=updated_nodes,
+            edges=updated_edges,
+            created_at=graph.created_at,
+            updated_at=datetime.now(timezone.utc),
+        )
+        self._graphs[graph.id] = updated_graph.model_copy(deep=True)
+        return eval_node, edge
+
+
     def __len__(self) -> int:
         """Returns total number of graphs currently stored."""
         return len(self._graphs)

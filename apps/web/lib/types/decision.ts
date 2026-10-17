@@ -208,5 +208,155 @@ export interface DecisionStockoutRiskRequest {
   model_type?: import('./inventory').StockoutRiskModelType;
 }
 
+/**
+ * Categorical status of cost impact determination matching Day 19 EvaluationCostStatus enum.
+ */
+export type EvaluationCostStatus = 'CALCULATED' | 'ZERO_COST' | 'UNAVAILABLE';
+
+/**
+ * Stockout exposure evaluation metrics for a candidate action.
+ */
+export interface StockoutExposureEvaluation {
+  is_probability: boolean;
+  current_risk_level: import('./inventory').StockoutRiskLevel;
+  current_exposure_index: number;
+  current_exposure_deficit: number;
+  current_buffer_days: number | null;
+  projected_risk_level: import('./inventory').StockoutRiskLevel;
+  projected_exposure_index: number;
+  projected_exposure_deficit: number;
+  projected_buffer_days: number | null;
+  exposure_index_delta: number;
+  is_stockout_prevented_in_lead_time: boolean;
+  post_arrival_coverage_days: number | null;
+  notes: string[];
+}
+
+/**
+ * Replenishment shortfall impact evaluation metrics for a candidate action.
+ */
+export interface ReplenishmentImpactEvaluation {
+  policy_type: import('./inventory').ReplenishmentPolicyType;
+  target_stock: number;
+  available_quantity: number;
+  reorder_point: number;
+  recommended_replenishment_quantity: number;
+  is_replenishment_needed: boolean;
+  action_order_quantity: number | null;
+  shortfall_addressed: number;
+  remaining_shortfall: number;
+  excess_quantity: number;
+  shortfall_satisfaction_ratio: number | null;
+  notes: string[];
+}
+
+/**
+ * Supplier, lead-time, and reliability parameters affected by an action.
+ */
+export interface SupplierImpactEvaluation {
+  current_supplier_id: string;
+  current_supplier_name: string;
+  current_lead_time_days: number;
+  current_reliability: number;
+  current_supplier_risk: string;
+  effective_supplier_id: string;
+  effective_supplier_name: string;
+  effective_lead_time_days: number;
+  effective_reliability: number;
+  effective_supplier_risk: string;
+  is_supplier_switched: boolean;
+  lead_time_delta_days: number;
+  reliability_delta: number;
+  notes: string[];
+}
+
+/**
+ * Defensible monetary procurement cost evaluation for a candidate action.
+ */
+export interface CostImpactEvaluation {
+  is_cost_calculable: boolean;
+  unit_cost: number | null;
+  order_quantity: number | null;
+  direct_procurement_cost: number | null;
+  currency: string;
+  cost_status: EvaluationCostStatus;
+  unavailability_reason: string | null;
+  notes: string[];
+}
+
+/**
+ * Audit evidence supporting an action evaluation result.
+ */
+export interface EvaluationEvidence {
+  action_id: string;
+  action_type: CandidateActionType;
+  decision_id: string;
+  product_id: string;
+  warehouse_id: string;
+  inputs_summary: Record<string, unknown>;
+  formulas: Record<string, string>;
+  assumptions: string[];
+  limitations: string[];
+  calculation_notes: string[];
+}
+
+/**
+ * Deterministic evaluation result for an individual candidate action matching Day 19 schema.
+ */
+export interface ActionEvaluationRecord {
+  action_id: string;
+  action_type: CandidateActionType;
+  decision_id: string;
+  product_id: string;
+  warehouse_id: string;
+  evaluated_at: string;
+  stockout_exposure: StockoutExposureEvaluation;
+  replenishment_impact: ReplenishmentImpactEvaluation;
+  supplier_impact: SupplierImpactEvaluation;
+  cost_impact: CostImpactEvaluation;
+  evidence: EvaluationEvidence;
+  overall_score: number | null;
+  scoring_status: string;
+  scoring_rationale: string;
+}
+
+export type ActionEvaluationResponse = ActionEvaluationRecord;
+
+/**
+ * Decision-level collection of evaluations for all applicable candidate actions.
+ */
+export interface DecisionEvaluationReportRecord {
+  decision_id: string;
+  product_id: string;
+  warehouse_id: string;
+  evaluated_at: string;
+  total_actions_evaluated: number;
+  evaluations: ActionEvaluationRecord[];
+  summary_notes: string[];
+}
+
+export type DecisionEvaluationReportResponse = DecisionEvaluationReportRecord;
+
+/**
+ * Payload contract for evaluating an individual action.
+ */
+export interface EvaluateActionRequest {
+  policy_type?: import('./inventory').ReplenishmentPolicyType;
+  target_stock?: number;
+  enforce_reorder_trigger?: boolean;
+  record_to_graph?: boolean;
+}
+
+/**
+ * Payload contract for evaluating all candidate actions of a decision.
+ */
+export interface EvaluateDecisionActionsRequest {
+  policy_type?: import('./inventory').ReplenishmentPolicyType;
+  target_stock?: number;
+  enforce_reorder_trigger?: boolean;
+  record_to_graph?: boolean;
+}
+
+
 
 

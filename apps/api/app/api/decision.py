@@ -23,12 +23,24 @@ from app.api.schemas import (
     StockoutRiskModelType,
     StockoutRiskResponse,
     UpdateDecisionStatusRequest,
+    ActionEvaluationResponse,
+    DecisionEvaluationReportResponse,
+    EvaluateActionRequest,
+    EvaluateDecisionActionsRequest,
 )
 from app.candidate_actions.service import (
     CandidateActionNotFoundError,
     CandidateActionService,
     DecisionNotFoundError,
 )
+from app.evaluation.service import (
+    ActionEvaluationService,
+    CandidateActionNotFoundError as EvalActionNotFoundError,
+    DecisionNotFoundError as EvalDecisionNotFoundError,
+    MissingEvaluationDataError,
+)
+
+
 from app.replenishment.service import (
     DecisionNotFoundError as ReplenishmentDecisionNotFoundError,
     MissingReplenishmentDataError,
@@ -140,6 +152,24 @@ def get_decision_stockout_risk_service() -> StockoutRiskService:
         supplier_repo=SupplierRepository(dataset=shared_dataset),
         decision_repo=dec_repo,
     )
+
+
+@lru_cache
+def get_action_evaluation_service() -> ActionEvaluationService:
+    """Dependency provider returning ActionEvaluationService wired to repositories."""
+    dec_repo = get_decision_repository()
+    action_repo = get_candidate_action_repository()
+    graph_repo = get_decision_graph_repository()
+    shared_dataset = dec_repo.dataset
+    return ActionEvaluationService(
+        decision_repo=dec_repo,
+        action_repo=action_repo,
+        inventory_repo=get_inventory_repository(),
+        demand_repo=DemandRepository(dataset=shared_dataset),
+        supplier_repo=SupplierRepository(dataset=shared_dataset),
+        graph_repo=graph_repo,
+    )
+
 
 
 
@@ -509,8 +539,233 @@ def list_candidate_actions(
     return [CandidateActionResponse.from_domain(a) for a in actions]
 
 
+# Day 19 Action Evaluation Endpoints
+
+
+@router.post(
+    "/{decision_id}/actions/evaluate",
+    response_model=DecisionEvaluationReportResponse,
+    summary="Evaluate all candidate actions for a decision",
+    description="Evaluates all candidate actions associated with a business decision across standard dimensions without selecting a recommendation.",
+)
+def evaluate_decision_candidate_actions(
+    decision_id: str,
+    payload: EvaluateDecisionActionsRequest | None = None,
+    service: ActionEvaluationService = Depends(get_action_evaluation_service),
+) -> DecisionEvaluationReportResponse:
+    req = payload or EvaluateDecisionActionsRequest()
+    try:
+        report = service.evaluate_decision_actions(
+            decision_id=decision_id,
+            policy_type=req.policy_type,
+            target_stock=req.target_stock,
+            enforce_reorder_trigger=req.enforce_reorder_trigger,
+            record_to_graph=req.record_to_graph,
+        )
+        return DecisionEvaluationReportResponse.from_domain(report)
+    except (DecisionNotFoundError, EvalDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (MissingEvaluationDataError, IneligibleSupplierError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/actions/evaluate",
+    response_model=DecisionEvaluationReportResponse,
+    summary="Evaluate all candidate actions for a decision via query parameters",
+    description="Query-parameter endpoint for evaluating all candidate actions associated with a decision.",
+)
+def get_evaluate_decision_candidate_actions(
+    decision_id: str,
+    policy_type: ReplenishmentPolicyType = Query(
+        default=ReplenishmentPolicyType.REORDER_POINT_DEFICIT,
+        description="Replenishment policy formula to evaluate against",
+    ),
+    target_stock: int | None = Query(
+        default=None,
+        ge=0,
+        description="Explicit target stock level (required if policy_type is TARGET_STOCK)",
+    ),
+    enforce_reorder_trigger: bool = Query(
+        default=True,
+        description="When True, replenishment need is 0 unless available <= reorder_point",
+    ),
+    record_to_graph: bool = Query(
+        default=False,
+        description="When True, attaches evaluation RESULT nodes to the Decision Graph",
+    ),
+    service: ActionEvaluationService = Depends(get_action_evaluation_service),
+) -> DecisionEvaluationReportResponse:
+    try:
+        report = service.evaluate_decision_actions(
+            decision_id=decision_id,
+            policy_type=policy_type,
+            target_stock=target_stock,
+            enforce_reorder_trigger=enforce_reorder_trigger,
+            record_to_graph=record_to_graph,
+        )
+        return DecisionEvaluationReportResponse.from_domain(report)
+    except (DecisionNotFoundError, EvalDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (MissingEvaluationDataError, IneligibleSupplierError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/{decision_id}/actions/{action_id}/evaluate",
+    response_model=ActionEvaluationResponse,
+    summary="Evaluate an individual candidate action",
+    description="Deterministically evaluates an individual candidate action across stockout exposure, replenishment impact, supplier parameters, and defensible costs.",
+)
+def evaluate_individual_action(
+    decision_id: str,
+    action_id: str,
+    payload: EvaluateActionRequest | None = None,
+    service: ActionEvaluationService = Depends(get_action_evaluation_service),
+) -> ActionEvaluationResponse:
+    req = payload or EvaluateActionRequest()
+    try:
+        result = service.evaluate_action(
+            decision_id=decision_id,
+            action_id=action_id,
+            policy_type=req.policy_type,
+            target_stock=req.target_stock,
+            enforce_reorder_trigger=req.enforce_reorder_trigger,
+            record_to_graph=req.record_to_graph,
+        )
+        return ActionEvaluationResponse.from_domain(result)
+    except (
+        DecisionNotFoundError,
+        EvalDecisionNotFoundError,
+        CandidateActionNotFoundError,
+        EvalActionNotFoundError,
+        SupplierNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (MissingEvaluationDataError, IneligibleSupplierError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/actions/{action_id}/evaluate",
+    response_model=ActionEvaluationResponse,
+    summary="Evaluate an individual candidate action via query parameters",
+    description="Query-parameter endpoint for evaluating an individual candidate action.",
+)
+def get_evaluate_individual_action(
+    decision_id: str,
+    action_id: str,
+    policy_type: ReplenishmentPolicyType = Query(
+        default=ReplenishmentPolicyType.REORDER_POINT_DEFICIT,
+        description="Replenishment policy formula to evaluate against",
+    ),
+    target_stock: int | None = Query(
+        default=None,
+        ge=0,
+        description="Explicit target stock level (required if policy_type is TARGET_STOCK)",
+    ),
+    enforce_reorder_trigger: bool = Query(
+        default=True,
+        description="When True, replenishment need is 0 unless available <= reorder_point",
+    ),
+    record_to_graph: bool = Query(
+        default=False,
+        description="When True, attaches evaluation RESULT node to the Decision Graph",
+    ),
+    service: ActionEvaluationService = Depends(get_action_evaluation_service),
+) -> ActionEvaluationResponse:
+    try:
+        result = service.evaluate_action(
+            decision_id=decision_id,
+            action_id=action_id,
+            policy_type=policy_type,
+            target_stock=target_stock,
+            enforce_reorder_trigger=enforce_reorder_trigger,
+            record_to_graph=record_to_graph,
+        )
+        return ActionEvaluationResponse.from_domain(result)
+    except (
+        DecisionNotFoundError,
+        EvalDecisionNotFoundError,
+        CandidateActionNotFoundError,
+        EvalActionNotFoundError,
+        SupplierNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (MissingEvaluationDataError, IneligibleSupplierError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/{decision_id}/evaluation",
+    response_model=DecisionEvaluationReportResponse,
+    summary="Evaluate all candidate actions for a decision (canonical alias)",
+    description="Canonical alias for evaluating all candidate actions of a decision.",
+    include_in_schema=False,
+)
+def evaluate_decision_alias_post(
+    decision_id: str,
+    payload: EvaluateDecisionActionsRequest | None = None,
+    service: ActionEvaluationService = Depends(get_action_evaluation_service),
+) -> DecisionEvaluationReportResponse:
+    return evaluate_decision_candidate_actions(decision_id=decision_id, payload=payload, service=service)
+
+
+@router.get(
+    "/{decision_id}/evaluation",
+    response_model=DecisionEvaluationReportResponse,
+    summary="Evaluate all candidate actions for a decision via query params (canonical alias)",
+    description="Canonical query-parameter alias for evaluating all candidate actions of a decision.",
+    include_in_schema=False,
+)
+def evaluate_decision_alias_get(
+    decision_id: str,
+    policy_type: ReplenishmentPolicyType = Query(
+        default=ReplenishmentPolicyType.REORDER_POINT_DEFICIT,
+        description="Replenishment policy formula to evaluate against",
+    ),
+    target_stock: int | None = Query(default=None, ge=0),
+    enforce_reorder_trigger: bool = Query(default=True),
+    record_to_graph: bool = Query(default=False),
+    service: ActionEvaluationService = Depends(get_action_evaluation_service),
+) -> DecisionEvaluationReportResponse:
+    return get_evaluate_decision_candidate_actions(
+        decision_id=decision_id,
+        policy_type=policy_type,
+        target_stock=target_stock,
+        enforce_reorder_trigger=enforce_reorder_trigger,
+        record_to_graph=record_to_graph,
+        service=service,
+    )
+
+
 @router.get(
     "/{decision_id}/actions/{action_id}",
+
     response_model=CandidateActionResponse,
     summary="Get candidate action by ID",
     description="Retrieves a specific candidate action belonging to the specified business decision.",
@@ -721,6 +976,8 @@ def get_decision_stockout_risk(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
+
 
 
 
