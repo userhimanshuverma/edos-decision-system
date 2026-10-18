@@ -1186,3 +1186,154 @@ class DecisionEvaluationReportResponse(BaseModel):
             summary_notes=report.summary_notes,
         )
 
+
+# Day 20 Recommendation Engine Schemas
+from app.domain.recommendation import (  # noqa: E402
+    AlternativeComparison,
+    Recommendation,
+    RecommendationStatus,
+    TieBreakMethod,
+)
+
+
+class AlternativeComparisonResponse(BaseModel):
+    """Auditable comparison summary for an alternative candidate action considered during recommendation."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    action_id: str = Field(..., description="Candidate action identifier")
+    action_type: ActionType = Field(..., description="Candidate action type")
+    is_eligible: bool = Field(..., description="Whether action met operational eligibility criteria")
+    ineligibility_reason: str | None = Field(default=None, description="Reason if action was marked ineligible")
+    rank: int | None = Field(default=None, ge=1, description="Priority rank among evaluated alternatives")
+    shortfall_satisfaction_ratio: float | None = Field(default=None, ge=0.0, description="Replenishment shortfall satisfaction ratio")
+    shortfall_addressed: int | None = Field(default=None, ge=0, description="Shortfall units addressed")
+    excess_quantity: int | None = Field(default=None, ge=0, description="Units ordered in excess of target")
+    exposure_index_delta: float | None = Field(default=None, description="Stockout exposure index delta")
+    effective_supplier_risk: str | None = Field(default=None, description="Supplier risk tier effective under action")
+    effective_lead_time_days: int | None = Field(default=None, ge=0, description="Effective supplier fulfillment lead time")
+    effective_reliability: float | None = Field(default=None, ge=0.0, le=1.0, description="Effective supplier reliability")
+    direct_procurement_cost: float | None = Field(default=None, ge=0.0, description="Calculated direct purchase cost")
+    cost_status: str | None = Field(default=None, description="Cost status classification")
+    selection_notes: list[str] = Field(default_factory=list, description="Step-by-step ranking evaluation notes")
+
+    @classmethod
+    def from_domain(cls, alt: AlternativeComparison) -> AlternativeComparisonResponse:
+        return cls(
+            action_id=alt.action_id,
+            action_type=alt.action_type,
+            is_eligible=alt.is_eligible,
+            ineligibility_reason=alt.ineligibility_reason,
+            rank=alt.rank,
+            shortfall_satisfaction_ratio=alt.shortfall_satisfaction_ratio,
+            shortfall_addressed=alt.shortfall_addressed,
+            excess_quantity=alt.excess_quantity,
+            exposure_index_delta=alt.exposure_index_delta,
+            effective_supplier_risk=alt.effective_supplier_risk,
+            effective_lead_time_days=alt.effective_lead_time_days,
+            effective_reliability=alt.effective_reliability,
+            direct_procurement_cost=alt.direct_procurement_cost,
+            cost_status=alt.cost_status,
+            selection_notes=alt.selection_notes,
+        )
+
+
+class GenerateRecommendationRequest(BaseModel):
+    """Request payload for generating a deterministic recommendation for a business decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    policy_type: ReplenishmentPolicyType = Field(
+        default=ReplenishmentPolicyType.REORDER_POINT_DEFICIT,
+        description="Replenishment policy formula to evaluate against",
+    )
+    target_stock: int | None = Field(
+        default=None,
+        ge=0,
+        description="Explicit target stock level (required if policy_type is TARGET_STOCK)",
+    )
+    enforce_reorder_trigger: bool = Field(
+        default=True,
+        description="When True, replenishment need is 0 unless available <= reorder_point",
+    )
+    record_to_graph: bool = Field(
+        default=False,
+        description="When True, attaches recommendation RESULT node to the Decision Graph",
+    )
+
+
+class RecommendationResponse(BaseModel):
+    """Clean, typed response model representing a deterministic business recommendation."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique recommendation identifier (REC-XXXX)")
+    decision_id: str = Field(..., description="Associated business decision identifier")
+    product_id: str = Field(..., description="Associated product identifier")
+    warehouse_id: str = Field(..., description="Associated warehouse identifier")
+    status: RecommendationStatus = Field(..., description="Recommendation outcome status")
+    selection_rule: str = Field(..., description="Name of deterministic rule used to select recommendation")
+    recommended_action_id: str | None = Field(default=None, description="Action identifier of the selected recommendation")
+    recommended_action_type: ActionType | None = Field(default=None, description="Action type of the selected recommendation")
+    recommended_action: CandidateActionResponse | None = Field(default=None, description="Selected candidate action details")
+    selection_rationale: str = Field(..., description="Transparent deterministic rationale explaining the recommendation")
+    tie_broken: bool = Field(default=False, description="True if selection required breaking a tie between identical evaluations")
+    tie_break_method: TieBreakMethod = Field(default=TieBreakMethod.NONE, description="Method used if a tie had to be broken")
+    tie_breaking_rationale: str | None = Field(default=None, description="Detailed explanation of tie-breaking resolution")
+    total_actions_evaluated: int = Field(..., ge=0, description="Total candidate actions considered during selection")
+    alternatives: list[AlternativeComparisonResponse] = Field(default_factory=list, description="Auditable summary of all candidate actions compared")
+    evaluation_evidence: EvaluationEvidenceResponse | None = Field(default=None, description="Preserved evaluation evidence for recommended action")
+    selected_evaluation: ActionEvaluationResponse | None = Field(default=None, description="Preserved full evaluation result of recommended action")
+    created_at: datetime = Field(..., description="UTC recommendation generation timestamp")
+    is_fresh: bool = Field(default=True, description="True if the recommendation reflects the latest candidate actions and inventory state")
+    stale_reason: str | None = Field(default=None, description="Reason if the recommendation has been determined to be stale")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary structured metadata")
+
+    @classmethod
+    def from_domain(cls, rec: Recommendation) -> RecommendationResponse:
+        return cls(
+            id=rec.id,
+            decision_id=rec.decision_id,
+            product_id=rec.product_id,
+            warehouse_id=rec.warehouse_id,
+            status=rec.status,
+            selection_rule=rec.selection_rule,
+            recommended_action_id=rec.recommended_action_id,
+            recommended_action_type=rec.recommended_action_type,
+            recommended_action=(
+                CandidateActionResponse.from_domain(rec.recommended_action)
+                if rec.recommended_action is not None
+                else None
+            ),
+            selection_rationale=rec.selection_rationale,
+            tie_broken=rec.tie_broken,
+            tie_break_method=rec.tie_break_method,
+            tie_breaking_rationale=rec.tie_breaking_rationale,
+            total_actions_evaluated=rec.total_actions_evaluated,
+            alternatives=[AlternativeComparisonResponse.from_domain(a) for a in rec.alternatives],
+            evaluation_evidence=(
+                EvaluationEvidenceResponse(
+                    action_id=rec.evaluation_evidence.action_id,
+                    action_type=rec.evaluation_evidence.action_type,
+                    decision_id=rec.evaluation_evidence.decision_id,
+                    product_id=rec.evaluation_evidence.product_id,
+                    warehouse_id=rec.evaluation_evidence.warehouse_id,
+                    inputs_summary=rec.evaluation_evidence.inputs_summary,
+                    formulas=rec.evaluation_evidence.formulas,
+                    assumptions=rec.evaluation_evidence.assumptions,
+                    limitations=rec.evaluation_evidence.limitations,
+                    calculation_notes=rec.evaluation_evidence.calculation_notes,
+                )
+                if rec.evaluation_evidence is not None
+                else None
+            ),
+            selected_evaluation=(
+                ActionEvaluationResponse.from_domain(rec.selected_evaluation)
+                if rec.selected_evaluation is not None
+                else None
+            ),
+            created_at=rec.created_at,
+            is_fresh=rec.is_fresh,
+            stale_reason=rec.stale_reason,
+            metadata=rec.metadata,
+        )

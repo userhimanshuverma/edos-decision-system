@@ -27,6 +27,8 @@ from app.api.schemas import (
     DecisionEvaluationReportResponse,
     EvaluateActionRequest,
     EvaluateDecisionActionsRequest,
+    GenerateRecommendationRequest,
+    RecommendationResponse,
 )
 from app.candidate_actions.service import (
     CandidateActionNotFoundError,
@@ -39,6 +41,12 @@ from app.evaluation.service import (
     DecisionNotFoundError as EvalDecisionNotFoundError,
     MissingEvaluationDataError,
 )
+from app.recommendation.service import (
+    DecisionNotFoundError as RecDecisionNotFoundError,
+    RecommendationNotFoundError,
+    RecommendationService,
+)
+
 
 
 from app.replenishment.service import (
@@ -78,7 +86,9 @@ from app.repositories.decision_repository import DecisionRepository
 from app.repositories.decision_version_repository import DecisionVersionRepository
 from app.repositories.demand_repository import DemandRepository
 from app.repositories.inventory_repository import InventoryRepository
+from app.repositories.recommendation_repository import RecommendationRepository
 from app.repositories.supplier_repository import SupplierRepository
+
 
 router = APIRouter()
 
@@ -169,6 +179,25 @@ def get_action_evaluation_service() -> ActionEvaluationService:
         supplier_repo=SupplierRepository(dataset=shared_dataset),
         graph_repo=graph_repo,
     )
+
+
+@lru_cache
+def get_recommendation_repository() -> RecommendationRepository:
+    """Dependency provider returning singleton RecommendationRepository."""
+    return RecommendationRepository()
+
+
+@lru_cache
+def get_recommendation_service() -> RecommendationService:
+    """Dependency provider returning RecommendationService wired to repositories."""
+    return RecommendationService(
+        decision_repo=get_decision_repository(),
+        action_repo=get_candidate_action_repository(),
+        evaluation_service=get_action_evaluation_service(),
+        recommendation_repo=get_recommendation_repository(),
+        graph_repo=get_decision_graph_repository(),
+    )
+
 
 
 
@@ -978,8 +1007,96 @@ def get_decision_stockout_risk(
         ) from exc
 
 
+# Day 20 Recommendation Engine Endpoints
 
 
+@router.post(
+    "/{decision_id}/recommendation",
+    response_model=RecommendationResponse,
+    summary="Generate deterministic recommendation for a decision",
+    description="Evaluates all candidate actions and deterministically selects the optimal recommendation via Lexicographic Operational Dominance.",
+)
+def generate_decision_recommendation(
+    decision_id: str,
+    payload: GenerateRecommendationRequest | None = None,
+    service: RecommendationService = Depends(get_recommendation_service),
+) -> RecommendationResponse:
+    req = payload or GenerateRecommendationRequest()
+    try:
+        rec = service.generate_recommendation(
+            decision_id=decision_id,
+            policy_type=req.policy_type,
+            target_stock=req.target_stock,
+            enforce_reorder_trigger=req.enforce_reorder_trigger,
+            record_to_graph=req.record_to_graph,
+        )
+        return RecommendationResponse.from_domain(rec)
+    except (DecisionNotFoundError, RecDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (MissingEvaluationDataError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
+@router.get(
+    "/{decision_id}/recommendation",
+    response_model=RecommendationResponse,
+    summary="Get or generate recommendation for a decision via query parameters",
+    description="Retrieves the latest recommendation or generates one using specified query parameters.",
+)
+def get_decision_recommendation(
+    decision_id: str,
+    policy_type: ReplenishmentPolicyType = Query(
+        default=ReplenishmentPolicyType.REORDER_POINT_DEFICIT,
+        description="Replenishment policy formula to evaluate against",
+    ),
+    target_stock: int | None = Query(
+        default=None,
+        ge=0,
+        description="Explicit target stock level (required if policy_type is TARGET_STOCK)",
+    ),
+    enforce_reorder_trigger: bool = Query(
+        default=True,
+        description="When True, replenishment need is 0 unless available <= reorder_point",
+    ),
+    record_to_graph: bool = Query(
+        default=False,
+        description="When True, attaches recommendation RESULT node to the Decision Graph",
+    ),
+    recompute: bool = Query(
+        default=False,
+        description="When True, forces re-evaluating and generating a new recommendation",
+    ),
+    service: RecommendationService = Depends(get_recommendation_service),
+) -> RecommendationResponse:
+    try:
+        if not recompute:
+            try:
+                rec = service.get_latest_recommendation(decision_id=decision_id)
+                return RecommendationResponse.from_domain(rec)
+            except RecommendationNotFoundError:
+                pass
 
+        rec = service.generate_recommendation(
+            decision_id=decision_id,
+            policy_type=policy_type,
+            target_stock=target_stock,
+            enforce_reorder_trigger=enforce_reorder_trigger,
+            record_to_graph=record_to_graph,
+        )
+        return RecommendationResponse.from_domain(rec)
+    except (DecisionNotFoundError, RecDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (MissingEvaluationDataError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc

@@ -71,6 +71,13 @@ from app.domain.action_evaluation import (
     SupplierImpactEvaluation,
     evaluate_candidate_action,
 )
+from app.domain.recommendation import (
+    AlternativeComparison,
+    Recommendation,
+    RecommendationStatus,
+    TieBreakMethod,
+    select_deterministic_recommendation,
+)
 
 __all__ = [
     "Product",
@@ -136,6 +143,9 @@ __all__ = [
     "DecisionEvaluationReport",
     "ActionEvaluationInputs",
     "evaluate_candidate_action",
+    "AlternativeComparison",
+    "Recommendation",
+    "RecommendationStatus",
+    "TieBreakMethod",
+    "select_deterministic_recommendation",
 ]
-
-

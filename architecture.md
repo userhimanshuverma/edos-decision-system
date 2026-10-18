@@ -1500,5 +1500,91 @@ Evaluating candidate actions does not mutate the graph by default. When explicit
 }
 ```
 
+---
 
+## 10. Day 20: Deterministic Recommendation Engine
 
+### 10.1 Objective and Scope Boundaries
+The Day 20 Recommendation Engine answers:
+> **"Which evaluated candidate action should be recommended for human operational approval, based on transparent, deterministic multi-criteria operational priority?"**
+
+EDOS operates on the core principle: **"The system calculates. AI explains. Humans approve."**
+
+#### Strict Scope Boundaries:
+1. **Reuses Day 19 Action Evaluations**: Reuses the quantifiable multi-dimensional evaluations (`ActionEvaluationResult`) and audit evidence (`EvaluationEvidence`) computed by Day 19 without recalculating or duplicating math.
+2. **Deterministic Recommendation Selection (No Arbitrary Weights)**: Does not fabricate arbitrary composite linear weighting ($w_1 \cdot \text{exposure} + w_2 \cdot \text{cost} + \dots$). Instead, selection strictly follows **Lexicographic Operational Dominance (LOD)** prioritizing operational need, shortfall elimination, excess prevention, exposure reduction, supplier reliability, and defensible cost.
+3. **Explicit Edge Case Handling**: Explicit handling for ties, missing evaluations, unsupported actions, and cases where no candidate actions exist.
+4. **Decoupled from Execution & Lifecycle**: Generates and persists the recommendation (`REC-XXXX`) without auto-advancing decision lifecycle status (`EVALUATING` → `READY`) or executing purchase orders. Approval and execution remain strictly under human control.
+
+### 10.2 Recommendation Selection Rule: Lexicographic Operational Dominance (LOD)
+
+Candidate actions are selected and ranked through an ordered sequence of operational criteria:
+
+1. **Operational Necessity Check**:
+   - If replenishment shortfall $Q_{rec} == 0$ (`is_replenishment_needed == False`):
+     - When baseline lead-time exposure deficit is $0.0$, inventory is healthy above the reorder threshold.
+     - When baseline lead-time exposure deficit $> 0.0$, the engine explicitly notes persistent baseline lead-time exposure even though the replenishment trigger was not met.
+     - `DO_NOTHING` is selected as the top recommendation with `status = "NO_ACTION_REQUIRED"`.
+     - Direct procurement cost is $\$0.00$, preserving working capital and avoiding unnecessary inventory holding excess.
+   - If replenishment shortfall $Q_{rec} > 0$ (`is_replenishment_needed == True`):
+     - Active stockout risk exists. `DO_NOTHING` leaves 100% of shortfall unaddressed and is strictly subordinated.
+
+2. **Lexicographic Ranking Vector**:
+   For each evaluated candidate action $a$, the engine computes:
+   $$\mathbf{K}(a) = \Big( -S_{ratio}(a), \; Q_{excess}(a), \; \Delta I_{exposure}(a), \; \text{RiskTier}(a), \; -R_{eff}(a), \; L_{eff}(a), \; \text{CostCat}(a), \; C_{direct}(a), \; T_{type}(a), \; t_{created}(a), \; \text{id}(a) \Big)$$
+   - **Level 1 (Shortfall Satisfaction)**: Maximize satisfaction ratio $S_{ratio} = \frac{\min(Q, Q_{rec})}{Q_{rec}}$. 1.0 (100%) dominates partial or zero satisfaction.
+   - **Level 2 (Excess Avoidance)**: Minimize excess units above target $Q_{excess} = \max(0, Q - Q_{rec})$.
+   - **Level 3 (Exposure Index Delta)**: Minimize $\Delta I_{exposure} \le 0$ (more negative represents greater stockout exposure reduction).
+   - **Level 4 (Supplier Operational Risk)**: Prefer `LOW` (0) > `MEDIUM` (1) > `HIGH` (2). Missing defaults conservatively to `HIGH` (2).
+   - **Level 5 (Supplier Reliability & Lead Time)**: Maximize effective reliability ($R_{eff}$, missing defaults to 0.0); minimize effective lead time ($L_{eff}$, missing defaults to $+\infty$).
+   - **Level 6 (Defensible Cost Categorization & Value)**:
+     - Cost Category Tier: `ZERO_COST` (0) < `CALCULATED` (1) < `UNAVAILABLE` (2).
+     - Direct procurement cost ($C_{direct}$ ascending).
+     - *Guarantee*: An uncalculated/unavailable cost (`UNAVAILABLE`, Category 2) can never beat a known zero cost (`ZERO_COST`, Category 0) or calculated cost (`CALCULATED`, Category 1).
+   - **Level 7 (Deterministic Tie-Breaker)**:
+     1. Action type priority: `PLACE_ORDER` > `SWITCH_SUPPLIER` > `DO_NOTHING`.
+     2. Earliest `created_at` timestamp.
+     3. Ascending unique action identifier (`action_id`).
+     - Flagged transparently in the recommendation record with `tie_broken: True` and explicit resolution explanation.
+
+### 10.3 Recommendation Domain Models (`apps/api/app/domain/recommendation.py`)
+- `RecommendationStatus`: Enum representing `RECOMMENDED`, `NO_ACTION_REQUIRED`, `NO_CANDIDATE_ACTIONS`, `NO_ELIGIBLE_ACTION`, `ALL_EVALUATIONS_FAILED`.
+- `TieBreakMethod`: Enum representing `NONE`, `ACTION_TYPE_PRIORITY`, `EARLIEST_TIMESTAMP`, `ACTION_IDENTIFIER`.
+- `AlternativeComparison`: Auditable comparison model tracking per-action eligibility, rank (1..N), satisfaction ratio, excess units, exposure delta, supplier metrics, direct cost, cost status, and step-by-step ranking evaluation notes.
+- `Recommendation`: Strongly typed domain model capturing:
+  - `id`: Unique identifier (`REC-XXXX`).
+  - `decision_id`: Associated business decision (`DEC-XXXX`).
+  - `product_id`, `warehouse_id`: Referenced domain identifiers.
+  - `status`: Outcome `RecommendationStatus`.
+  - `selection_rule`: `"LEXICOGRAPHIC_OPERATIONAL_DOMINANCE"`.
+  - `recommended_action_id`, `recommended_action_type`, `recommended_action`: Selected action details.
+  - `selection_rationale`: Human-readable deterministic justification.
+  - `tie_broken`, `tie_break_method`, `tie_breaking_rationale`: Auditable tie-breaking details.
+  - `total_actions_evaluated`: Total candidate actions evaluated.
+  - `alternatives`: Ranked list of all compared alternatives.
+  - `evaluation_evidence`: Preserved evidence from Day 19 evaluation of selected action.
+  - `selected_evaluation`: Full Day 19 evaluation result of selected action.
+  - `is_fresh`: Boolean indicating whether recommendation reflects latest inputs.
+  - `stale_reason`: Explicit diagnostic reason if flagged stale.
+
+### 10.4 Recommendation Freshness & Invalidation (`RecommendationService`)
+The service implements a multi-vector freshness validator (`check_recommendation_freshness`):
+1. **Decision Existence**: Verifies that the decision has not been deleted.
+2. **Candidate Actions Parity**: Verifies that candidate actions have not been added or deleted.
+3. **Action Creation Timestamps**: Checks if candidate actions were added after recommendation creation.
+4. **Inventory Timestamp**: Checks if inventory `updated_at > recommendation.created_at`.
+5. **Content-Based Inventory Quantities**: Directly compares `available_quantity` and `reorder_point` against baseline evaluation values (resilient to timestamp clock skew).
+6. **Content-Based Supplier Parameters**: Directly compares baseline supplier `lead_time_days` and `reliability`.
+7. **Content-Based Catalog Unit Cost**: Directly compares product `unit_cost`.
+
+#### Architectural Freshness Boundaries & Limitations:
+- *Demand History Modifications*: If raw historical sales time-series change without affecting inventory or candidate actions, changes cannot be detected without re-aggregating historical distributions.
+- *Resolution*: When absolute re-evaluation across all underlying inputs is desired, callers specify `ensure_fresh=True` with `recompute=True` on `GET /api/decisions/{id}/recommendation` or invoke `POST /api/decisions/{id}/recommendation`.
+
+### 10.5 Decision Graph Integration
+When `record_to_graph=True`, `RecommendationService` attaches a `GraphNodeType.RESULT` node with label `Recommendation: {type} ({status})` connected via a `GraphRelationshipType.PRODUCES` directed edge originating from the chosen candidate `ACTION` node.
+
+### 10.6 API Endpoints
+- `POST /api/decisions/{decision_id}/recommendation`: Generates and stores deterministic recommendation. Supports `policy_type`, `target_stock`, `enforce_reorder_trigger`, `record_to_graph`.
+- `GET /api/decisions/{decision_id}/recommendation`: Retrieves latest recommendation. Query parameters: `ensure_fresh=true` (default), `recompute=false` (or `true` to force fresh re-evaluation), `record_to_graph=false`.
+- Direct aliases supported: `/decisions/...`, `/api/decision/...`, `/decision/...`.

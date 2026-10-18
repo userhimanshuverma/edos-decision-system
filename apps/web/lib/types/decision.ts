@@ -357,6 +357,84 @@ export interface EvaluateDecisionActionsRequest {
   record_to_graph?: boolean;
 }
 
+/**
+ * Categorical outcome status of a Day 20 recommendation generation run.
+ */
+export type RecommendationStatus =
+  | 'RECOMMENDED'
+  | 'NO_ACTION_REQUIRED'
+  | 'NO_CANDIDATE_ACTIONS'
+  | 'NO_ELIGIBLE_ACTION'
+  | 'ALL_EVALUATIONS_FAILED';
+
+/**
+ * Specific deterministic method used to break ties between candidate actions.
+ */
+export type TieBreakMethod =
+  | 'NONE'
+  | 'ACTION_TYPE_PRIORITY'
+  | 'EARLIEST_TIMESTAMP'
+  | 'ACTION_IDENTIFIER';
+
+/**
+ * Auditable comparison record for a candidate action evaluated during recommendation.
+ */
+export interface AlternativeComparisonRecord {
+  action_id: string;
+  action_type: CandidateActionType;
+  is_eligible: boolean;
+  ineligibility_reason: string | null;
+  rank: number | null;
+  shortfall_satisfaction_ratio: number | null;
+  shortfall_addressed: number | null;
+  excess_quantity: number | null;
+  exposure_index_delta: number | null;
+  effective_supplier_risk: string | null;
+  effective_lead_time_days: number | null;
+  effective_reliability: number | null;
+  direct_procurement_cost: number | null;
+  cost_status: string | null;
+  selection_notes: string[];
+}
+
+export type AlternativeComparisonResponse = AlternativeComparisonRecord;
+
+/**
+ * Deterministic recommendation record matching Day 20 schema.
+ */
+export interface RecommendationRecord {
+  id: string;
+  decision_id: string;
+  product_id: string;
+  warehouse_id: string;
+  status: RecommendationStatus;
+  selection_rule: string;
+  recommended_action_id: string | null;
+  recommended_action_type: CandidateActionType | null;
+  recommended_action: CandidateActionRecord | null;
+  selection_rationale: string;
+  tie_broken: boolean;
+  tie_break_method: TieBreakMethod;
+  tie_breaking_rationale: string | null;
+  total_actions_evaluated: number;
+  alternatives: AlternativeComparisonRecord[];
+  evaluation_evidence: EvaluationEvidence | null;
+  selected_evaluation: ActionEvaluationRecord | null;
+  created_at: string;
+  is_fresh: boolean;
+  stale_reason: string | null;
+  metadata: Record<string, unknown>;
+}
 
 
+export type RecommendationResponse = RecommendationRecord;
 
+/**
+ * Payload contract for generating a deterministic recommendation.
+ */
+export interface GenerateRecommendationRequest {
+  policy_type?: import('./inventory').ReplenishmentPolicyType;
+  target_stock?: number;
+  enforce_reorder_trigger?: boolean;
+  record_to_graph?: boolean;
+}

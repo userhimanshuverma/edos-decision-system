@@ -367,6 +367,88 @@ class DecisionGraphRepository:
         self._graphs[graph.id] = updated_graph.model_copy(deep=True)
         return eval_node, edge
 
+    def attach_recommendation_node(
+        self,
+        decision_id: str,
+        recommendation: Any,
+    ) -> tuple[GraphNode, GraphEdge | None] | tuple[None, None]:
+        """Attaches a RESULT node representing a final recommendation to the graph.
+
+        Connects via PRODUCES edge from the selected candidate ACTION node if present.
+        Returns (rec_node, edge) if attached, or (None, None) if no graph exists.
+        """
+        norm_decision_id = decision_id.strip()
+        graph_id = self._by_decision_id.get(norm_decision_id)
+        if graph_id is None:
+            return None, None
+        graph = self._graphs[graph_id]
+
+        rec_id = recommendation.id
+        rec_node_id = f"{norm_decision_id}-node-rec-{rec_id}"
+        existing_node = next((n for n in graph.nodes if n.id == rec_node_id), None)
+        if existing_node is not None:
+            existing_edge = next((e for e in graph.edges if e.target_id == rec_node_id), None)
+            return existing_node, existing_edge
+
+        action_id = recommendation.recommended_action_id
+        action_node = None
+        if action_id:
+            action_node_id = f"{norm_decision_id}-node-{action_id}"
+            action_node = next((n for n in graph.nodes if n.id == action_node_id), None)
+
+        action_type_val = (
+            recommendation.recommended_action_type.value
+            if recommendation.recommended_action_type and hasattr(recommendation.recommended_action_type, "value")
+            else str(recommendation.recommended_action_type) if recommendation.recommended_action_type else "NONE"
+        )
+        status_val = (
+            recommendation.status.value
+            if hasattr(recommendation.status, "value")
+            else str(recommendation.status)
+        )
+
+        rec_node = GraphNode(
+            id=rec_node_id,
+            node_type=GraphNodeType.RESULT,
+            decision_id=norm_decision_id,
+            label=f"Recommendation: {action_type_val} ({status_val})",
+            metadata={
+                "recommendation_id": rec_id,
+                "status": status_val,
+                "selection_rule": recommendation.selection_rule,
+                "recommended_action_id": action_id,
+                "recommended_action_type": action_type_val,
+                "tie_broken": recommendation.tie_broken,
+                "total_actions_evaluated": recommendation.total_actions_evaluated,
+            },
+            created_at=recommendation.created_at,
+        )
+
+        edge = None
+        updated_edges = list(graph.edges)
+        if action_node is not None:
+            edge_id = f"EDG-PROD-{norm_decision_id}-REC-{rec_id}"
+            edge = GraphEdge(
+                id=edge_id,
+                source_id=action_node.id,
+                target_id=rec_node.id,
+                relationship_type=GraphRelationshipType.PRODUCES,
+                decision_id=norm_decision_id,
+            )
+            updated_edges.append(edge)
+
+        updated_nodes = list(graph.nodes) + [rec_node]
+        updated_graph = DecisionGraph(
+            id=graph.id,
+            decision_id=graph.decision_id,
+            nodes=updated_nodes,
+            edges=updated_edges,
+            created_at=graph.created_at,
+            updated_at=datetime.now(timezone.utc),
+        )
+        self._graphs[graph.id] = updated_graph.model_copy(deep=True)
+        return rec_node, edge
+
 
     def __len__(self) -> int:
         """Returns total number of graphs currently stored."""
