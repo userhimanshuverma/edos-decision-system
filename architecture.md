@@ -865,23 +865,23 @@ It strictly does NOT evaluate alternatives or select which candidate action is o
   - **Missing Parameter Identification**: The existing EDOS domain entities (`Product`, `Inventory`) explicitly store `reorder_point` ($s$), physical/reserved quantities, historical demand, and supplier lead times, but do not persist an arbitrary `target_stock` ($S$) or batch size. Day 17 formalizes this constraint into three deterministic, auditable policies:
   1. `REORDER_POINT_DEFICIT` (Baseline Minimum Buffer Policy):
      - Uses only immediate operational data without assuming missing parameters or arbitrary multipliers:
-       $$\text{deficit} = \max(0, \text{reorder\_point} - \text{available\_quantity})$$
-       $$\text{replenishment\_quantity} = \text{deficit} \quad \text{if } \text{available\_quantity} \le \text{reorder\_point} \text{ else } 0$$
-     - Target stock level: $\text{target\_stock} = \text{reorder\_point}$.
+       $$\text{deficit} = \max(0, \text{reorder point} - \text{available quantity})$$
+       $$\text{replenishment quantity} = \text{deficit} \quad \text{if } \text{available quantity} \le \text{reorder point} \text{ else } 0$$
+     - Target stock level: $\text{target stock} = \text{reorder point}$.
      - Assumptions: The operational goal is to restore inventory back to the safe replenishment threshold.
      - Limitations: Does not buffer against demand consumption during supplier fulfillment transit.
   2. `LEAD_TIME_DEMAND` (Lead Time Demand Buffer Policy):
      - Uses observed consumption velocity and primary supplier fulfillment latency:
-       $$\text{lead\_time\_demand} = \lceil \text{average\_daily\_demand} \times \text{lead\_time\_days} \rceil$$
-       $$\text{target\_stock} = \text{reorder\_point} + \text{lead\_time\_demand}$$
-       $$\text{replenishment\_quantity} = \max(0, \text{target\_stock} - \text{available\_quantity}) \quad \text{if } \text{available\_quantity} \le \text{reorder\_point} \text{ else } 0$$
-     - Edge Cases: Safe handling of zero demand ($\text{lead\_time\_demand} = 0$), zero lead time, and fractional rounding ($\lceil \cdot \rceil$).
+       $$\text{lead time demand} = \lceil \text{average daily demand} \times \text{lead time days} \rceil$$
+       $$\text{target stock} = \text{reorder point} + \text{lead time demand}$$
+       $$\text{replenishment quantity} = \max(0, \text{target stock} - \text{available quantity}) \quad \text{if } \text{available quantity} \le \text{reorder point} \text{ else } 0$$
+     - Edge Cases: Safe handling of zero demand ($\text{lead time demand} = 0$), zero lead time, and fractional rounding ($\lceil \cdot \rceil$).
      - Assumptions: Historical average daily demand is representative of consumption over the stated supplier lead time; lead time is deterministic.
      - Limitations: Does not calculate stochastic safety stock z-scores or model lead time variance (deferred to Day 18 stockout-risk modeling).
   3. `TARGET_STOCK` (Explicit Order-Up-To Level Policy):
      - Applies when an operator or upstream rule explicitly supplies the target stock level:
-       $$\text{replenishment\_quantity} = \max(0, \text{target\_stock} - \text{available\_quantity}) \quad \text{if } \text{available\_quantity} \le \text{reorder\_point} \text{ else } 0$$
-     - Enforces invariant: $\text{target\_stock} \ge \text{reorder\_point}$.
+       $$\text{replenishment quantity} = \max(0, \text{target stock} - \text{available quantity}) \quad \text{if } \text{available quantity} \le \text{reorder point} \text{ else } 0$$
+     - Enforces invariant: $\text{target stock} \ge \text{reorder point}$.
      - Limitations: Requires external definition of target stock.
 
 * **Domain Model & Pure Calculation Function (`app/domain/replenishment.py`)**:
@@ -1308,8 +1308,8 @@ EDOS operates on the core principle: **"The system calculates. AI explains. Huma
 
 | Candidate Action | Stockout Exposure Dimension | Replenishment Impact Dimension | Supplier Impact Dimension | Cost Impact Dimension |
 | :--- | :--- | :--- | :--- | :--- |
-| **`DO_NOTHING`** | Trajectory unchanged; current deficit and exposure index persist. | 0 units ordered; calculated shortfall is 0% addressed. | Retains current primary supplier; $\Delta L = 0, \Delta R = 0.0$. | $0.00 direct procurement cost (`ZERO_COST`). |
-| **`PLACE_ORDER`** | Evaluates lead-time exposure (delivery arrives in $L$ days) and post-arrival inventory coverage. | Compares order quantity against policy shortfall; computes satisfied units, remaining deficit, and excess. | Retains current primary supplier; $\Delta L = 0, \Delta R = 0.0$. | $Q \times \text{unit\_cost}$ calculated from catalog (`CALCULATED`). |
+| **`DO_NOTHING`** | Trajectory unchanged; current deficit and exposure index persist. | 0 units ordered; calculated shortfall is 0% addressed. | Retains current primary supplier; $\Delta L = 0, \Delta R = 0.0$. | \$0.00 direct procurement cost (`ZERO_COST`). |
+| **`PLACE_ORDER`** | Evaluates lead-time exposure (delivery arrives in $L$ days) and post-arrival inventory coverage. | Compares order quantity against policy shortfall; computes satisfied units, remaining deficit, and excess. | Retains current primary supplier; $\Delta L = 0, \Delta R = 0.0$. | $Q \times C_{unit}$ calculated from catalog (`CALCULATED`). |
 | **`SWITCH_SUPPLIER`** | Re-benchmarks lead-time demand and exposure index under target supplier lead time. | Re-calculates replenishment shortfall under new lead time; 0 units placed. | Computes lead-time delta ($\Delta L$) and reliability delta ($\Delta R$). | Marked `UNAVAILABLE` because supplier-specific pricing is unobserved. |
 
 ### 9.3 Exact Mathematical Formulas and Derivations
@@ -1319,7 +1319,7 @@ Given available inventory $Q_{avail}$, daily demand $D_{daily}$, supplier lead t
 - **Baseline Lead-Time Demand**: $D_{LTD} = D_{daily} \times L$
 - **Lead-Time Exposure Deficit**: $G_{exposure} = \max(0.0, D_{LTD} - Q_{avail})$
 - **Lead-Time Exposure Index**: $I_{exposure} = \min(1.0, G_{exposure} / D_{LTD})$ if $D_{LTD} > 0$ else 0.0
-- **Lead-Time Stockout Prevention**: $\text{is\_prevented} = (G_{exposure} == 0.0)$
+- **Lead-Time Stockout Prevention**: $\text{is prevented} = (G_{exposure} == 0.0)$
   *(An order placed today arrives in $L$ days; if $Q_{avail} < D_{LTD}$, stockout occurs prior to delivery regardless of order size).*
 - **Post-Arrival Available Stock**: $Q_{post} = \max(0, Q_{avail}) + Q$
 - **Post-Arrival Coverage Runway**: $T_{post} = \frac{Q_{post}}{D_{daily}}$ (if $D_{daily} > 0$ else None)
@@ -1328,7 +1328,7 @@ Given available inventory $Q_{avail}$, daily demand $D_{daily}$, supplier lead t
 - **Exposure Index Delta**: $\Delta I_{exposure} = I_{post} - I_{exposure}$ (negative indicates improvement)
 
 #### 2. Replenishment Impact Dimension
-Given calculated recommended replenishment quantity $Q_{rec}$ under policy $P \in \{\text{ROP\_DEFICIT}, \text{LEAD\_TIME\_DEMAND}, \text{TARGET\_STOCK}\}$:
+Given calculated recommended replenishment quantity $Q_{rec}$ under policy $P \in \{\text{ROP DEFICIT}, \text{LEAD TIME DEMAND}, \text{TARGET STOCK}\}$:
 - **Shortfall Addressed**: $Q_{addressed} = \min(Q, Q_{rec})$
 - **Remaining Shortfall**: $Q_{remaining} = \max(0, Q_{rec} - Q)$
 - **Excess Above Target**: $Q_{excess} = \max(0, Q - Q_{rec})$
