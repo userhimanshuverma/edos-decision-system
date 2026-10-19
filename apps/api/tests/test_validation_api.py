@@ -199,3 +199,49 @@ class TestValidationApi:
         # /decision/...
         r3 = client.get(f"/decision/{dec_id}/validation")
         assert r3.status_code == 200
+
+    def test_validate_decision_with_cross_decision_action_id_returns_404(self, client: TestClient, test_decision: dict):
+        dec1_id = test_decision["id"]
+
+        # Create second decision and an action under it
+        d2_resp = client.post("/api/decisions", json={"product_id": "prod-001", "warehouse_id": "wh-001"})
+        assert d2_resp.status_code == 201
+        dec2_id = d2_resp.json()["id"]
+
+        act2_resp = client.post(f"/api/decisions/{dec2_id}/actions", json={"type": "DO_NOTHING"})
+        assert act2_resp.status_code == 201
+        act2_id = act2_resp.json()["id"]
+
+        # Attempt to validate act2_id under dec1_id -> HTTP 404
+        resp = client.post(
+            f"/api/decisions/{dec1_id}/validate",
+            json={"action_ids": [act2_id]},
+        )
+        assert resp.status_code == 404
+
+    def test_revalidation_when_actions_change(self, client: TestClient, test_decision: dict):
+        dec_id = test_decision["id"]
+
+        # 1. Create first action and validate
+        a1_resp = client.post(f"/api/decisions/{dec_id}/actions", json={"type": "DO_NOTHING"})
+        assert a1_resp.status_code == 201
+        val1 = client.post(f"/api/decisions/{dec_id}/validate", json={}).json()
+        assert val1["total_actions_evaluated"] == 1
+
+        # 2. Add second candidate action
+        a2_resp = client.post(
+            f"/api/decisions/{dec_id}/actions",
+            json={"type": "PLACE_ORDER", "parameters": {"quantity": 25}},
+        )
+        assert a2_resp.status_code == 201
+
+        # 3. GET without recompute returns stored snapshot with 1 action
+        cached = client.get(f"/api/decisions/{dec_id}/validation").json()
+        assert cached["id"] == val1["id"]
+        assert cached["total_actions_evaluated"] == 1
+
+        # 4. GET with recompute=true evaluates current actions and reflects the new action
+        fresh = client.get(f"/api/decisions/{dec_id}/validation?recompute=true").json()
+        assert fresh["id"] != val1["id"]
+        assert fresh["total_actions_evaluated"] == 2
+

@@ -175,6 +175,12 @@ class ValidationService:
         all_actions = self._action_repo.list_by_decision_id(decision.id)
         if action_ids is not None:
             requested_set = set(action_ids)
+            found_ids = {a.id for a in all_actions}
+            missing_or_unrelated = requested_set - found_ids
+            if missing_or_unrelated:
+                raise CandidateActionNotFoundError(
+                    f"Candidate action(s) {sorted(missing_or_unrelated)} not found for decision '{norm_decision_id}'"
+                )
             candidate_actions = [a for a in all_actions if a.id in requested_set]
         else:
             candidate_actions = all_actions
@@ -221,7 +227,11 @@ class ValidationService:
         stored_report = self._validation_repo.record(report)
 
         if record_to_graph and self._graph_repo is not None:
-            self._graph_repo.attach_validation_node(decision.id, stored_report)
+            try:
+                self._graph_repo.attach_validation_node(decision.id, stored_report)
+            except Exception:
+                self._validation_repo.remove(stored_report.id)
+                raise
 
         return stored_report
 

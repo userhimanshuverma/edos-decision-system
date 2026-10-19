@@ -90,6 +90,7 @@ from app.domain.validation import (
     ValidationContextInputs,
     get_default_constraint_definitions,
     evaluate_single_constraint,
+    is_action_fully_satisfied,
     validate_candidate_action,
     validate_decision_actions,
 )
@@ -174,6 +175,7 @@ __all__ = [
     "ValidationContextInputs",
     "get_default_constraint_definitions",
     "evaluate_single_constraint",
+    "is_action_fully_satisfied",
     "validate_candidate_action",
     "validate_decision_actions",
 ]

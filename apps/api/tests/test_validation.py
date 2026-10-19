@@ -26,6 +26,7 @@ from app.domain.validation import (
     ValidationContextInputs,
     evaluate_single_constraint,
     get_default_constraint_definitions,
+    is_action_fully_satisfied,
     validate_candidate_action,
     validate_decision_actions,
 )
@@ -618,3 +619,364 @@ class TestActionAndDecisionValidationAggregation:
         assert report.total_actions_evaluated == 0
         assert report.valid_action_ids == []
         assert report.invalid_action_ids == []
+
+
+class TestHardConstraintBoundaryAndAdversarialCases:
+    """Rigorous boundary and adversarial test cases for all constraint handlers."""
+
+    def test_warehouse_capacity_exact_boundary(self, sample_product, sample_warehouse, sample_inventory, sample_supplier):
+        # sample_warehouse capacity = 500, sample_inventory on_hand = 150
+        # Exactly at capacity: order 350 -> 150 + 350 = 500 == capacity -> PASS
+        action_exact = CandidateAction(
+            id="ACT-EXACT",
+            decision_id="DEC-0001",
+            type=ActionType.PLACE_ORDER,
+            parameters=PlaceOrderParameters(quantity=350),
+        )
+        inputs_exact = ValidationContextInputs(
+            action=action_exact,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+        )
+        c_def = ConstraintDefinition(
+            constraint_type=ConstraintType.WAREHOUSE_CAPACITY,
+            name="warehouse_capacity_limit",
+            description="Capacity check",
+        )
+        ev_exact = evaluate_single_constraint(c_def, inputs_exact)
+        assert ev_exact.status == ConstraintEvaluationStatus.PASS
+        assert ev_exact.observed_value == 500
+        assert ev_exact.threshold_value == 500
+
+        # Exceeding by exactly 1 unit: order 351 -> 150 + 351 = 501 > 500 -> FAIL
+        action_over = CandidateAction(
+            id="ACT-OVER",
+            decision_id="DEC-0001",
+            type=ActionType.PLACE_ORDER,
+            parameters=PlaceOrderParameters(quantity=351),
+        )
+        inputs_over = ValidationContextInputs(
+            action=action_over,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+        )
+        ev_over = evaluate_single_constraint(c_def, inputs_over)
+        assert ev_over.status == ConstraintEvaluationStatus.FAIL
+        assert ev_over.observed_value == 501
+        assert "exceeds warehouse capacity (500 units) by 1 units" in ev_over.reason
+
+    def test_quantity_bounds_falsy_zero_handled_correctly(self, sample_product, sample_warehouse, sample_inventory, sample_supplier):
+        # min_quantity = 0 should NOT be ignored as None due to Python falsy 'or'
+        c_def = ConstraintDefinition(
+            constraint_type=ConstraintType.ORDER_QUANTITY_BOUNDS,
+            name="bounds_with_zero",
+            description="Check zero min bound",
+            parameters={"min_quantity": 0, "max_quantity": 50},
+        )
+        action = CandidateAction(
+            id="ACT-BOUND-0",
+            decision_id="DEC-0001",
+            type=ActionType.PLACE_ORDER,
+            parameters=PlaceOrderParameters(quantity=25),
+        )
+        inputs = ValidationContextInputs(
+            action=action,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+        )
+        ev = evaluate_single_constraint(c_def, inputs)
+        assert ev.status == ConstraintEvaluationStatus.PASS
+        assert "[0, 50]" in ev.threshold_value
+
+    def test_quantity_bounds_invalid_configuration_min_greater_than_max(self, sample_product, sample_warehouse, sample_inventory, sample_supplier):
+        # min_quantity (100) > max_quantity (50) is invalid configuration
+        c_def = ConstraintDefinition(
+            constraint_type=ConstraintType.ORDER_QUANTITY_BOUNDS,
+            name="invalid_bounds",
+            description="Contradictory bounds",
+            parameters={"min_quantity": 100, "max_quantity": 50},
+        )
+        action = CandidateAction(
+            id="ACT-INV-BOUNDS",
+            decision_id="DEC-0001",
+            type=ActionType.PLACE_ORDER,
+            parameters=PlaceOrderParameters(quantity=75),
+        )
+        inputs = ValidationContextInputs(
+            action=action,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+        )
+        ev = evaluate_single_constraint(c_def, inputs)
+        assert ev.status == ConstraintEvaluationStatus.UNABLE_TO_EVALUATE
+        assert "min_quantity (100) cannot exceed max_quantity (50)" in ev.reason
+
+    def test_quantity_bounds_empty_or_negative_parameters(self, sample_product, sample_warehouse, sample_inventory, sample_supplier):
+        # Empty parameters -> UNABLE_TO_EVALUATE
+        c_def_empty = ConstraintDefinition(
+            constraint_type=ConstraintType.ORDER_QUANTITY_BOUNDS,
+            name="empty_bounds",
+            description="Empty bounds",
+            parameters={},
+        )
+        action = CandidateAction(
+            id="ACT-EMPTY-BOUNDS",
+            decision_id="DEC-0001",
+            type=ActionType.PLACE_ORDER,
+            parameters=PlaceOrderParameters(quantity=10),
+        )
+        inputs = ValidationContextInputs(
+            action=action,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+        )
+        ev = evaluate_single_constraint(c_def_empty, inputs)
+        assert ev.status == ConstraintEvaluationStatus.UNABLE_TO_EVALUATE
+        assert "requires at least 'min_quantity' or 'max_quantity'" in ev.reason
+
+        # Negative bound -> UNABLE_TO_EVALUATE
+        c_def_neg = ConstraintDefinition(
+            constraint_type=ConstraintType.ORDER_QUANTITY_BOUNDS,
+            name="neg_bounds",
+            description="Negative bound",
+            parameters={"min_quantity": -5},
+        )
+        ev_neg = evaluate_single_constraint(c_def_neg, inputs)
+        assert ev_neg.status == ConstraintEvaluationStatus.UNABLE_TO_EVALUATE
+        assert "must be non-negative" in ev_neg.reason
+
+    def test_budget_limit_zero_spend_ceiling(self, sample_product, sample_warehouse, sample_inventory, sample_supplier):
+        # max_spend = 0.0 represents a total budget freeze
+        c_def = ConstraintDefinition(
+            constraint_type=ConstraintType.MAX_BUDGET_LIMIT,
+            name="budget_freeze",
+            description="Zero spend ceiling",
+            parameters={"max_spend": 0.0},
+        )
+        # DO_NOTHING incurs $0.00 spend -> PASS
+        act_dn = CandidateAction(
+            id="ACT-DN",
+            decision_id="DEC-0001",
+            type=ActionType.DO_NOTHING,
+            parameters=DoNothingParameters(),
+        )
+        inputs_dn = ValidationContextInputs(
+            action=act_dn,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+        )
+        ev_dn = evaluate_single_constraint(c_def, inputs_dn)
+        assert ev_dn.status == ConstraintEvaluationStatus.PASS
+        assert ev_dn.observed_value == 0.0
+
+        # PLACE_ORDER with quantity 10 * $100 = $1,000 > $0.00 -> FAIL
+        act_order = CandidateAction(
+            id="ACT-ORDER-ZERO",
+            decision_id="DEC-0001",
+            type=ActionType.PLACE_ORDER,
+            parameters=PlaceOrderParameters(quantity=10),
+        )
+        inputs_order = ValidationContextInputs(
+            action=act_order,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+        )
+        ev_order = evaluate_single_constraint(c_def, inputs_order)
+        assert ev_order.status == ConstraintEvaluationStatus.FAIL
+        assert ev_order.observed_value == 1000.0
+        assert "exceeds budget ceiling ($0.00) by $1,000.00" in ev_order.reason
+
+    def test_budget_limit_negative_spend_ceiling_invalid_config(self, sample_product, sample_warehouse, sample_inventory, sample_supplier):
+        c_def = ConstraintDefinition(
+            constraint_type=ConstraintType.MAX_BUDGET_LIMIT,
+            name="neg_budget",
+            description="Negative spend ceiling",
+            parameters={"max_spend": -50.0},
+        )
+        act = CandidateAction(
+            id="ACT-NEG-BUDGET",
+            decision_id="DEC-0001",
+            type=ActionType.DO_NOTHING,
+            parameters=DoNothingParameters(),
+        )
+        inputs = ValidationContextInputs(
+            action=act,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+        )
+        ev = evaluate_single_constraint(c_def, inputs)
+        assert ev.status == ConstraintEvaluationStatus.UNABLE_TO_EVALUATE
+        assert "must be non-negative" in ev.reason
+
+    def test_supplier_reliability_and_lead_time_evaluations(self, sample_product, sample_warehouse, sample_inventory, sample_supplier, sample_target_supplier):
+        # sample_supplier: reliability=0.95, lead_time_days=10
+        # 1. Reliability meets threshold
+        c_rel_ok = ConstraintDefinition(
+            constraint_type=ConstraintType.MIN_SUPPLIER_RELIABILITY,
+            name="min_rel",
+            description="Reliability check",
+            parameters={"min_reliability": 0.90},
+        )
+        act_order = CandidateAction(
+            id="ACT-SUP-ORDER",
+            decision_id="DEC-0001",
+            type=ActionType.PLACE_ORDER,
+            parameters=PlaceOrderParameters(quantity=20),
+        )
+        inputs = ValidationContextInputs(
+            action=act_order,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+        )
+        ev_rel = evaluate_single_constraint(c_rel_ok, inputs)
+        assert ev_rel.status == ConstraintEvaluationStatus.PASS
+        assert ev_rel.observed_value == 0.95
+
+        # 2. Reliability below threshold
+        c_rel_strict = ConstraintDefinition(
+            constraint_type=ConstraintType.MIN_SUPPLIER_RELIABILITY,
+            name="min_rel_strict",
+            description="High reliability requirement",
+            parameters={"min_reliability": 0.98},
+        )
+        assert evaluate_single_constraint(c_rel_strict, inputs).status == ConstraintEvaluationStatus.FAIL
+
+        # 3. Invalid out-of-range reliability threshold (1.5)
+        c_rel_invalid = ConstraintDefinition(
+            constraint_type=ConstraintType.MIN_SUPPLIER_RELIABILITY,
+            name="min_rel_invalid",
+            description="Out of range",
+            parameters={"min_reliability": 1.5},
+        )
+        ev_inv_rel = evaluate_single_constraint(c_rel_invalid, inputs)
+        assert ev_inv_rel.status == ConstraintEvaluationStatus.UNABLE_TO_EVALUATE
+        assert "must be a ratio between 0.0 and 1.0" in ev_inv_rel.reason
+
+        # 4. Lead time SLA within bound
+        c_lt_ok = ConstraintDefinition(
+            constraint_type=ConstraintType.MAX_SUPPLIER_LEAD_TIME,
+            name="max_lt",
+            description="Lead time check",
+            parameters={"max_lead_time_days": 10},
+        )
+        ev_lt = evaluate_single_constraint(c_lt_ok, inputs)
+        assert ev_lt.status == ConstraintEvaluationStatus.PASS
+        assert ev_lt.observed_value == 10
+
+        # 5. Lead time exceeds bound
+        c_lt_tight = ConstraintDefinition(
+            constraint_type=ConstraintType.MAX_SUPPLIER_LEAD_TIME,
+            name="max_lt_tight",
+            description="Fast lead time requirement",
+            parameters={"max_lead_time_days": 7},
+        )
+        assert evaluate_single_constraint(c_lt_tight, inputs).status == ConstraintEvaluationStatus.FAIL
+
+        # 6. Invalid negative lead time
+        c_lt_neg = ConstraintDefinition(
+            constraint_type=ConstraintType.MAX_SUPPLIER_LEAD_TIME,
+            name="max_lt_neg",
+            description="Negative lead time",
+            parameters={"max_lead_time_days": -2},
+        )
+        ev_neg_lt = evaluate_single_constraint(c_lt_neg, inputs)
+        assert ev_neg_lt.status == ConstraintEvaluationStatus.UNABLE_TO_EVALUATE
+        assert "must be non-negative" in ev_neg_lt.reason
+
+        # 7. SWITCH_SUPPLIER validates target_supplier for reliability & lead time
+        # sample_target_supplier: reliability=0.90, lead_time_days=5
+        act_switch = CandidateAction(
+            id="ACT-SWITCH-EVAL",
+            decision_id="DEC-0001",
+            type=ActionType.SWITCH_SUPPLIER,
+            parameters=SwitchSupplierParameters(target_supplier_id="sup-002"),
+        )
+        inputs_switch = ValidationContextInputs(
+            action=act_switch,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+            target_supplier=sample_target_supplier,
+        )
+        # target lead time is 5 <= 7 -> PASS
+        assert evaluate_single_constraint(c_lt_tight, inputs_switch).status == ConstraintEvaluationStatus.PASS
+        # target reliability is 0.90 < 0.95 -> FAIL with c_rel_ok if threshold was 0.92
+        c_rel_switch_fail = ConstraintDefinition(
+            constraint_type=ConstraintType.MIN_SUPPLIER_RELIABILITY,
+            name="min_rel_switch",
+            description="Threshold 0.92",
+            parameters={"min_reliability": 0.92},
+        )
+        ev_switch_rel = evaluate_single_constraint(c_rel_switch_fail, inputs_switch)
+        assert ev_switch_rel.status == ConstraintEvaluationStatus.FAIL
+        assert "Supplier 'sup-002'" in ev_switch_rel.reason
+
+    def test_no_constraints_applicable_and_validation_gate_helper(self, sample_product, sample_warehouse, sample_inventory, sample_supplier):
+        # Configure a constraint applicable ONLY to SWITCH_SUPPLIER
+        c_switch_only = ConstraintDefinition(
+            constraint_type=ConstraintType.SUPPLIER_TARGET_DISTINCT,
+            name="switch_only",
+            description="Applies only to switch",
+            applicable_action_types=[ActionType.SWITCH_SUPPLIER],
+        )
+        action_dn = CandidateAction(
+            id="ACT-DN-UNCONSTRAINED",
+            decision_id="DEC-0001",
+            type=ActionType.DO_NOTHING,
+            parameters=DoNothingParameters(),
+        )
+        inputs = ValidationContextInputs(
+            action=action_dn,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+            configured_constraints=[c_switch_only],
+        )
+        res = validate_candidate_action(inputs)
+        assert res.status == ActionValidationStatus.NO_CONSTRAINTS_APPLICABLE
+        assert res.constraints_evaluated == 0
+
+        # Operational governance validation gate helper:
+        # An unconstrained action MUST NOT be treated as a fully validated/satisfied action
+        assert is_action_fully_satisfied(res) is False
+
+        # When evaluated against active constraints, satisfied action returns True
+        inputs_default = ValidationContextInputs(
+            action=action_dn,
+            product=sample_product,
+            warehouse=sample_warehouse,
+            inventory=sample_inventory,
+            current_supplier=sample_supplier,
+            configured_constraints=[
+                ConstraintDefinition(
+                    constraint_type=ConstraintType.WAREHOUSE_ACTIVE,
+                    name="wh_active",
+                    description="Facility check",
+                )
+            ],
+        )
+        res_satisfied = validate_candidate_action(inputs_default)
+        assert res_satisfied.status == ActionValidationStatus.SATISFIED
+        assert res_satisfied.constraints_evaluated == 1
+        assert is_action_fully_satisfied(res_satisfied) is True
+

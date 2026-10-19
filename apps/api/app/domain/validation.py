@@ -503,20 +503,62 @@ def evaluate_single_constraint(
 
     # 7. ORDER_QUANTITY_BOUNDS
     if c_type == ConstraintType.ORDER_QUANTITY_BOUNDS:
+        min_raw = constraint.parameters.get("min_quantity")
+        if min_raw is None:
+            min_raw = constraint.parameters.get("min_order_quantity")
+        max_raw = constraint.parameters.get("max_quantity")
+        if max_raw is None:
+            max_raw = constraint.parameters.get("max_order_quantity")
+
+        if min_raw is None and max_raw is None:
+            return ConstraintEvaluationEvidence(
+                constraint_type=c_type,
+                constraint_name=c_name,
+                status=ConstraintEvaluationStatus.UNABLE_TO_EVALUATE,
+                observed_value=None,
+                threshold_value=None,
+                unit="units",
+                reason="ORDER_QUANTITY_BOUNDS requires at least 'min_quantity' or 'max_quantity' parameter",
+                missing_inputs=["parameters.min_quantity or parameters.max_quantity"],
+            )
+
+        min_qty: int | None = None
+        max_qty: int | None = None
+        try:
+            if min_raw is not None:
+                min_qty = int(min_raw)
+                if min_qty < 0:
+                    raise ValueError(f"min_quantity must be non-negative, got {min_qty}")
+            if max_raw is not None:
+                max_qty = int(max_raw)
+                if max_qty < 0:
+                    raise ValueError(f"max_quantity must be non-negative, got {max_qty}")
+            if min_qty is not None and max_qty is not None and min_qty > max_qty:
+                raise ValueError(f"min_quantity ({min_qty}) cannot exceed max_quantity ({max_qty})")
+        except (ValueError, TypeError) as exc:
+            return ConstraintEvaluationEvidence(
+                constraint_type=c_type,
+                constraint_name=c_name,
+                status=ConstraintEvaluationStatus.UNABLE_TO_EVALUATE,
+                observed_value=None,
+                threshold_value=constraint.parameters,
+                unit="units",
+                reason=f"Invalid constraint configuration: {exc}",
+                missing_inputs=["valid_order_quantity_bounds"],
+            )
+
         if action_type != ActionType.PLACE_ORDER:
             return ConstraintEvaluationEvidence(
                 constraint_type=c_type,
                 constraint_name=c_name,
                 status=ConstraintEvaluationStatus.PASS,
                 observed_value=None,
-                threshold_value=constraint.parameters,
+                threshold_value=f"[{min_qty if min_qty is not None else 0}, {max_qty if max_qty is not None else 'inf'}]",
                 unit="units",
                 reason=f"Action '{action_type.value}' does not place orders; quantity bounds satisfied",
             )
         assert isinstance(action.parameters, PlaceOrderParameters)
         qty = action.parameters.quantity
-        min_qty = constraint.parameters.get("min_quantity") or constraint.parameters.get("min_order_quantity")
-        max_qty = constraint.parameters.get("max_quantity") or constraint.parameters.get("max_order_quantity")
 
         if min_qty is not None and qty < min_qty:
             return ConstraintEvaluationEvidence(
@@ -543,15 +585,17 @@ def evaluate_single_constraint(
             constraint_name=c_name,
             status=ConstraintEvaluationStatus.PASS,
             observed_value=qty,
-            threshold_value=f"[{min_qty or 0}, {max_qty or 'inf'}]",
+            threshold_value=f"[{min_qty if min_qty is not None else 0}, {max_qty if max_qty is not None else 'inf'}]",
             unit="units",
-            reason=f"Order quantity {qty} is within configured limits [{min_qty or 0}, {max_qty or 'unbounded'}]",
+            reason=f"Order quantity {qty} is within configured limits [{min_qty if min_qty is not None else 0}, {max_qty if max_qty is not None else 'unbounded'}]",
         )
 
     # 8. MAX_BUDGET_LIMIT
     if c_type == ConstraintType.MAX_BUDGET_LIMIT:
-        max_spend = constraint.parameters.get("max_spend") or constraint.parameters.get("budget_ceiling")
-        if max_spend is None:
+        max_spend_raw = constraint.parameters.get("max_spend")
+        if max_spend_raw is None:
+            max_spend_raw = constraint.parameters.get("budget_ceiling")
+        if max_spend_raw is None:
             return ConstraintEvaluationEvidence(
                 constraint_type=c_type,
                 constraint_name=c_name,
@@ -563,15 +607,31 @@ def evaluate_single_constraint(
                 missing_inputs=["parameters.max_spend"],
             )
 
+        try:
+            max_spend = float(max_spend_raw)
+            if max_spend < 0.0:
+                raise ValueError(f"max_spend must be non-negative, got {max_spend}")
+        except (ValueError, TypeError) as exc:
+            return ConstraintEvaluationEvidence(
+                constraint_type=c_type,
+                constraint_name=c_name,
+                status=ConstraintEvaluationStatus.UNABLE_TO_EVALUATE,
+                observed_value=None,
+                threshold_value=None,
+                unit="USD",
+                reason=f"Invalid constraint configuration: {exc}",
+                missing_inputs=["valid_max_spend"],
+            )
+
         if action_type in (ActionType.DO_NOTHING, ActionType.SWITCH_SUPPLIER):
             return ConstraintEvaluationEvidence(
                 constraint_type=c_type,
                 constraint_name=c_name,
                 status=ConstraintEvaluationStatus.PASS,
                 observed_value=0.0,
-                threshold_value=float(max_spend),
+                threshold_value=max_spend,
                 unit="USD",
-                reason=f"Direct procurement spend is $0.00, satisfying budget ceiling of ${float(max_spend):,.2f}",
+                reason=f"Direct procurement spend is $0.00, satisfying budget ceiling of ${max_spend:,.2f}",
             )
 
         assert isinstance(action.parameters, PlaceOrderParameters)
@@ -581,34 +641,34 @@ def evaluate_single_constraint(
                 constraint_name=c_name,
                 status=ConstraintEvaluationStatus.UNABLE_TO_EVALUATE,
                 observed_value=None,
-                threshold_value=float(max_spend),
+                threshold_value=max_spend,
                 unit="USD",
                 reason="Product entity is missing from context; unit cost unknown for budget calculation",
                 missing_inputs=["product.unit_cost"],
             )
 
         cost = action.parameters.quantity * inputs.product.unit_cost
-        is_under = cost <= float(max_spend)
+        is_under = cost <= max_spend
         status = ConstraintEvaluationStatus.PASS if is_under else ConstraintEvaluationStatus.FAIL
         reason = (
-            f"Direct procurement spend (${cost:,.2f}) does not exceed budget ceiling (${float(max_spend):,.2f})"
+            f"Direct procurement spend (${cost:,.2f}) does not exceed budget ceiling (${max_spend:,.2f})"
             if is_under
-            else f"Direct procurement spend (${cost:,.2f}) exceeds budget ceiling (${float(max_spend):,.2f}) by ${cost - float(max_spend):,.2f}"
+            else f"Direct procurement spend (${cost:,.2f}) exceeds budget ceiling (${max_spend:,.2f}) by ${cost - max_spend:,.2f}"
         )
         return ConstraintEvaluationEvidence(
             constraint_type=c_type,
             constraint_name=c_name,
             status=status,
             observed_value=round(cost, 2),
-            threshold_value=float(max_spend),
+            threshold_value=max_spend,
             unit="USD",
             reason=reason,
         )
 
     # 9. MIN_SUPPLIER_RELIABILITY
     if c_type == ConstraintType.MIN_SUPPLIER_RELIABILITY:
-        min_rel = constraint.parameters.get("min_reliability")
-        if min_rel is None:
+        min_rel_raw = constraint.parameters.get("min_reliability")
+        if min_rel_raw is None:
             return ConstraintEvaluationEvidence(
                 constraint_type=c_type,
                 constraint_name=c_name,
@@ -620,13 +680,29 @@ def evaluate_single_constraint(
                 missing_inputs=["parameters.min_reliability"],
             )
 
+        try:
+            min_rel = float(min_rel_raw)
+            if not (0.0 <= min_rel <= 1.0):
+                raise ValueError(f"min_reliability must be a ratio between 0.0 and 1.0, got {min_rel}")
+        except (ValueError, TypeError) as exc:
+            return ConstraintEvaluationEvidence(
+                constraint_type=c_type,
+                constraint_name=c_name,
+                status=ConstraintEvaluationStatus.UNABLE_TO_EVALUATE,
+                observed_value=None,
+                threshold_value=None,
+                unit="ratio",
+                reason=f"Invalid constraint configuration: {exc}",
+                missing_inputs=["valid_min_reliability"],
+            )
+
         if action_type == ActionType.DO_NOTHING:
             return ConstraintEvaluationEvidence(
                 constraint_type=c_type,
                 constraint_name=c_name,
                 status=ConstraintEvaluationStatus.PASS,
                 observed_value=None,
-                threshold_value=float(min_rel),
+                threshold_value=min_rel,
                 unit="ratio",
                 reason="Action is DO_NOTHING; no supplier reliability constraint applies",
             )
@@ -638,34 +714,34 @@ def evaluate_single_constraint(
                 constraint_name=c_name,
                 status=ConstraintEvaluationStatus.UNABLE_TO_EVALUATE,
                 observed_value=None,
-                threshold_value=float(min_rel),
+                threshold_value=min_rel,
                 unit="ratio",
                 reason="Effective supplier is missing from context; cannot verify supplier reliability",
                 missing_inputs=["effective_supplier"],
             )
 
         rel = effective_sup.reliability
-        is_rel_ok = rel >= float(min_rel)
+        is_rel_ok = rel >= min_rel
         status = ConstraintEvaluationStatus.PASS if is_rel_ok else ConstraintEvaluationStatus.FAIL
         reason = (
-            f"Supplier '{effective_sup.id}' reliability ({rel:.2f}) meets minimum requirement ({float(min_rel):.2f})"
+            f"Supplier '{effective_sup.id}' reliability ({rel:.2f}) meets minimum requirement ({min_rel:.2f})"
             if is_rel_ok
-            else f"Supplier '{effective_sup.id}' reliability ({rel:.2f}) is below minimum requirement ({float(min_rel):.2f})"
+            else f"Supplier '{effective_sup.id}' reliability ({rel:.2f}) is below minimum requirement ({min_rel:.2f})"
         )
         return ConstraintEvaluationEvidence(
             constraint_type=c_type,
             constraint_name=c_name,
             status=status,
             observed_value=rel,
-            threshold_value=float(min_rel),
+            threshold_value=min_rel,
             unit="ratio",
             reason=reason,
         )
 
     # 10. MAX_SUPPLIER_LEAD_TIME
     if c_type == ConstraintType.MAX_SUPPLIER_LEAD_TIME:
-        max_lt = constraint.parameters.get("max_lead_time_days")
-        if max_lt is None:
+        max_lt_raw = constraint.parameters.get("max_lead_time_days")
+        if max_lt_raw is None:
             return ConstraintEvaluationEvidence(
                 constraint_type=c_type,
                 constraint_name=c_name,
@@ -677,13 +753,29 @@ def evaluate_single_constraint(
                 missing_inputs=["parameters.max_lead_time_days"],
             )
 
+        try:
+            max_lt = int(max_lt_raw)
+            if max_lt < 0:
+                raise ValueError(f"max_lead_time_days must be non-negative, got {max_lt}")
+        except (ValueError, TypeError) as exc:
+            return ConstraintEvaluationEvidence(
+                constraint_type=c_type,
+                constraint_name=c_name,
+                status=ConstraintEvaluationStatus.UNABLE_TO_EVALUATE,
+                observed_value=None,
+                threshold_value=None,
+                unit="days",
+                reason=f"Invalid constraint configuration: {exc}",
+                missing_inputs=["valid_max_lead_time_days"],
+            )
+
         if action_type == ActionType.DO_NOTHING:
             return ConstraintEvaluationEvidence(
                 constraint_type=c_type,
                 constraint_name=c_name,
                 status=ConstraintEvaluationStatus.PASS,
                 observed_value=None,
-                threshold_value=int(max_lt),
+                threshold_value=max_lt,
                 unit="days",
                 reason="Action is DO_NOTHING; lead time SLA not applicable",
             )
@@ -695,28 +787,41 @@ def evaluate_single_constraint(
                 constraint_name=c_name,
                 status=ConstraintEvaluationStatus.UNABLE_TO_EVALUATE,
                 observed_value=None,
-                threshold_value=int(max_lt),
+                threshold_value=max_lt,
                 unit="days",
                 reason="Effective supplier is missing from context; cannot verify fulfillment lead time",
                 missing_inputs=["effective_supplier"],
             )
 
         lt = effective_sup.lead_time_days
-        is_lt_ok = lt <= int(max_lt)
+        is_lt_ok = lt <= max_lt
         status = ConstraintEvaluationStatus.PASS if is_lt_ok else ConstraintEvaluationStatus.FAIL
         reason = (
-            f"Supplier '{effective_sup.id}' lead time ({lt} days) is within maximum allowed ({int(max_lt)} days)"
+            f"Supplier '{effective_sup.id}' lead time ({lt} days) is within maximum allowed ({max_lt} days)"
             if is_lt_ok
-            else f"Supplier '{effective_sup.id}' lead time ({lt} days) exceeds maximum allowed ({int(max_lt)} days)"
+            else f"Supplier '{effective_sup.id}' lead time ({lt} days) exceeds maximum allowed ({max_lt} days)"
         )
         return ConstraintEvaluationEvidence(
             constraint_type=c_type,
             constraint_name=c_name,
             status=status,
             observed_value=lt,
-            threshold_value=int(max_lt),
+            threshold_value=max_lt,
             unit="days",
             reason=reason,
+        )
+
+    # 11. CUSTOM
+    if c_type == ConstraintType.CUSTOM:
+        return ConstraintEvaluationEvidence(
+            constraint_type=c_type,
+            constraint_name=c_name,
+            status=ConstraintEvaluationStatus.UNABLE_TO_EVALUATE,
+            observed_value=None,
+            threshold_value=None,
+            unit=None,
+            reason=f"Custom constraint '{c_name}' has no registered deterministic handler in the engine",
+            missing_inputs=["unsupported_constraint_handler"],
         )
 
     # Fallback: Unsupported or unknown constraint type
@@ -891,6 +996,16 @@ def validate_decision_actions(
     else:
         decision_status = DecisionValidationStatus.SOME_VIOLATED
 
+    report_metadata = dict(metadata or {})
+    report_metadata.setdefault("evaluated_action_ids", [a.id for a in sorted_actions])
+    unconstrained_ids = [
+        r.action_id
+        for r in action_results
+        if r.status == ActionValidationStatus.NO_CONSTRAINTS_APPLICABLE
+    ]
+    if unconstrained_ids:
+        report_metadata["unconstrained_action_ids"] = unconstrained_ids
+
     return DecisionValidationReport(
         id=report_id,
         decision_id=decision_id,
@@ -903,5 +1018,21 @@ def validate_decision_actions(
         unable_to_validate_action_ids=unable_ids,
         action_results=action_results,
         evaluated_constraints=sorted(distinct_constraints),
-        metadata=metadata or {},
+        metadata=report_metadata,
     )
+
+
+def is_action_fully_satisfied(result: ActionValidationResult) -> bool:
+    """Safe validation-gate helper for operational governance.
+
+    Returns True if and only if the action was checked against at least one
+    applicable constraint, and all evaluated constraints passed.
+    Ensures that unconstrained actions (NO_CONSTRAINTS_APPLICABLE) are not
+    mistaken for verified passing actions in downstream approval/execution gates.
+    """
+    return (
+        result.is_valid
+        and result.status == ActionValidationStatus.SATISFIED
+        and result.constraints_evaluated > 0
+    )
+

@@ -1167,7 +1167,12 @@ def validate_decision_actions_endpoint(
             record_to_graph=req.record_to_graph,
         )
         return DecisionValidationReportResponse.from_domain(report)
-    except (DecisionNotFoundError, ValDecisionNotFoundError) as exc:
+    except (
+        DecisionNotFoundError,
+        ValDecisionNotFoundError,
+        CandidateActionNotFoundError,
+        ValActionNotFoundError,
+    ) as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),

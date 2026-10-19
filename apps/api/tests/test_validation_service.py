@@ -245,3 +245,62 @@ class TestValidationService:
         ]
         assert len(val_edges) == 1
         assert val_edges[0].target_id == val_nodes[0].id
+
+    def test_cross_decision_action_ids_raise_not_found(
+        self,
+        validation_service: ValidationService,
+        decision_repo: DecisionRepository,
+        action_repo: CandidateActionRepository,
+    ):
+        dec1 = decision_repo.create(product_id="prod-001", warehouse_id="wh-001")
+        dec2 = decision_repo.create(product_id="prod-001", warehouse_id="wh-001")
+
+        # Action belonging to dec2
+        act2 = action_repo.record(
+            CandidateAction(
+                id="ACT-DEC2",
+                decision_id=dec2.id,
+                type=ActionType.DO_NOTHING,
+                parameters=DoNothingParameters(),
+            )
+        )
+
+        # Attempting to validate act2 under dec1 MUST raise CandidateActionNotFoundError
+        with pytest.raises(CandidateActionNotFoundError, match="not found for decision"):
+            validation_service.validate_decision_actions(
+                dec1.id,
+                action_ids=[act2.id],
+            )
+
+    def test_graph_attachment_failure_rolls_back_validation_report(
+        self,
+        validation_service: ValidationService,
+        decision_repo: DecisionRepository,
+        action_repo: CandidateActionRepository,
+        validation_repo: ValidationRepository,
+        monkeypatch,
+    ):
+        dec = decision_repo.create(product_id="prod-001", warehouse_id="wh-001")
+        action_repo.record(
+            CandidateAction(
+                id="ACT-ROLLBACK",
+                decision_id=dec.id,
+                type=ActionType.DO_NOTHING,
+                parameters=DoNothingParameters(),
+            )
+        )
+
+        # Simulate graph repository failure during attach_validation_node
+        def failing_attach(*args, **kwargs):
+            raise RuntimeError("Simulated decision graph failure")
+
+        monkeypatch.setattr(validation_service._graph_repo, "attach_validation_node", failing_attach)
+
+        initial_count = len(validation_repo)
+        with pytest.raises(RuntimeError, match="Simulated decision graph failure"):
+            validation_service.validate_decision_actions(dec.id, record_to_graph=True)
+
+        # Validation report MUST be rolled back from repository
+        assert len(validation_repo) == initial_count
+        assert validation_repo.get_latest_for_decision(dec.id) is None
+
