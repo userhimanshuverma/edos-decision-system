@@ -78,6 +78,21 @@ from app.domain.recommendation import (
     TieBreakMethod,
     select_deterministic_recommendation,
 )
+from app.domain.validation import (
+    ConstraintType,
+    ConstraintEvaluationStatus,
+    ActionValidationStatus,
+    DecisionValidationStatus,
+    ConstraintDefinition,
+    ConstraintEvaluationEvidence,
+    ActionValidationResult,
+    DecisionValidationReport,
+    ValidationContextInputs,
+    get_default_constraint_definitions,
+    evaluate_single_constraint,
+    validate_candidate_action,
+    validate_decision_actions,
+)
 
 __all__ = [
     "Product",
@@ -148,4 +163,18 @@ __all__ = [
     "RecommendationStatus",
     "TieBreakMethod",
     "select_deterministic_recommendation",
+    "ConstraintType",
+    "ConstraintEvaluationStatus",
+    "ActionValidationStatus",
+    "DecisionValidationStatus",
+    "ConstraintDefinition",
+    "ConstraintEvaluationEvidence",
+    "ActionValidationResult",
+    "DecisionValidationReport",
+    "ValidationContextInputs",
+    "get_default_constraint_definitions",
+    "evaluate_single_constraint",
+    "validate_candidate_action",
+    "validate_decision_actions",
 ]
+

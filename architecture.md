@@ -1588,3 +1588,63 @@ When `record_to_graph=True`, `RecommendationService` attaches a `GraphNodeType.R
 - `POST /api/decisions/{decision_id}/recommendation`: Generates and stores deterministic recommendation. Supports `policy_type`, `target_stock`, `enforce_reorder_trigger`, `record_to_graph`.
 - `GET /api/decisions/{decision_id}/recommendation`: Retrieves latest recommendation. Query parameters: `ensure_fresh=true` (default), `recompute=false` (or `true` to force fresh re-evaluation), `record_to_graph=false`.
 - Direct aliases supported: `/decisions/...`, `/api/decision/...`, `/decision/...`.
+
+---
+
+## 11. Day 21: Hard-Constraint Validation Engine
+
+### 11.1 Objective and Architectural Distinction
+The Day 21 Hard-Constraint Validation Engine answers:
+> **"Does a candidate operational action satisfy the explicit business and physical constraints EDOS is configured to enforce?"**
+
+#### Key Architectural Distinction:
+- **Day 20 (Recommendation Engine)** establishes: *"Which action should EDOS recommend based on multi-criteria operational dominance?"*
+- **Day 21 (Validation Engine)** establishes: *"Does that action satisfy the hard constraints EDOS is explicitly configured to enforce?"*
+
+#### Strict Scope Boundaries & Guardrails:
+1. **Deterministic & Explainable**: Evaluates candidate actions purely via deterministic code and mathematical rules. Zero AI-based constraint decisions or composite scoring formulas.
+2. **Strictly Decoupled**: Validation does NOT select recommendations, advance decision lifecycle states, mutate inventory, or execute purchase orders.
+3. **Explicit Missing Input Handling**: Missing domain inputs or unsupported constraints explicitly produce `UNABLE_TO_EVALUATE` outcomes. Missing inputs never silently become a pass (`is_valid = False`).
+4. **Analytical Risk vs. Hard Constraints**: Analytical risk indicators (such as `HIGH` stockout exposure or `MEDIUM` supplier risk) do NOT automatically reject an action unless an explicit, applicable hard constraint rule (e.g. `MIN_SUPPLIER_RELIABILITY`) is configured.
+
+### 11.2 Supported Constraints and Domain Sources
+All supported constraints derive strictly from existing domain models or explicitly documented business policy:
+
+| Constraint Type | Domain Source | Rule Description | Applicable Action Types |
+|-----------------|---------------|------------------|-------------------------|
+| `WAREHOUSE_ACTIVE` | `Warehouse.active` | Facility where stock resides must be active and operational. | All actions |
+| `PRODUCT_ACTIVE` | `Product.active` | Catalog product must be active and not discontinued. | `PLACE_ORDER`, `SWITCH_SUPPLIER` |
+| `SUPPLIER_ACTIVE` | `Supplier.active` | Effective supplier fulfilling or assigned by the action must be active. | `PLACE_ORDER`, `SWITCH_SUPPLIER` |
+| `ORDER_QUANTITY_POSITIVE` | `PlaceOrderParameters.quantity` | Replenishment order quantity must be strictly positive (`quantity > 0`). | `PLACE_ORDER` |
+| `WAREHOUSE_CAPACITY` | `Warehouse.capacity`, `Inventory.quantity_on_hand` | Projected physical stock after order delivery (`quantity_on_hand + order_quantity`) must not exceed warehouse storage capacity. | `PLACE_ORDER` |
+| `SUPPLIER_TARGET_DISTINCT` | `SwitchSupplierParameters.target_supplier_id` | Proposed target supplier for `SWITCH_SUPPLIER` must not be identical to the incumbent primary supplier. | `SWITCH_SUPPLIER` |
+| `ORDER_QUANTITY_BOUNDS` | Configured batch policy | When specified, `min_quantity <= quantity <= max_quantity`. | `PLACE_ORDER` |
+| `MAX_BUDGET_LIMIT` | `Product.unit_cost`, configured spend ceiling | When specified, direct procurement spend (`quantity * unit_cost`) must not exceed `max_spend`. | `PLACE_ORDER` |
+| `MIN_SUPPLIER_RELIABILITY` | `Supplier.reliability`, configured threshold | When specified, effective supplier reliability must satisfy `reliability >= min_reliability`. | `PLACE_ORDER`, `SWITCH_SUPPLIER` |
+| `MAX_SUPPLIER_LEAD_TIME` | `Supplier.lead_time_days`, configured threshold | When specified, effective supplier lead time must satisfy `lead_time_days <= max_lead_time_days`. | `PLACE_ORDER`, `SWITCH_SUPPLIER` |
+
+### 11.3 Validation Outcome Semantics
+Individual constraint evaluations produce three explicit categorical statuses:
+- `PASS`: The constraint was fully evaluated and satisfied with observable evidence.
+- `FAIL`: The constraint was fully evaluated and breached, recording the delta and violation rationale.
+- `UNABLE_TO_EVALUATE`: The constraint could not be evaluated due to missing inputs or unsupported handlers.
+
+Action-level outcomes:
+- `SATISFIED`: All applicable constraints evaluated and passed (`is_valid = True`).
+- `VIOLATED`: One or more applicable constraints failed (`is_valid = False`).
+- `UNABLE_TO_VALIDATE`: No constraint failed, but at least one could not be evaluated due to missing data (`is_valid = False`).
+- `NO_CONSTRAINTS_APPLICABLE`: No constraints applied to the action (`is_valid = True`).
+
+Decision-level outcomes:
+- `ALL_SATISFIED`, `SOME_VIOLATED`, `ALL_VIOLATED`, `HAS_UNABLE_TO_VALIDATE`, `NO_ACTIONS`.
+
+### 11.4 In-Memory Persistence & Graph Integration
+- **`ValidationRepository`**: Stores `DecisionValidationReport` entities (`VAL-XXXX`) with defensive copying, sequential ID generation, and deterministic query sorting.
+- **Decision Graph Integration**: When `record_to_graph=True`, `ValidationService` attaches a `GraphNodeType.VALIDATION` node to the decision graph, and connects each evaluated candidate action via a `GraphRelationshipType.VALIDATES` directed edge (`ACTION -> VALIDATION`).
+
+### 11.5 API Endpoints
+- `POST /api/decisions/{decision_id}/validate`: Validates all (or specified subset of) candidate actions against standard domain or configured custom constraints.
+- `GET /api/decisions/{decision_id}/validation`: Retrieves latest validation report or recomputes (`recompute=true`).
+- `POST /api/decisions/{decision_id}/actions/{action_id}/validate`: Validates an individual candidate action.
+- Route aliases supported: `/decisions/...`, `/api/decision/...`, `/decision/...`.
+

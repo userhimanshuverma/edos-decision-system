@@ -52,7 +52,7 @@ Human Approval
 
 ## Current Status
 
-**Day 20: Deterministic Recommendation Engine (Make the Decision Phase Completed)**
+**Day 21: Hard-Constraint Validation Engine (Trust the Decision Phase Initiated)**
 
 The repository currently establishes:
 - Standard repository layout and conventions
@@ -70,8 +70,9 @@ The repository currently establishes:
 - Deterministic Stockout-Risk Calculation Engine (`StockoutRiskService`, `calculate_stockout_risk`) evaluating lead-time demand exposure, coverage runway buffer, and stockout deficit
 - Deterministic Action Evaluation Engine (`ActionEvaluationService`, `evaluate_candidate_action`) assessing candidate actions individually across stockout exposure, replenishment impact, supplier impact, and defensible cost without arbitrary composite scoring
 - Deterministic Recommendation Engine (`RecommendationService`, `select_deterministic_recommendation`) ranking candidate actions via Lexicographic Operational Dominance (LOD) and selecting optimal recommendations with explicit tie-breaking and audit evidence
+- Deterministic Hard-Constraint Validation Engine (`ValidationService`, `validate_candidate_action`, `validate_decision_actions`) screening candidate actions against physical and business policies (`WAREHOUSE_CAPACITY`, active statuses, supplier eligibility, budget ceilings, quantity bounds) with traceable PASS, FAIL, and UNABLE_TO_EVALUATE semantics
 - In-memory repositories with deep defensive copies, deterministic ordering, and Decision Graph consistency
-- Comprehensive automated test suites across domain, repository, service, API, and graph integration layers (657 backend tests, 12 frontend tests)
+- Comprehensive automated test suites across domain, repository, service, API, and graph integration layers (700 backend tests, 16 frontend tests)
 
 
 

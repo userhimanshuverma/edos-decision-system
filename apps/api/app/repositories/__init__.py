@@ -33,6 +33,10 @@ from app.repositories.recommendation_repository import (
     DuplicateRecommendationError,
     RecommendationRepository,
 )
+from app.repositories.validation_repository import (
+    DuplicateValidationReportError,
+    ValidationRepository,
+)
 
 __all__ = [
     "DecisionRepository",
@@ -49,9 +53,12 @@ __all__ = [
     "DuplicateCandidateActionError",
     "RecommendationRepository",
     "DuplicateRecommendationError",
+    "ValidationRepository",
+    "DuplicateValidationReportError",
     "DemandRepository",
     "InventoryRepository",
     "SupplierRepository",
     "SupplierRiskLevel",
     "classify_supplier_risk",
 ]
+

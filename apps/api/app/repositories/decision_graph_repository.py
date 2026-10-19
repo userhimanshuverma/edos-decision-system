@@ -449,6 +449,77 @@ class DecisionGraphRepository:
         self._graphs[graph.id] = updated_graph.model_copy(deep=True)
         return rec_node, edge
 
+    def attach_validation_node(
+        self,
+        decision_id: str,
+        report: Any,
+    ) -> tuple[GraphNode | None, list[GraphEdge]]:
+        """Attaches a VALIDATION graph node and VALIDATES edges for candidate actions."""
+        norm_decision_id = decision_id.strip()
+        graph_id = self._by_decision_id.get(norm_decision_id)
+        if graph_id is None:
+            return None, []
+        graph = self._graphs[graph_id]
+
+        val_id = report.id
+        val_node_id = f"{norm_decision_id}-node-val-{val_id}"
+        existing_node = next((n for n in graph.nodes if n.id == val_node_id), None)
+        if existing_node is not None:
+            existing_edges = [e for e in graph.edges if e.target_id == val_node_id]
+            return existing_node, existing_edges
+
+        status_val = (
+            report.status.value
+            if hasattr(report.status, "value")
+            else str(report.status)
+        )
+
+        val_node = GraphNode(
+            id=val_node_id,
+            node_type=GraphNodeType.VALIDATION,
+            decision_id=norm_decision_id,
+            label=f"Validation: {status_val}",
+            metadata={
+                "validation_id": val_id,
+                "status": status_val,
+                "total_actions_evaluated": report.total_actions_evaluated,
+                "valid_actions_count": len(report.valid_action_ids),
+                "invalid_actions_count": len(report.invalid_action_ids),
+                "unable_to_validate_count": len(report.unable_to_validate_action_ids),
+            },
+            created_at=report.created_at,
+        )
+
+        new_edges: list[GraphEdge] = []
+        updated_edges = list(graph.edges)
+
+        for action_result in report.action_results:
+            action_node_id = f"{norm_decision_id}-node-{action_result.action_id}"
+            action_node = next((n for n in graph.nodes if n.id == action_node_id), None)
+            if action_node is not None:
+                edge_id = f"EDG-VAL-{norm_decision_id}-{action_result.action_id}-{val_id}"
+                if not any(e.id == edge_id for e in updated_edges):
+                    edge = GraphEdge(
+                        id=edge_id,
+                        source_id=action_node.id,
+                        target_id=val_node.id,
+                        relationship_type=GraphRelationshipType.VALIDATES,
+                        decision_id=norm_decision_id,
+                    )
+                    new_edges.append(edge)
+                    updated_edges.append(edge)
+
+        updated_nodes = list(graph.nodes) + [val_node]
+        updated_graph = DecisionGraph(
+            id=graph.id,
+            decision_id=graph.decision_id,
+            nodes=updated_nodes,
+            edges=updated_edges,
+            created_at=graph.created_at,
+            updated_at=datetime.now(timezone.utc),
+        )
+        self._graphs[graph.id] = updated_graph.model_copy(deep=True)
+        return val_node, new_edges
 
     def __len__(self) -> int:
         """Returns total number of graphs currently stored."""

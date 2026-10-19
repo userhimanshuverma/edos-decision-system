@@ -29,6 +29,11 @@ from app.api.schemas import (
     EvaluateDecisionActionsRequest,
     GenerateRecommendationRequest,
     RecommendationResponse,
+    ActionValidationResponse,
+    ConstraintConfigRequest,
+    DecisionValidationReportResponse,
+    ValidateActionRequest,
+    ValidateDecisionRequest,
 )
 from app.candidate_actions.service import (
     CandidateActionNotFoundError,
@@ -46,6 +51,14 @@ from app.recommendation.service import (
     RecommendationNotFoundError,
     RecommendationService,
 )
+from app.validation.service import (
+    CandidateActionNotFoundError as ValActionNotFoundError,
+    DecisionNotFoundError as ValDecisionNotFoundError,
+    ValidationError,
+    ValidationReportNotFoundError,
+    ValidationService,
+)
+
 
 
 
@@ -88,6 +101,7 @@ from app.repositories.demand_repository import DemandRepository
 from app.repositories.inventory_repository import InventoryRepository
 from app.repositories.recommendation_repository import RecommendationRepository
 from app.repositories.supplier_repository import SupplierRepository
+from app.repositories.validation_repository import ValidationRepository
 
 
 router = APIRouter()
@@ -197,6 +211,30 @@ def get_recommendation_service() -> RecommendationService:
         recommendation_repo=get_recommendation_repository(),
         graph_repo=get_decision_graph_repository(),
     )
+
+
+@lru_cache
+def get_validation_repository() -> ValidationRepository:
+    """Dependency provider returning singleton ValidationRepository."""
+    return ValidationRepository()
+
+
+@lru_cache
+def get_validation_service() -> ValidationService:
+    """Dependency provider returning ValidationService wired to repositories."""
+    dec_repo = get_decision_repository()
+    action_repo = get_candidate_action_repository()
+    graph_repo = get_decision_graph_repository()
+    shared_dataset = dec_repo.dataset
+    return ValidationService(
+        decision_repo=dec_repo,
+        action_repo=action_repo,
+        inventory_repo=get_inventory_repository(),
+        supplier_repo=SupplierRepository(dataset=shared_dataset),
+        validation_repo=get_validation_repository(),
+        graph_repo=graph_repo,
+    )
+
 
 
 
@@ -1100,3 +1138,126 @@ def get_decision_recommendation(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
+
+# Day 21 Hard-Constraint Validation Endpoints
+
+@router.post(
+    "/{decision_id}/validate",
+    response_model=DecisionValidationReportResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Validate candidate actions for a decision against hard constraints",
+    description="Evaluates all (or specified subset of) candidate actions against explicitly defined operational hard constraints without mutating inventory or executing actions.",
+)
+def validate_decision_actions_endpoint(
+    decision_id: str,
+    payload: ValidateDecisionRequest | None = None,
+    service: ValidationService = Depends(get_validation_service),
+) -> DecisionValidationReportResponse:
+    req = payload or ValidateDecisionRequest()
+    try:
+        configured_constraints = None
+        if req.constraints is not None:
+            configured_constraints = [c.to_domain() for c in req.constraints]
+
+        report = service.validate_decision_actions(
+            decision_id=decision_id,
+            action_ids=req.action_ids,
+            configured_constraints=configured_constraints,
+            record_to_graph=req.record_to_graph,
+        )
+        return DecisionValidationReportResponse.from_domain(report)
+    except (DecisionNotFoundError, ValDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/validation",
+    response_model=DecisionValidationReportResponse,
+    summary="Get latest validation report or revalidate a decision",
+    description="Retrieves the latest stored validation report for the decision or executes a revalidation run.",
+)
+def get_decision_validation_endpoint(
+    decision_id: str,
+    recompute: bool = Query(
+        default=False,
+        description="When True, forces running a new hard-constraint validation run",
+    ),
+    record_to_graph: bool = Query(
+        default=False,
+        description="When True, attaches VALIDATION node to the Decision Graph",
+    ),
+    service: ValidationService = Depends(get_validation_service),
+) -> DecisionValidationReportResponse:
+    try:
+        if not recompute:
+            report = service.get_latest_validation(decision_id=decision_id)
+            if report is not None:
+                return DecisionValidationReportResponse.from_domain(report)
+
+        report = service.validate_decision_actions(
+            decision_id=decision_id,
+            record_to_graph=record_to_graph,
+        )
+        return DecisionValidationReportResponse.from_domain(report)
+    except (DecisionNotFoundError, ValDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/{decision_id}/actions/{action_id}/validate",
+    response_model=ActionValidationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Validate an individual candidate action against hard constraints",
+    description="Evaluates an individual candidate action against operational hard constraints.",
+)
+def validate_candidate_action_endpoint(
+    decision_id: str,
+    action_id: str,
+    payload: ValidateActionRequest | None = None,
+    service: ValidationService = Depends(get_validation_service),
+) -> ActionValidationResponse:
+    req = payload or ValidateActionRequest()
+    try:
+        configured_constraints = None
+        if req.constraints is not None:
+            configured_constraints = [c.to_domain() for c in req.constraints]
+
+        result = service.validate_action(
+            decision_id=decision_id,
+            action_id=action_id,
+            configured_constraints=configured_constraints,
+        )
+        return ActionValidationResponse.from_domain(result)
+    except (
+        DecisionNotFoundError,
+        ValDecisionNotFoundError,
+        CandidateActionNotFoundError,
+        ValActionNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+

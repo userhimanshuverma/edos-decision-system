@@ -438,3 +438,131 @@ export interface GenerateRecommendationRequest {
   enforce_reorder_trigger?: boolean;
   record_to_graph?: boolean;
 }
+
+/**
+ * Supported deterministic operational hard constraints matching Day 21 ConstraintType enum.
+ */
+export type ConstraintType =
+  | 'WAREHOUSE_CAPACITY'
+  | 'WAREHOUSE_ACTIVE'
+  | 'PRODUCT_ACTIVE'
+  | 'SUPPLIER_ACTIVE'
+  | 'ORDER_QUANTITY_POSITIVE'
+  | 'ORDER_QUANTITY_BOUNDS'
+  | 'SUPPLIER_TARGET_DISTINCT'
+  | 'MAX_BUDGET_LIMIT'
+  | 'MIN_SUPPLIER_RELIABILITY'
+  | 'MAX_SUPPLIER_LEAD_TIME'
+  | 'CUSTOM';
+
+/**
+ * Outcome of an individual constraint evaluation matching Day 21 ConstraintEvaluationStatus enum.
+ */
+export type ConstraintEvaluationStatus = 'PASS' | 'FAIL' | 'UNABLE_TO_EVALUATE';
+
+/**
+ * Outcome of candidate action constraint evaluations matching Day 21 ActionValidationStatus enum.
+ */
+export type ActionValidationStatus =
+  | 'SATISFIED'
+  | 'VIOLATED'
+  | 'UNABLE_TO_VALIDATE'
+  | 'NO_CONSTRAINTS_APPLICABLE';
+
+/**
+ * Decision-level validation status matching Day 21 DecisionValidationStatus enum.
+ */
+export type DecisionValidationStatus =
+  | 'ALL_SATISFIED'
+  | 'SOME_VIOLATED'
+  | 'ALL_VIOLATED'
+  | 'HAS_UNABLE_TO_VALIDATE'
+  | 'NO_ACTIONS';
+
+/**
+ * Auditable evidence preserved for an individual constraint evaluation.
+ */
+export interface ConstraintEvaluationEvidence {
+  constraint_type: ConstraintType;
+  constraint_name: string;
+  status: ConstraintEvaluationStatus;
+  observed_value: unknown | null;
+  threshold_value: unknown | null;
+  unit: string | null;
+  reason: string;
+  missing_inputs: string[];
+  evaluated_at: string;
+}
+
+export type ConstraintEvaluationEvidenceResponse = ConstraintEvaluationEvidence;
+
+/**
+ * Action-level validation result matching Day 21 ActionValidationResponse schema.
+ */
+export interface ActionValidationRecord {
+  action_id: string;
+  action_type: CandidateActionType;
+  decision_id: string;
+  status: ActionValidationStatus;
+  is_valid: boolean;
+  constraints_evaluated: number;
+  constraints_passed: number;
+  constraints_failed: number;
+  constraints_unable_to_evaluate: number;
+  constraint_results: ConstraintEvaluationEvidence[];
+  validation_notes: string[];
+  evaluated_at: string;
+}
+
+export type ActionValidationResponse = ActionValidationRecord;
+
+/**
+ * Configuration item for an explicit constraint in API request.
+ */
+export interface ConstraintConfigRequest {
+  constraint_type: ConstraintType;
+  name: string;
+  description?: string | null;
+  is_hard?: boolean;
+  parameters?: Record<string, unknown>;
+  applicable_action_types?: CandidateActionType[] | null;
+}
+
+/**
+ * Request payload contract for validating candidate actions of a decision.
+ */
+export interface ValidateDecisionRequest {
+  constraints?: ConstraintConfigRequest[] | null;
+  action_ids?: string[] | null;
+  record_to_graph?: boolean;
+}
+
+/**
+ * Request payload contract for validating a single candidate action.
+ */
+export interface ValidateActionRequest {
+  constraints?: ConstraintConfigRequest[] | null;
+}
+
+/**
+ * Decision-level candidate action validation report matching Day 21 DecisionValidationReportResponse schema.
+ */
+export interface DecisionValidationRecord {
+  id: string;
+  validation_id: string;
+  decision_id: string;
+  product_id: string;
+  warehouse_id: string;
+  status: DecisionValidationStatus;
+  total_actions_evaluated: number;
+  valid_action_ids: string[];
+  invalid_action_ids: string[];
+  unable_to_validate_action_ids: string[];
+  action_results: ActionValidationRecord[];
+  evaluated_constraints: string[];
+  created_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export type DecisionValidationReportResponse = DecisionValidationRecord;
+

@@ -1337,3 +1337,195 @@ class RecommendationResponse(BaseModel):
             stale_reason=rec.stale_reason,
             metadata=rec.metadata,
         )
+
+
+# Day 21 Hard-Constraint Validation Engine Schemas
+from app.domain.validation import (  # noqa: E402
+    ActionValidationResult,
+    ActionValidationStatus,
+    ConstraintDefinition,
+    ConstraintEvaluationEvidence,
+    ConstraintEvaluationStatus,
+    ConstraintType,
+    DecisionValidationReport,
+    DecisionValidationStatus,
+)
+
+
+class ConstraintConfigRequest(BaseModel):
+    """Configuration payload for an explicit hard constraint."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    constraint_type: ConstraintType = Field(..., description="Category of the constraint")
+    name: str = Field(..., min_length=1, description="Unique human-readable identifier for this constraint")
+    description: str | None = Field(default=None, description="Optional description of the policy or rule")
+    is_hard: bool = Field(default=True, description="Always True for hard constraints")
+    parameters: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional policy parameters (e.g. max_spend, min_quantity, max_lead_time_days)",
+    )
+    applicable_action_types: list[ActionType] | None = Field(
+        default=None,
+        description="Action types to which this constraint applies. If None, applies to all supported actions.",
+    )
+
+    def to_domain(self) -> ConstraintDefinition:
+        return ConstraintDefinition(
+            constraint_type=self.constraint_type,
+            name=self.name,
+            description=self.description or f"Enforce {self.constraint_type.value}",
+            is_hard=self.is_hard,
+            parameters=self.parameters,
+            applicable_action_types=self.applicable_action_types,
+        )
+
+
+class ValidateDecisionRequest(BaseModel):
+    """Payload contract for validating candidate actions belonging to a business decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    constraints: list[ConstraintConfigRequest] | None = Field(
+        default=None,
+        description="Optional list of explicit constraints to evaluate. If omitted, default domain constraints apply.",
+    )
+    action_ids: list[str] | None = Field(
+        default=None,
+        description="Optional subset of candidate action IDs to validate. If omitted, all candidate actions are evaluated.",
+    )
+    record_to_graph: bool = Field(
+        default=False,
+        description="When True, attaches VALIDATION node and VALIDATES edges to the Decision Graph",
+    )
+
+
+class ValidateActionRequest(BaseModel):
+    """Payload contract for validating a single candidate action."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    constraints: list[ConstraintConfigRequest] | None = Field(
+        default=None,
+        description="Optional list of explicit constraints to evaluate. If omitted, default domain constraints apply.",
+    )
+
+
+class ConstraintEvaluationEvidenceResponse(BaseModel):
+    """Auditable evidence preserved for an individual constraint evaluation."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    constraint_type: ConstraintType = Field(..., description="Category of constraint evaluated")
+    constraint_name: str = Field(..., description="Name of the constraint evaluated")
+    status: ConstraintEvaluationStatus = Field(..., description="Outcome: PASS, FAIL, or UNABLE_TO_EVALUATE")
+    observed_value: Any | None = Field(default=None, description="Actual observed metric or state from domain data")
+    threshold_value: Any | None = Field(default=None, description="Configured boundary, capacity, or required state")
+    unit: str | None = Field(default=None, description="Measurement unit (units, USD, days, ratio)")
+    reason: str = Field(..., description="Deterministic explanation of why the constraint passed, failed, or was unable to evaluate")
+    missing_inputs: list[str] = Field(default_factory=list, description="Missing inputs if unable to evaluate")
+    evaluated_at: datetime = Field(..., description="UTC evaluation timestamp")
+
+    @classmethod
+    def from_domain(cls, ev: ConstraintEvaluationEvidence) -> ConstraintEvaluationEvidenceResponse:
+        return cls(
+            constraint_type=ev.constraint_type,
+            constraint_name=ev.constraint_name,
+            status=ev.status,
+            observed_value=ev.observed_value,
+            threshold_value=ev.threshold_value,
+            unit=ev.unit,
+            reason=ev.reason,
+            missing_inputs=ev.missing_inputs,
+            evaluated_at=ev.evaluated_at,
+        )
+
+
+class ActionValidationResponse(BaseModel):
+    """Clean typed response representing validation outcome for a candidate action."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    action_id: str = Field(..., description="Evaluated candidate action identifier")
+    action_type: ActionType = Field(..., description="Candidate action category")
+    decision_id: str = Field(..., description="Associated business decision identifier")
+    status: ActionValidationStatus = Field(..., description="Overall action validation status")
+    is_valid: bool = Field(..., description="True if all applicable constraints passed without failures or missing data")
+    constraints_evaluated: int = Field(..., ge=0, description="Total applicable constraints evaluated")
+    constraints_passed: int = Field(..., ge=0, description="Count of constraints that passed")
+    constraints_failed: int = Field(..., ge=0, description="Count of constraints that failed")
+    constraints_unable_to_evaluate: int = Field(..., ge=0, description="Count of constraints unable to evaluate")
+    constraint_results: list[ConstraintEvaluationEvidenceResponse] = Field(
+        default_factory=list,
+        description="Individual traceable evaluation evidence for each applicable constraint",
+    )
+    validation_notes: list[str] = Field(default_factory=list, description="Step-by-step diagnostic validation notes")
+    evaluated_at: datetime = Field(..., description="UTC timestamp of evaluation")
+
+    @classmethod
+    def from_domain(cls, res: ActionValidationResult) -> ActionValidationResponse:
+        return cls(
+            action_id=res.action_id,
+            action_type=res.action_type,
+            decision_id=res.decision_id,
+            status=res.status,
+            is_valid=res.is_valid,
+            constraints_evaluated=res.constraints_evaluated,
+            constraints_passed=res.constraints_passed,
+            constraints_failed=res.constraints_failed,
+            constraints_unable_to_evaluate=res.constraints_unable_to_evaluate,
+            constraint_results=[ConstraintEvaluationEvidenceResponse.from_domain(r) for r in res.constraint_results],
+            validation_notes=res.validation_notes,
+            evaluated_at=res.evaluated_at,
+        )
+
+
+class DecisionValidationReportResponse(BaseModel):
+    """Clean typed response representing decision-level candidate action validation report."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", populate_by_name=True)
+
+    id: str = Field(..., description="Unique validation report identifier (VAL-XXXX)")
+    validation_id: str = Field(..., description="Validation identifier (alias for id)")
+    decision_id: str = Field(..., description="Associated business decision identifier")
+    product_id: str = Field(..., description="Referenced Product identifier")
+    warehouse_id: str = Field(..., description="Referenced Warehouse identifier")
+    status: DecisionValidationStatus = Field(..., description="Overall decision validation status")
+    total_actions_evaluated: int = Field(..., ge=0, description="Total candidate actions evaluated")
+    valid_action_ids: list[str] = Field(default_factory=list, description="IDs of candidate actions that satisfied all constraints")
+    invalid_action_ids: list[str] = Field(default_factory=list, description="IDs of candidate actions that violated constraints")
+    unable_to_validate_action_ids: list[str] = Field(default_factory=list, description="IDs of candidate actions with missing inputs")
+    action_results: list[ActionValidationResponse] = Field(default_factory=list, description="Detailed validation result for each action")
+    evaluated_constraints: list[str] = Field(default_factory=list, description="Distinct constraint names evaluated")
+    created_at: datetime = Field(..., description="UTC creation timestamp")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Operational metadata or configuration context")
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "validation_id" not in data and "id" in data:
+                data["validation_id"] = data["id"]
+            elif "id" not in data and "validation_id" in data:
+                data["id"] = data["validation_id"]
+        return data
+
+    @classmethod
+    def from_domain(cls, rep: DecisionValidationReport) -> DecisionValidationReportResponse:
+        return cls(
+            id=rep.id,
+            validation_id=rep.id,
+            decision_id=rep.decision_id,
+            product_id=rep.product_id,
+            warehouse_id=rep.warehouse_id,
+            status=rep.status,
+            total_actions_evaluated=rep.total_actions_evaluated,
+            valid_action_ids=rep.valid_action_ids,
+            invalid_action_ids=rep.invalid_action_ids,
+            unable_to_validate_action_ids=rep.unable_to_validate_action_ids,
+            action_results=[ActionValidationResponse.from_domain(r) for r in rep.action_results],
+            evaluated_constraints=rep.evaluated_constraints,
+            created_at=rep.created_at,
+            metadata=rep.metadata,
+        )
+
