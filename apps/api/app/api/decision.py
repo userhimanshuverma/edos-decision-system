@@ -34,6 +34,14 @@ from app.api.schemas import (
     DecisionValidationReportResponse,
     ValidateActionRequest,
     ValidateDecisionRequest,
+    CreateEvidenceRequest,
+    CreateAssumptionRequest,
+    DecisionEvidenceResponse,
+    DecisionAssumptionResponse,
+    DecisionEvidenceSummaryResponse,
+    DecisionEvidenceSheetResponse,
+    EvidenceCategory,
+    EvidenceType,
 )
 from app.candidate_actions.service import (
     CandidateActionNotFoundError,
@@ -58,6 +66,17 @@ from app.validation.service import (
     ValidationReportNotFoundError,
     ValidationService,
 )
+from app.evidence.service import (
+    AssumptionNotFoundError,
+    CandidateActionNotFoundError as EvActionNotFoundError,
+    CrossDecisionIsolationError,
+    DecisionNotFoundError as EvDecisionNotFoundError,
+    DecisionVersionNotFoundError as EvVersionNotFoundError,
+    EvidenceNotFoundError,
+    EvidenceService,
+    InvalidEvidencePayloadError,
+)
+
 
 
 
@@ -102,6 +121,12 @@ from app.repositories.inventory_repository import InventoryRepository
 from app.repositories.recommendation_repository import RecommendationRepository
 from app.repositories.supplier_repository import SupplierRepository
 from app.repositories.validation_repository import ValidationRepository
+from app.repositories.evidence_repository import (
+    DuplicateAssumptionError,
+    DuplicateEvidenceError,
+    DuplicateEvidenceSheetError,
+    EvidenceRepository,
+)
 
 
 router = APIRouter()
@@ -234,6 +259,33 @@ def get_validation_service() -> ValidationService:
         validation_repo=get_validation_repository(),
         graph_repo=graph_repo,
     )
+
+
+@lru_cache
+def get_evidence_repository() -> EvidenceRepository:
+    """Dependency provider returning singleton EvidenceRepository."""
+    return EvidenceRepository()
+
+
+@lru_cache
+def get_evidence_service() -> EvidenceService:
+    """Dependency provider returning EvidenceService wired to repositories."""
+    dec_repo = get_decision_repository()
+    action_repo = get_candidate_action_repository()
+    version_repo = get_decision_version_repository()
+    shared_dataset = dec_repo.dataset
+    return EvidenceService(
+        decision_repo=dec_repo,
+        evidence_repo=get_evidence_repository(),
+        action_repo=action_repo,
+        version_repo=version_repo,
+        inventory_repo=get_inventory_repository(),
+        demand_repo=DemandRepository(dataset=shared_dataset),
+        supplier_repo=SupplierRepository(dataset=shared_dataset),
+        recommendation_repo=get_recommendation_repository(),
+        validation_repo=get_validation_repository(),
+    )
+
 
 
 
@@ -1265,4 +1317,265 @@ def validate_candidate_action_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Day 22: Decision Evidence Model Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/{decision_id}/evidence",
+    response_model=DecisionEvidenceResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Record an evidence item for a decision",
+    description="Explicitly records an observed fact, explicit assumption, or calculated output supporting a decision.",
+)
+def create_decision_evidence_endpoint(
+    decision_id: str,
+    payload: CreateEvidenceRequest,
+    service: EvidenceService = Depends(get_evidence_service),
+) -> DecisionEvidenceResponse:
+    try:
+        ev = service.create_evidence(
+            decision_id=decision_id,
+            evidence_type=payload.evidence_type,
+            category=payload.category,
+            description=payload.description,
+            id=payload.id,
+            value=payload.value,
+            unit=payload.unit,
+            source=payload.source,
+            is_probability=payload.is_probability,
+            action_id=payload.action_id,
+            version_id=payload.version_id,
+            metadata=payload.metadata,
+        )
+        return DecisionEvidenceResponse.from_domain(ev)
+    except (
+        DecisionNotFoundError,
+        EvDecisionNotFoundError,
+        CandidateActionNotFoundError,
+        EvActionNotFoundError,
+        EvVersionNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (DuplicateEvidenceError,) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except (CrossDecisionIsolationError, InvalidEvidencePayloadError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/evidence",
+    response_model=list[DecisionEvidenceResponse],
+    summary="List evidence items for a decision",
+    description="Retrieves deterministically sorted evidence items supporting a decision, with optional filtering.",
+)
+def list_decision_evidence_endpoint(
+    decision_id: str,
+    evidence_type: EvidenceType | None = Query(default=None, description="Filter by evidence nature (FACT, ASSUMPTION, CALCULATION)"),
+    category: EvidenceCategory | None = Query(default=None, description="Filter by operational domain category"),
+    action_id: str | None = Query(default=None, description="Filter by candidate action association"),
+    version_id: str | None = Query(default=None, description="Filter by decision version association"),
+    service: EvidenceService = Depends(get_evidence_service),
+) -> list[DecisionEvidenceResponse]:
+    try:
+        items = service.list_evidence(
+            decision_id=decision_id,
+            evidence_type=evidence_type,
+            category=category,
+            action_id=action_id,
+            version_id=version_id,
+        )
+        return [DecisionEvidenceResponse.from_domain(item) for item in items]
+    except (DecisionNotFoundError, EvDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/evidence/{evidence_id}",
+    response_model=DecisionEvidenceResponse,
+    summary="Get a specific decision evidence item",
+    description="Retrieves an individual evidence item by ID for the specified decision.",
+)
+def get_decision_evidence_item_endpoint(
+    decision_id: str,
+    evidence_id: str,
+    service: EvidenceService = Depends(get_evidence_service),
+) -> DecisionEvidenceResponse:
+    try:
+        ev = service.get_evidence(decision_id=decision_id, evidence_id=evidence_id)
+        return DecisionEvidenceResponse.from_domain(ev)
+    except (DecisionNotFoundError, EvDecisionNotFoundError, EvidenceNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/{decision_id}/assumptions",
+    response_model=DecisionAssumptionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Record an explicit assumption for a decision",
+    description="Records an explicit operational assumption, distinguishing it from observed facts and calculated outputs.",
+)
+def create_decision_assumption_endpoint(
+    decision_id: str,
+    payload: CreateAssumptionRequest,
+    service: EvidenceService = Depends(get_evidence_service),
+) -> DecisionAssumptionResponse:
+    try:
+        asm = service.create_assumption(
+            decision_id=decision_id,
+            category=payload.category,
+            statement=payload.statement,
+            id=payload.id,
+            assumed_value=payload.assumed_value,
+            rationale=payload.rationale,
+            source=payload.source,
+            action_id=payload.action_id,
+            version_id=payload.version_id,
+            metadata=payload.metadata,
+        )
+        return DecisionAssumptionResponse.from_domain(asm)
+    except (
+        DecisionNotFoundError,
+        EvDecisionNotFoundError,
+        CandidateActionNotFoundError,
+        EvActionNotFoundError,
+        EvVersionNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (DuplicateAssumptionError,) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except (CrossDecisionIsolationError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/assumptions",
+    response_model=list[DecisionAssumptionResponse],
+    summary="List explicit assumptions for a decision",
+    description="Retrieves deterministically sorted explicit assumptions supporting a decision.",
+)
+def list_decision_assumptions_endpoint(
+    decision_id: str,
+    category: EvidenceCategory | None = Query(default=None, description="Filter by operational domain category"),
+    action_id: str | None = Query(default=None, description="Filter by candidate action association"),
+    version_id: str | None = Query(default=None, description="Filter by decision version association"),
+    service: EvidenceService = Depends(get_evidence_service),
+) -> list[DecisionAssumptionResponse]:
+    try:
+        items = service.list_assumptions(
+            decision_id=decision_id,
+            category=category,
+            action_id=action_id,
+            version_id=version_id,
+        )
+        return [DecisionAssumptionResponse.from_domain(asm) for asm in items]
+    except (DecisionNotFoundError, EvDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/assumptions/{assumption_id}",
+    response_model=DecisionAssumptionResponse,
+    summary="Get a specific explicit assumption",
+    description="Retrieves an individual explicit assumption by ID for the specified decision.",
+)
+def get_decision_assumption_item_endpoint(
+    decision_id: str,
+    assumption_id: str,
+    service: EvidenceService = Depends(get_evidence_service),
+) -> DecisionAssumptionResponse:
+    try:
+        asm = service.get_assumption(decision_id=decision_id, assumption_id=assumption_id)
+        return DecisionAssumptionResponse.from_domain(asm)
+    except (DecisionNotFoundError, EvDecisionNotFoundError, AssumptionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/evidence-sheet",
+    response_model=DecisionEvidenceSheetResponse,
+    summary="Get consolidated evidence sheet for a decision",
+    description="Retrieves or compiles the full consolidated evidence sheet for a decision, including facts, assumptions, and calculations.",
+)
+def get_decision_evidence_sheet_endpoint(
+    decision_id: str,
+    auto_compile: bool = Query(default=True, description="When True, automatically compiles sheet from operational context if not already stored"),
+    recompute: bool = Query(default=False, description="When True, forces fresh re-compilation across all operational domains"),
+    service: EvidenceService = Depends(get_evidence_service),
+) -> DecisionEvidenceSheetResponse:
+    try:
+        sheet = service.get_evidence_sheet(
+            decision_id=decision_id,
+            auto_compile=auto_compile,
+            recompute=recompute,
+        )
+        return DecisionEvidenceSheetResponse.from_domain(sheet)
+    except (DecisionNotFoundError, EvDecisionNotFoundError, EvidenceNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/{decision_id}/evidence-sheet/compile",
+    response_model=DecisionEvidenceSheetResponse,
+    summary="Compile and record decision evidence sheet",
+    description="Explicitly triggers operational evidence synthesis and stores the resulting evidence sheet and items.",
+)
+def compile_decision_evidence_sheet_endpoint(
+    decision_id: str,
+    service: EvidenceService = Depends(get_evidence_service),
+) -> DecisionEvidenceSheetResponse:
+    try:
+        sheet = service.compile_decision_evidence(decision_id=decision_id, record_to_repository=True)
+        return DecisionEvidenceSheetResponse.from_domain(sheet)
+    except (DecisionNotFoundError, EvDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
 

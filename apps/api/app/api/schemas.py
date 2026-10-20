@@ -8,6 +8,14 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.decision import Decision, DecisionStatus
 from app.domain.demand import DemandRecord
+from app.domain.evidence import (
+    DecisionAssumption,
+    DecisionEvidence,
+    DecisionEvidenceSheet,
+    DecisionEvidenceSummary,
+    EvidenceCategory,
+    EvidenceType,
+)
 from app.domain.inventory import Inventory
 from app.domain.supplier import Supplier
 from app.repositories.supplier_repository import SupplierRiskLevel, classify_supplier_risk
@@ -1528,4 +1536,186 @@ class DecisionValidationReportResponse(BaseModel):
             created_at=rep.created_at,
             metadata=rep.metadata,
         )
+
+
+class CreateEvidenceRequest(BaseModel):
+    """Request payload contract for recording a new decision evidence item."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    evidence_type: EvidenceType = Field(..., description="Categorical nature: FACT, ASSUMPTION, or CALCULATION")
+    category: EvidenceCategory = Field(..., description="Operational domain category")
+    description: str = Field(..., min_length=1, description="Human-readable description of this evidence item")
+    id: str | None = Field(default=None, description="Optional custom unique evidence identifier (EVD-XXXX)")
+    value: Any | None = Field(default=None, description="Structured value, metric, or concise payload")
+    unit: str | None = Field(default=None, description="Physical or financial measurement unit (e.g. units, days, USD, ratio)")
+    source: str | None = Field(default=None, description="Traceable reference identifying actual domain input or calculation")
+    is_probability: bool = Field(
+        default=False,
+        description="Strictly False for deterministic exposure indicators; true statistical probabilities require verified empirical distribution.",
+    )
+    action_id: str | None = Field(default=None, description="Associated candidate action if action-specific")
+    version_id: str | None = Field(default=None, description="Associated decision version if version-specific")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary structured metadata")
+
+
+class CreateAssumptionRequest(BaseModel):
+    """Request payload contract for recording an explicit operational assumption."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    category: EvidenceCategory = Field(..., description="Domain category of the assumption")
+    statement: str = Field(..., min_length=1, description="Explicit human-readable assumption statement")
+    id: str | None = Field(default=None, description="Optional custom unique assumption identifier (ASM-XXXX)")
+    assumed_value: Any | None = Field(default=None, description="Assumed numeric or structured parameter value")
+    rationale: str | None = Field(default=None, description="Reason or justification for adopting this assumption")
+    source: str | None = Field(default=None, description="Source of assumption: system_default, policy_config, operator_stated")
+    action_id: str | None = Field(default=None, description="Associated candidate action if action-specific")
+    version_id: str | None = Field(default=None, description="Associated decision version if version-specific")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary structured metadata")
+
+
+class DecisionEvidenceResponse(BaseModel):
+    """Clean typed response representing an individual decision evidence item."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique evidence identifier (EVD-XXXX)")
+    decision_id: str = Field(..., description="Associated business decision identifier")
+    evidence_type: EvidenceType = Field(..., description="Categorical nature: FACT, ASSUMPTION, or CALCULATION")
+    category: EvidenceCategory = Field(..., description="Operational domain category")
+    description: str = Field(..., description="Human-readable description of this evidence item")
+    value: Any | None = Field(default=None, description="Structured value, metric, or concise payload")
+    unit: str | None = Field(default=None, description="Measurement unit (e.g. units, days, USD, ratio)")
+    source: str | None = Field(default=None, description="Traceable reference identifying actual domain input or calculation")
+    is_probability: bool = Field(default=False, description="Strictly False for deterministic exposure indicators")
+    action_id: str | None = Field(default=None, description="Associated candidate action if action-specific")
+    version_id: str | None = Field(default=None, description="Associated decision version if version-specific")
+    created_at: datetime = Field(..., description="UTC creation timestamp")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary structured metadata")
+
+    @classmethod
+    def from_domain(cls, ev: DecisionEvidence) -> DecisionEvidenceResponse:
+        return cls(
+            id=ev.id,
+            decision_id=ev.decision_id,
+            evidence_type=ev.evidence_type,
+            category=ev.category,
+            description=ev.description,
+            value=ev.value,
+            unit=ev.unit,
+            source=ev.source,
+            is_probability=ev.is_probability,
+            action_id=ev.action_id,
+            version_id=ev.version_id,
+            created_at=ev.created_at,
+            metadata=ev.metadata,
+        )
+
+
+class DecisionAssumptionResponse(BaseModel):
+    """Clean typed response representing an explicit decision assumption."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique assumption identifier (ASM-XXXX)")
+    decision_id: str = Field(..., description="Associated business decision identifier")
+    category: EvidenceCategory = Field(..., description="Domain category of the assumption")
+    statement: str = Field(..., description="Explicit human-readable assumption statement")
+    assumed_value: Any | None = Field(default=None, description="Assumed numeric or structured parameter value")
+    rationale: str | None = Field(default=None, description="Reason or justification for adopting this assumption")
+    source: str | None = Field(default=None, description="Source of assumption")
+    action_id: str | None = Field(default=None, description="Associated candidate action if action-specific")
+    version_id: str | None = Field(default=None, description="Associated decision version if version-specific")
+    created_at: datetime = Field(..., description="UTC creation timestamp")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary structured metadata")
+
+    @classmethod
+    def from_domain(cls, asm: DecisionAssumption) -> DecisionAssumptionResponse:
+        return cls(
+            id=asm.id,
+            decision_id=asm.decision_id,
+            category=asm.category,
+            statement=asm.statement,
+            assumed_value=asm.assumed_value,
+            rationale=asm.rationale,
+            source=asm.source,
+            action_id=asm.action_id,
+            version_id=asm.version_id,
+            created_at=asm.created_at,
+            metadata=asm.metadata,
+        )
+
+
+class DecisionEvidenceSummaryResponse(BaseModel):
+    """Categorical count breakdown of evidence supporting a decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    total_items: int = Field(..., ge=0, description="Total evidence items")
+    total_facts: int = Field(..., ge=0, description="Count of observed factual items")
+    total_assumptions: int = Field(..., ge=0, description="Count of explicit assumptions")
+    total_calculations: int = Field(..., ge=0, description="Count of calculated metrics")
+    categories_represented: list[EvidenceCategory] = Field(
+        default_factory=list,
+        description="Distinct domain categories present in evidence",
+    )
+    actions_with_evidence: list[str] = Field(
+        default_factory=list,
+        description="Action identifiers that have associated evidence",
+    )
+
+    @classmethod
+    def from_domain(cls, summary: DecisionEvidenceSummary) -> DecisionEvidenceSummaryResponse:
+        return cls(
+            total_items=summary.total_items,
+            total_facts=summary.total_facts,
+            total_assumptions=summary.total_assumptions,
+            total_calculations=summary.total_calculations,
+            categories_represented=summary.categories_represented,
+            actions_with_evidence=summary.actions_with_evidence,
+        )
+
+
+class DecisionEvidenceSheetResponse(BaseModel):
+    """Clean typed response model representing a consolidated decision evidence sheet."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique evidence sheet identifier (EVS-XXXX)")
+    decision_id: str = Field(..., description="Associated business decision identifier")
+    product_id: str = Field(..., description="Referenced Product identifier")
+    warehouse_id: str = Field(..., description="Referenced Warehouse identifier")
+    created_at: datetime = Field(..., description="UTC sheet compilation timestamp")
+    items: list[DecisionEvidenceResponse] = Field(
+        default_factory=list,
+        description="All individual evidence items (facts, assumptions, calculations)",
+    )
+    assumptions: list[DecisionAssumptionResponse] = Field(
+        default_factory=list,
+        description="Explicit operational assumptions supporting this decision",
+    )
+    summary: DecisionEvidenceSummaryResponse = Field(
+        ...,
+        description="Categorical breakdown and counts",
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Arbitrary structured metadata",
+    )
+
+    @classmethod
+    def from_domain(cls, sheet: DecisionEvidenceSheet) -> DecisionEvidenceSheetResponse:
+        return cls(
+            id=sheet.id,
+            decision_id=sheet.decision_id,
+            product_id=sheet.product_id,
+            warehouse_id=sheet.warehouse_id,
+            created_at=sheet.created_at,
+            items=[DecisionEvidenceResponse.from_domain(item) for item in sheet.items],
+            assumptions=[DecisionAssumptionResponse.from_domain(asm) for asm in sheet.assumptions],
+            summary=DecisionEvidenceSummaryResponse.from_domain(sheet.summary),
+            metadata=sheet.metadata,
+        )
+
 

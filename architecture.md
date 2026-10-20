@@ -1648,3 +1648,56 @@ Decision-level outcomes:
 - `POST /api/decisions/{decision_id}/actions/{action_id}/validate`: Validates an individual candidate action.
 - Route aliases supported: `/decisions/...`, `/api/decision/...`, `/decision/...`.
 
+---
+
+## 12. Day 22: Decision Evidence Model
+
+### 12.1 Objective and Philosophy
+The Day 22 Decision Evidence Model answers:
+> **"What observable facts, explicit operational assumptions, and deterministic calculations justify this business decision?"**
+
+Core principle: **"The system calculates. AI explains. Humans approve."**
+
+Decisions must be explainable, verifiable, and auditable. Rather than allowing an LLM to hallucinate rationale or guessing why a calculation occurred after the fact, EDOS explicitly records structured, verifiable evidence items grounded in actual domain inputs or deterministic calculation services.
+
+### 12.2 Semantic Categories & Grounding Invariants
+Evidence items are typed and partitioned into three distinct natures (`EvidenceType`):
+1. **`FACT`**: Directly observed operational data from catalog, inventory, supplier, or warehouse entities (e.g. available inventory units, warehouse storage capacity, supplier contracted lead time, product unit cost).
+2. **`ASSUMPTION`**: Explicit operational or policy hypothesis adopted in decision modeling (e.g. demand rate is stationary based on historical daily average, supplier lead time is constant, stockout exposure is a deterministic physical metric rather than an empirical probability).
+3. **`CALCULATION`**: Deterministic mathematical output produced by EDOS calculation services (e.g. replenishment quantity, lead-time exposure index, runway coverage days, direct procurement cost).
+
+#### Critical Semantic Invariants:
+- **Separation of Assumptions from Facts**: Assumptions are never conflated with observed ground truth. They are modeled explicitly with rationale and attribution.
+- **Deterministic Exposure vs. Statistical Probability**: Deterministic exposure indicators (`exposure_index`) must strictly specify `is_probability: False`. Parametric probability claims require verified empirical distribution parameters that operational data alone cannot provide.
+- **No Fabricated Data**: Source identifiers trace directly to domain entities (`inventory:prod@wh`, `supplier:sup`, `warehouse:wh`, `product:prod`, `calculation:replenishment`, `calculation:stockout_risk`).
+
+### 12.3 Domain Models (`apps/api/app/domain/evidence.py`)
+- `EvidenceType`: Enum (`FACT`, `ASSUMPTION`, `CALCULATION`).
+- `EvidenceCategory`: Enum (`INVENTORY`, `DEMAND`, `SUPPLIER`, `WAREHOUSE`, `REPLENISHMENT`, `STOCKOUT_RISK`, `CONSTRAINT_VALIDATION`, `COST`, `ACTION_EVALUATION`, `RECOMMENDATION`, `OPERATIONAL`).
+- `DecisionAssumption`: Typed model representing an explicit operational assumption with `id` (`ASM-XXXX`), `decision_id`, `category`, `statement`, `assumed_value`, `rationale`, `source`, and optional `action_id` / `version_id`.
+- `DecisionEvidence`: Strongly typed evidence item with `id` (`EVD-XXXX`), `decision_id`, `evidence_type`, `category`, `description`, `value`, `unit`, `source`, `is_probability: False`, and optional `action_id` / `version_id`.
+- `DecisionEvidenceSummary`: Categorical counts (`total_items`, `total_facts`, `total_assumptions`, `total_calculations`, `categories_represented`, `actions_with_evidence`).
+- `DecisionEvidenceSheet`: Consolidated collection of all evidence items, assumptions, and categorical summary for a decision (`EVS-XXXX`).
+
+### 12.4 Service and Repository Architecture (`apps/api/app/evidence/service.py`)
+- **`EvidenceRepository`**: In-memory repository with defensive copies on write and read paths, sequential identifier generation (`EVD-XXXX`, `ASM-XXXX`, `EVS-XXXX`), duplicate protection, and deterministic query sorting by `(created_at, id)`.
+- **`EvidenceService`**:
+  - Enforces reference validation: nonexistent decisions, actions, or versions raise explicit errors.
+  - Enforces cross-decision isolation: evidence and actions cannot cross decision boundaries.
+  - Compiles operational evidence sheets (`compile_decision_evidence`): synthesizes domain facts, generates explicit assumptions, executes grounded calculations, and incorporates user-recorded custom evidence without changing the decision itself.
+
+### 12.5 Decision Graph & Lineage Semantics
+- In accordance with architectural boundaries, individual evidence items are not forced as ad-hoc nodes into the Decision Graph. The Decision Graph's relationship matrix currently supports `CONTEXT`, `DECISION_VERSION`, `ACTION`, `VALIDATION`, `SCENARIO`, and `RESULT`. Evidence items serve as explainability metadata supporting decisions, while full graph lineage provenance tracking is scheduled for Day 23.
+
+### 12.6 API Endpoints
+- `POST /api/decisions/{decision_id}/evidence`: Record an individual evidence item.
+- `GET /api/decisions/{decision_id}/evidence`: List evidence items with optional filters (`evidence_type`, `category`, `action_id`, `version_id`).
+- `GET /api/decisions/{decision_id}/evidence/{evidence_id}`: Retrieve an individual evidence item.
+- `POST /api/decisions/{decision_id}/assumptions`: Record an explicit operational assumption.
+- `GET /api/decisions/{decision_id}/assumptions`: List explicit assumptions with optional filters.
+- `GET /api/decisions/{decision_id}/assumptions/{assumption_id}`: Retrieve an individual assumption.
+- `GET /api/decisions/{decision_id}/evidence-sheet`: Retrieve or auto-compile the consolidated decision evidence sheet (`auto_compile=true`, `recompute=false`).
+- `POST /api/decisions/{decision_id}/evidence-sheet/compile`: Force fresh synthesis and recording of the evidence sheet.
+- Direct aliases supported: `/decisions/...`, `/api/decision/...`, `/decision/...`.
+
+

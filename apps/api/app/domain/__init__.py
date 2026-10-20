@@ -94,6 +94,15 @@ from app.domain.validation import (
     validate_candidate_action,
     validate_decision_actions,
 )
+from app.domain.evidence import (
+    DecisionAssumption,
+    DecisionEvidence,
+    DecisionEvidenceSheet,
+    DecisionEvidenceSummary,
+    EvidenceCategory,
+    EvidenceType,
+)
+
 
 __all__ = [
     "Product",
@@ -178,5 +187,11 @@ __all__ = [
     "is_action_fully_satisfied",
     "validate_candidate_action",
     "validate_decision_actions",
+    "EvidenceType",
+    "EvidenceCategory",
+    "DecisionAssumption",
+    "DecisionEvidence",
+    "DecisionEvidenceSummary",
+    "DecisionEvidenceSheet",
 ]
 

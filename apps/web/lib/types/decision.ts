@@ -566,3 +566,127 @@ export interface DecisionValidationRecord {
 
 export type DecisionValidationReportResponse = DecisionValidationRecord;
 
+/**
+ * Categorical nature of a decision evidence item matching Day 22 EvidenceType enum.
+ */
+export type EvidenceType = 'FACT' | 'ASSUMPTION' | 'CALCULATION';
+
+/**
+ * Operational domain category matching Day 22 EvidenceCategory enum.
+ */
+export type EvidenceCategory =
+  | 'INVENTORY'
+  | 'DEMAND'
+  | 'SUPPLIER'
+  | 'WAREHOUSE'
+  | 'REPLENISHMENT'
+  | 'STOCKOUT_RISK'
+  | 'CONSTRAINT_VALIDATION'
+  | 'COST'
+  | 'ACTION_EVALUATION'
+  | 'RECOMMENDATION'
+  | 'OPERATIONAL';
+
+/**
+ * Explicit operational assumption record matching Day 22 DecisionAssumptionResponse schema.
+ */
+export interface DecisionAssumptionRecord {
+  id: string;
+  decision_id: string;
+  category: EvidenceCategory;
+  statement: string;
+  assumed_value: unknown | null;
+  rationale: string | null;
+  source: string | null;
+  action_id: string | null;
+  version_id: string | null;
+  created_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export type DecisionAssumptionResponse = DecisionAssumptionRecord;
+
+/**
+ * Strongly typed decision evidence item matching Day 22 DecisionEvidenceResponse schema.
+ */
+export interface DecisionEvidenceRecord {
+  id: string;
+  decision_id: string;
+  evidence_type: EvidenceType;
+  category: EvidenceCategory;
+  description: string;
+  value: unknown | null;
+  unit: string | null;
+  source: string | null;
+  is_probability: boolean;
+  action_id: string | null;
+  version_id: string | null;
+  created_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export type DecisionEvidenceResponse = DecisionEvidenceRecord;
+
+/**
+ * Categorical count breakdown of evidence matching Day 22 DecisionEvidenceSummaryResponse schema.
+ */
+export interface DecisionEvidenceSummaryRecord {
+  total_items: number;
+  total_facts: number;
+  total_assumptions: number;
+  total_calculations: number;
+  categories_represented: EvidenceCategory[];
+  actions_with_evidence: string[];
+}
+
+export type DecisionEvidenceSummaryResponse = DecisionEvidenceSummaryRecord;
+
+/**
+ * Consolidated decision evidence sheet matching Day 22 DecisionEvidenceSheetResponse schema.
+ */
+export interface DecisionEvidenceSheetRecord {
+  id: string;
+  decision_id: string;
+  product_id: string;
+  warehouse_id: string;
+  created_at: string;
+  items: DecisionEvidenceRecord[];
+  assumptions: DecisionAssumptionRecord[];
+  summary: DecisionEvidenceSummaryRecord;
+  metadata: Record<string, unknown>;
+}
+
+export type DecisionEvidenceSheetResponse = DecisionEvidenceSheetRecord;
+
+/**
+ * Payload contract for creating an evidence item.
+ */
+export interface CreateEvidenceRequest {
+  evidence_type: EvidenceType;
+  category: EvidenceCategory;
+  description: string;
+  id?: string | null;
+  value?: unknown | null;
+  unit?: string | null;
+  source?: string | null;
+  is_probability?: boolean;
+  action_id?: string | null;
+  version_id?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Payload contract for creating an explicit assumption.
+ */
+export interface CreateAssumptionRequest {
+  category: EvidenceCategory;
+  statement: string;
+  id?: string | null;
+  assumed_value?: unknown | null;
+  rationale?: string | null;
+  source?: string | null;
+  action_id?: string | null;
+  version_id?: string | null;
+  metadata?: Record<string, unknown>;
+}
+

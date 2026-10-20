@@ -37,6 +37,14 @@ from app.repositories.validation_repository import (
     DuplicateValidationReportError,
     ValidationRepository,
 )
+from app.repositories.evidence_repository import (
+    DuplicateAssumptionError,
+    DuplicateEvidenceError,
+    DuplicateEvidenceSheetError,
+    EvidenceRepository,
+    EvidenceRepositoryError,
+)
+
 
 __all__ = [
     "DecisionRepository",
@@ -60,5 +68,10 @@ __all__ = [
     "SupplierRepository",
     "SupplierRiskLevel",
     "classify_supplier_risk",
+    "EvidenceRepository",
+    "EvidenceRepositoryError",
+    "DuplicateEvidenceError",
+    "DuplicateAssumptionError",
+    "DuplicateEvidenceSheetError",
 ]
 
