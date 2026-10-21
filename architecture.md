@@ -1700,4 +1700,66 @@ Evidence items are typed and partitioned into three distinct natures (`EvidenceT
 - `POST /api/decisions/{decision_id}/evidence-sheet/compile`: Force fresh synthesis and recording of the evidence sheet.
 - Direct aliases supported: `/decisions/...`, `/api/decision/...`, `/decision/...`.
 
+---
+
+## 13. Day 23: Decision Provenance Engine
+
+### 13.1 Objective and Philosophy
+The Day 23 Decision Provenance Engine answers:
+> **"How did EDOS derive this decision result from raw inputs, operational rules, deterministic calculations, and evaluation outputs?"**
+
+Core principle: **Input → Rule → Calculation → Result.**
+
+Decision derivation must be transparent, verifiable, and auditable. Rather than presenting conclusions as black-box outputs or post-hoc narratives, EDOS records the exact causal chain of operational inputs, rule evaluations, deterministic calculations, and resulting actions.
+
+### 13.2 Trace Pipeline Semantics
+The provenance engine structures derivation into four strictly ordered stages:
+1. **`INPUT` (`ProvenanceInputRecord`)**:
+   - Ground truth operational inputs observed from domain entities (`PRODUCT`, `WAREHOUSE`, `INVENTORY`, `DEMAND`, `SUPPLIER`, `CANDIDATE_ACTION`, `ASSUMPTION`, `DECISION_VERSION`).
+   - Identifiers trace directly to domain entities (`prod-001`, `wh-001`, `inv:prod@wh`, `sup-001`, `ACT-0001`, `ASM-0001`, `VER-0001`).
+   - Explicitly records observation status: `SUCCESS`, `MISSING`, or `UNAVAILABLE`.
+2. **`RULE` (`ProvenanceRuleRecord`)**:
+   - Explicit operational or policy constraints evaluated (`REPLENISHMENT_POLICY`, `CONSTRAINT_CHECK`, `SELECTION_STRATEGY`, `TIE_BREAKER`).
+   - Tracks trigger conditions, inputs considered, outcomes (`TRIGGERED`, `NOT_TRIGGERED`, `PASS`, `FAIL`, `RECOMMENDED`), and cross-references to `DecisionValidationReport` (`VAL-XXXX`).
+3. **`CALCULATION` (`ProvenanceCalculationRecord`)**:
+   - Deterministic mathematical outputs computed by EDOS services (`REPLENISHMENT_QUANTITY`, `STOCKOUT_EXPOSURE`, `RUNWAY_COVERAGE`, `SUPPLIER_RISK`, `COST_IMPACT`, `ACTION_SCORING`).
+   - Captures explicit formulas, inputs used, governing rules, measurement units, and outputs.
+   - **Zero-Fabrication Invariant**: If an input is missing or incalculable (e.g. unobserved supplier pricing for `SWITCH_SUPPLIER`), the calculation is recorded with status `UNAVAILABLE` and an explicit reason, never with fabricated numbers.
+4. **`RESULT` (`ProvenanceResultRecord`)**:
+   - Downstream evaluation outputs and selections (`ACTION_EVALUATION`, `VALIDATION_REPORT`, `RECOMMENDATION`, `EVIDENCE_SHEET`).
+   - Directly links to the upstream calculations and rules that justified the result.
+
+#### Directed Lineage Graph (`ProvenanceLineageEdge`):
+Steps are connected via directed lineage links:
+- `INPUT` → `RULE` (`FEEDS_INTO_RULE`)
+- `INPUT` → `CALCULATION` (`FEEDS_CALCULATION`)
+- `RULE` → `CALCULATION` (`GOVERNS_CALCULATION`)
+- `CALCULATION` → `RESULT` (`PRODUCES_EVALUATION`)
+- `RESULT` + `RULE` → `RESULT` (`PRODUCES_RECOMMENDATION`)
+
+### 13.3 Decision and Version Association & Isolation
+- **Decision Isolation**: Traces and step entities are strictly decision-scoped. Cross-decision references are rejected with `CrossDecisionIsolationError`.
+- **Version Association**: Traces optionally bind to an immutable `DecisionVersion` snapshot (`VER-XXXX`). Invalid or cross-decision version references are strictly rejected.
+- **Repeated Evaluation Disambiguation**: Each derivation execution generates a unique trace ID (`PRV-XXXX`) and distinct `execution_id` (`EXEC-XXXX`), appended to chronological history. The repository deterministically sorts traces by `(created_at desc, id desc)`.
+
+### 13.4 Decision Graph Integration Semantics
+In strict adherence to architectural boundaries:
+- The Decision Graph's established node types (`CONTEXT`, `DECISION_VERSION`, `ACTION`, `VALIDATION`, `SCENARIO`, `RESULT`) and permitted relationship matrix (`GENERATES`, `VALIDATES`, `PRODUCES`, `REFERENCES`) are reused.
+- No artificial duplicate graph representations or ad-hoc unconstrained node types are introduced.
+- When `record_to_graph=True`, DecisionGraph `RESULT` nodes are enriched with `provenance_trace_id` metadata, maintaining bidirectional traceability between high-level lifecycle nodes and granular calculation steps.
+
+### 13.5 API Endpoints
+- `POST /api/decisions/{decision_id}/provenance/capture`: Execute real domain evaluation and capture an auditable provenance trace.
+- `GET /api/decisions/{decision_id}/provenance`: Retrieve latest provenance trace (optional `version_id` filter).
+- `GET /api/decisions/{decision_id}/provenance/traces`: List all provenance traces for a decision (newest first).
+- `GET /api/decisions/{decision_id}/provenance/traces/{trace_id}`: Retrieve a specific trace by ID.
+- `GET /api/decisions/{decision_id}/provenance/traces/{trace_id}/derivation`: Extract the upstream derivation chain for a result step (`result_id`).
+- Direct aliases supported: `/decisions/...`, `/api/decision/...`, `/decision/...`.
+
+### 13.6 Architecture Decisions and Known Limitations
+- **In-Memory Lifespan**: Consistent with the EDOS in-memory architecture, provenance traces reside in memory and do not persist across server restarts.
+- **Historic Reproducibility**: Live operational context changes (e.g. inventory decrements) will produce different derivation outputs unless captured against an immutable `DecisionVersion` snapshot. Traces record what occurred during the specific execution run.
+- **Scope Boundaries**: Decision Replay (Day 24) and Counterfactual Scenarios (Day 25) remain strictly out of scope. AI explanations remain decoupled and rely exclusively on structured provenance records.
+
+
 

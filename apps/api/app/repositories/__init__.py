@@ -44,6 +44,10 @@ from app.repositories.evidence_repository import (
     EvidenceRepository,
     EvidenceRepositoryError,
 )
+from app.repositories.provenance_repository import (
+    DuplicateProvenanceTraceError,
+    ProvenanceRepository,
+)
 
 
 __all__ = [
@@ -73,5 +77,7 @@ __all__ = [
     "DuplicateEvidenceError",
     "DuplicateAssumptionError",
     "DuplicateEvidenceSheetError",
+    "ProvenanceRepository",
+    "DuplicateProvenanceTraceError",
 ]
 

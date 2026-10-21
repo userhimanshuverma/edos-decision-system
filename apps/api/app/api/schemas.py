@@ -18,6 +18,20 @@ from app.domain.evidence import (
 )
 from app.domain.inventory import Inventory
 from app.domain.supplier import Supplier
+from app.domain.provenance import (
+    DecisionProvenanceTrace,
+    ProvenanceCalculationRecord,
+    ProvenanceCalculationType,
+    ProvenanceDerivationChain,
+    ProvenanceInputRecord,
+    ProvenanceInputType,
+    ProvenanceLineageEdge,
+    ProvenanceResultRecord,
+    ProvenanceResultType,
+    ProvenanceRuleRecord,
+    ProvenanceRuleType,
+    ProvenanceStepStatus,
+)
 from app.repositories.supplier_repository import SupplierRiskLevel, classify_supplier_risk
 
 
@@ -1717,5 +1731,244 @@ class DecisionEvidenceSheetResponse(BaseModel):
             summary=DecisionEvidenceSummaryResponse.from_domain(sheet.summary),
             metadata=sheet.metadata,
         )
+
+
+# ---------------------------------------------------------------------------
+# Day 23: Decision Provenance Engine Schemas
+# ---------------------------------------------------------------------------
+
+class CaptureProvenanceRequest(BaseModel):
+    """Payload contract for capturing a decision provenance trace."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    version_id: str | None = Field(default=None, description="Optional associated decision version identifier")
+    policy_type: str = Field(default="REORDER_POINT_DEFICIT", description="Replenishment policy evaluated")
+    target_stock: int | None = Field(default=None, ge=0, description="Optional target stock override")
+    enforce_reorder_trigger: bool = Field(default=True, description="Enforce threshold trigger")
+    record_to_graph: bool = Field(default=False, description="Synchronize trace metadata with Decision Graph")
+    trigger: str = Field(default="MANUAL_CAPTURE", description="Trigger source description")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary execution metadata")
+
+
+class ProvenanceInputResponse(BaseModel):
+    """Clean typed response representing an operational input step."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique input step identifier (INP-XXXX)")
+    input_type: ProvenanceInputType = Field(..., description="Categorical nature of input")
+    source_id: str = Field(..., description="Originating domain entity identifier")
+    name: str = Field(..., description="Human-readable label for this input")
+    value: Any | None = Field(default=None, description="Observed or assumed input value")
+    unit: str | None = Field(default=None, description="Measurement unit")
+    status: ProvenanceStepStatus = Field(..., description="Observation status (SUCCESS, MISSING, UNAVAILABLE)")
+    evidence_id: str | None = Field(default=None, description="Optional cross-reference to Day 22 DecisionEvidence or Assumption")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary structured metadata")
+
+    @classmethod
+    def from_domain(cls, inp: ProvenanceInputRecord) -> ProvenanceInputResponse:
+        return cls(
+            id=inp.id,
+            input_type=inp.input_type,
+            source_id=inp.source_id,
+            name=inp.name,
+            value=inp.value,
+            unit=inp.unit,
+            status=inp.status,
+            evidence_id=inp.evidence_id,
+            metadata=inp.metadata,
+        )
+
+
+class ProvenanceRuleResponse(BaseModel):
+    """Clean typed response representing a policy or constraint rule evaluation step."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique rule step identifier (RUL-XXXX)")
+    rule_type: ProvenanceRuleType = Field(..., description="Category of rule evaluated")
+    rule_name: str = Field(..., description="Standard identifier or name of the rule")
+    action_id: str | None = Field(default=None, description="Associated candidate action if action-scoped")
+    inputs_considered: list[str] = Field(default_factory=list, description="Referenced input step identifiers")
+    status: ProvenanceStepStatus = Field(..., description="Rule evaluation status")
+    condition_met: bool | None = Field(default=None, description="Whether rule condition was satisfied")
+    outcome: str = Field(..., description="Rule evaluation outcome description")
+    validation_report_id: str | None = Field(default=None, description="Optional reference to DecisionValidationReport")
+    notes: list[str] = Field(default_factory=list, description="Step-by-step rule evaluation rationale")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary structured metadata")
+
+    @classmethod
+    def from_domain(cls, rule: ProvenanceRuleRecord) -> ProvenanceRuleResponse:
+        return cls(
+            id=rule.id,
+            rule_type=rule.rule_type,
+            rule_name=rule.rule_name,
+            action_id=rule.action_id,
+            inputs_considered=rule.inputs_considered,
+            status=rule.status,
+            condition_met=rule.condition_met,
+            outcome=rule.outcome,
+            validation_report_id=rule.validation_report_id,
+            notes=rule.notes,
+            metadata=rule.metadata,
+        )
+
+
+class ProvenanceCalculationResponse(BaseModel):
+    """Clean typed response representing a deterministic calculation step."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique calculation step identifier (CLC-XXXX)")
+    calculation_type: ProvenanceCalculationType = Field(..., description="Category of mathematical derivation")
+    calculation_name: str = Field(..., description="Descriptive name of the calculation")
+    action_id: str | None = Field(default=None, description="Associated candidate action if action-specific")
+    formula: str | None = Field(default=None, description="Human-readable mathematical expression or policy formula")
+    inputs_used: list[str] = Field(default_factory=list, description="Referenced input step identifiers")
+    rules_applied: list[str] = Field(default_factory=list, description="Referenced rule step identifiers")
+    status: ProvenanceStepStatus = Field(..., description="Calculation status")
+    output_value: Any | None = Field(default=None, description="Calculated metric, value, or structured outcome")
+    unit: str | None = Field(default=None, description="Unit of measurement")
+    error_message: str | None = Field(default=None, description="Error message if calculation failed")
+    evidence_id: str | None = Field(default=None, description="Optional cross-reference to Day 22 DecisionEvidence")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary structured metadata")
+
+    @classmethod
+    def from_domain(cls, calc: ProvenanceCalculationRecord) -> ProvenanceCalculationResponse:
+        return cls(
+            id=calc.id,
+            calculation_type=calc.calculation_type,
+            calculation_name=calc.calculation_name,
+            action_id=calc.action_id,
+            formula=calc.formula,
+            inputs_used=calc.inputs_used,
+            rules_applied=calc.rules_applied,
+            status=calc.status,
+            output_value=calc.output_value,
+            unit=calc.unit,
+            error_message=calc.error_message,
+            evidence_id=calc.evidence_id,
+            metadata=calc.metadata,
+        )
+
+
+class ProvenanceResultResponse(BaseModel):
+    """Clean typed response representing a decision or evaluation result step."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique result step identifier (RES-XXXX)")
+    result_type: ProvenanceResultType = Field(..., description="Category of decision result")
+    result_id: str = Field(..., description="Domain identifier of the result")
+    action_id: str | None = Field(default=None, description="Associated candidate action if action-scoped")
+    status: ProvenanceStepStatus = Field(..., description="Result derivation status")
+    outcome_status: str = Field(..., description="Domain status")
+    summary: str = Field(..., description="Concise human-readable explanation of the result")
+    calculations_used: list[str] = Field(default_factory=list, description="Referenced calculation step identifiers")
+    rules_applied: list[str] = Field(default_factory=list, description="Referenced rule step identifiers")
+    value: Any | None = Field(default=None, description="Structured outcome payload or primary score")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary structured metadata")
+
+    @classmethod
+    def from_domain(cls, res: ProvenanceResultRecord) -> ProvenanceResultResponse:
+        return cls(
+            id=res.id,
+            result_type=res.result_type,
+            result_id=res.result_id,
+            action_id=res.action_id,
+            status=res.status,
+            outcome_status=res.outcome_status,
+            summary=res.summary,
+            calculations_used=res.calculations_used,
+            rules_applied=res.rules_applied,
+            value=res.value,
+            metadata=res.metadata,
+        )
+
+
+class ProvenanceLineageEdgeResponse(BaseModel):
+    """Clean typed response representing a directed relationship link between provenance steps."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    source_id: str = Field(..., description="Source step identifier")
+    target_id: str = Field(..., description="Target step identifier")
+    relationship: str = Field(..., description="Semantic relationship type")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary edge metadata")
+
+    @classmethod
+    def from_domain(cls, edge: ProvenanceLineageEdge) -> ProvenanceLineageEdgeResponse:
+        return cls(
+            source_id=edge.source_id,
+            target_id=edge.target_id,
+            relationship=edge.relationship,
+            metadata=edge.metadata,
+        )
+
+
+class DecisionProvenanceTraceResponse(BaseModel):
+    """Clean typed response representing a complete end-to-end decision provenance trace."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique provenance trace identifier (PRV-XXXX)")
+    decision_id: str = Field(..., description="Associated business decision identifier (DEC-XXXX)")
+    version_id: str | None = Field(default=None, description="Optional associated decision version identifier")
+    execution_id: str = Field(..., description="Unique execution identifier distinguishing repeated runs")
+    created_at: datetime = Field(..., description="UTC timestamp when trace was captured")
+    trigger: str = Field(..., description="Trigger source description")
+    status: ProvenanceStepStatus = Field(..., description="Overall execution status")
+    inputs: list[ProvenanceInputResponse] = Field(default_factory=list, description="Operational inputs")
+    rules: list[ProvenanceRuleResponse] = Field(default_factory=list, description="Policy and constraint rules")
+    calculations: list[ProvenanceCalculationResponse] = Field(default_factory=list, description="Mathematical calculations")
+    results: list[ProvenanceResultResponse] = Field(default_factory=list, description="Results and outputs")
+    lineage_edges: list[ProvenanceLineageEdgeResponse] = Field(default_factory=list, description="Directed lineage links")
+    graph_id: str | None = Field(default=None, description="Optional linked Decision Graph identifier")
+    summary: dict[str, Any] = Field(default_factory=dict, description="Summary statistics and execution counts")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary structured metadata")
+
+    @classmethod
+    def from_domain(cls, trace: DecisionProvenanceTrace) -> DecisionProvenanceTraceResponse:
+        return cls(
+            id=trace.id,
+            decision_id=trace.decision_id,
+            version_id=trace.version_id,
+            execution_id=trace.execution_id,
+            created_at=trace.created_at,
+            trigger=trace.trigger,
+            status=trace.status,
+            inputs=[ProvenanceInputResponse.from_domain(inp) for inp in trace.inputs],
+            rules=[ProvenanceRuleResponse.from_domain(r) for r in trace.rules],
+            calculations=[ProvenanceCalculationResponse.from_domain(c) for c in trace.calculations],
+            results=[ProvenanceResultResponse.from_domain(res) for res in trace.results],
+            lineage_edges=[ProvenanceLineageEdgeResponse.from_domain(e) for e in trace.lineage_edges],
+            graph_id=trace.graph_id,
+            summary=trace.summary,
+            metadata=trace.metadata,
+        )
+
+
+class ProvenanceDerivationResponse(BaseModel):
+    """Clean typed response representing an extracted derivation path (Result <- Calculations <- Rules <- Inputs)."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    result: ProvenanceResultResponse = Field(..., description="Target result step being traced")
+    calculations: list[ProvenanceCalculationResponse] = Field(default_factory=list, description="Upstream calculations")
+    rules: list[ProvenanceRuleResponse] = Field(default_factory=list, description="Upstream rules evaluated")
+    inputs: list[ProvenanceInputResponse] = Field(default_factory=list, description="Grounding operational inputs")
+    lineage_edges: list[ProvenanceLineageEdgeResponse] = Field(default_factory=list, description="Lineage path edges")
+
+    @classmethod
+    def from_domain(cls, chain: ProvenanceDerivationChain) -> ProvenanceDerivationResponse:
+        return cls(
+            result=ProvenanceResultResponse.from_domain(chain.result),
+            calculations=[ProvenanceCalculationResponse.from_domain(c) for c in chain.calculations],
+            rules=[ProvenanceRuleResponse.from_domain(r) for r in chain.rules],
+            inputs=[ProvenanceInputResponse.from_domain(inp) for inp in chain.inputs],
+            lineage_edges=[ProvenanceLineageEdgeResponse.from_domain(e) for e in chain.lineage_edges],
+        )
+
 
 

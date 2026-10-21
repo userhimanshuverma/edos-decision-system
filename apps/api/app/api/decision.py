@@ -42,6 +42,9 @@ from app.api.schemas import (
     DecisionEvidenceSheetResponse,
     EvidenceCategory,
     EvidenceType,
+    CaptureProvenanceRequest,
+    DecisionProvenanceTraceResponse,
+    ProvenanceDerivationResponse,
 )
 from app.candidate_actions.service import (
     CandidateActionNotFoundError,
@@ -75,6 +78,18 @@ from app.evidence.service import (
     EvidenceNotFoundError,
     EvidenceService,
     InvalidEvidencePayloadError,
+)
+from app.provenance.service import (
+    CrossDecisionIsolationError as PrvCrossDecisionIsolationError,
+    DecisionNotFoundError as PrvDecisionNotFoundError,
+    DecisionVersionNotFoundError as PrvVersionNotFoundError,
+    InvalidProvenancePayloadError as PrvInvalidPayloadError,
+    ProvenanceService,
+    ProvenanceTraceNotFoundError,
+)
+from app.repositories.provenance_repository import (
+    DuplicateProvenanceTraceError,
+    ProvenanceRepository,
 )
 
 
@@ -284,6 +299,36 @@ def get_evidence_service() -> EvidenceService:
         supplier_repo=SupplierRepository(dataset=shared_dataset),
         recommendation_repo=get_recommendation_repository(),
         validation_repo=get_validation_repository(),
+    )
+
+
+@lru_cache
+def get_provenance_repository() -> ProvenanceRepository:
+    """Dependency provider returning singleton ProvenanceRepository."""
+    return ProvenanceRepository()
+
+
+@lru_cache
+def get_provenance_service() -> ProvenanceService:
+    """Dependency provider returning ProvenanceService wired to repositories."""
+    dec_repo = get_decision_repository()
+    action_repo = get_candidate_action_repository()
+    version_repo = get_decision_version_repository()
+    graph_repo = get_decision_graph_repository()
+    shared_dataset = dec_repo.dataset
+    return ProvenanceService(
+        decision_repo=dec_repo,
+        provenance_repo=get_provenance_repository(),
+        action_repo=action_repo,
+        version_repo=version_repo,
+        inventory_repo=get_inventory_repository(),
+        demand_repo=DemandRepository(dataset=shared_dataset),
+        supplier_repo=SupplierRepository(dataset=shared_dataset),
+        evaluation_service=get_action_evaluation_service(),
+        recommendation_repo=get_recommendation_repository(),
+        validation_repo=get_validation_repository(),
+        evidence_repo=get_evidence_repository(),
+        graph_repo=graph_repo,
     )
 
 
@@ -1573,6 +1618,159 @@ def compile_decision_evidence_sheet_endpoint(
             detail=str(exc),
         ) from exc
     except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Day 23: Decision Provenance Engine Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/{decision_id}/provenance/capture",
+    response_model=DecisionProvenanceTraceResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Capture decision provenance trace",
+    description="Executes deterministic evaluation and captures an auditable Input -> Rule -> Calculation -> Result trace.",
+)
+def capture_decision_provenance_endpoint(
+    decision_id: str,
+    payload: CaptureProvenanceRequest | None = None,
+    service: ProvenanceService = Depends(get_provenance_service),
+) -> DecisionProvenanceTraceResponse:
+    req = payload or CaptureProvenanceRequest()
+    try:
+        trace = service.capture_decision_provenance(
+            decision_id=decision_id,
+            version_id=req.version_id,
+            policy_type=req.policy_type,
+            target_stock=req.target_stock,
+            enforce_reorder_trigger=req.enforce_reorder_trigger,
+            record_to_graph=req.record_to_graph,
+            trigger=req.trigger,
+            metadata=req.metadata,
+        )
+        return DecisionProvenanceTraceResponse.from_domain(trace)
+    except (
+        DecisionNotFoundError,
+        PrvDecisionNotFoundError,
+        PrvVersionNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (PrvCrossDecisionIsolationError, PrvInvalidPayloadError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/provenance",
+    response_model=DecisionProvenanceTraceResponse,
+    summary="Get latest decision provenance trace",
+    description="Retrieves the most recent provenance trace for a business decision, optionally filtered by version.",
+)
+def get_latest_decision_provenance_endpoint(
+    decision_id: str,
+    version_id: str | None = Query(default=None, description="Optional decision version filter"),
+    service: ProvenanceService = Depends(get_provenance_service),
+) -> DecisionProvenanceTraceResponse:
+    try:
+        trace = service.get_latest_provenance(decision_id=decision_id, version_id=version_id)
+        if trace is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No provenance trace found for decision '{decision_id}'",
+            )
+        return DecisionProvenanceTraceResponse.from_domain(trace)
+    except (DecisionNotFoundError, PrvDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/provenance/traces",
+    response_model=list[DecisionProvenanceTraceResponse],
+    summary="List decision provenance traces",
+    description="Retrieves all provenance traces for a decision, sorted chronologically descending.",
+)
+def list_decision_provenance_traces_endpoint(
+    decision_id: str,
+    version_id: str | None = Query(default=None, description="Optional decision version filter"),
+    service: ProvenanceService = Depends(get_provenance_service),
+) -> list[DecisionProvenanceTraceResponse]:
+    try:
+        traces = service.list_provenance_traces(decision_id=decision_id, version_id=version_id)
+        return [DecisionProvenanceTraceResponse.from_domain(t) for t in traces]
+    except (DecisionNotFoundError, PrvDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/provenance/traces/{trace_id}",
+    response_model=DecisionProvenanceTraceResponse,
+    summary="Get specific decision provenance trace",
+    description="Retrieves an individual provenance trace by ID, strictly enforcing decision isolation.",
+)
+def get_decision_provenance_trace_endpoint(
+    decision_id: str,
+    trace_id: str,
+    service: ProvenanceService = Depends(get_provenance_service),
+) -> DecisionProvenanceTraceResponse:
+    try:
+        trace = service.get_provenance_trace(decision_id=decision_id, trace_id=trace_id)
+        return DecisionProvenanceTraceResponse.from_domain(trace)
+    except (
+        DecisionNotFoundError,
+        PrvDecisionNotFoundError,
+        ProvenanceTraceNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (PrvCrossDecisionIsolationError,) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/provenance/traces/{trace_id}/derivation",
+    response_model=ProvenanceDerivationResponse,
+    summary="Get derivation path for a result step",
+    description="Extracts the Input -> Rule -> Calculation -> Result derivation chain for a given result in the trace.",
+)
+def get_decision_provenance_derivation_endpoint(
+    decision_id: str,
+    trace_id: str,
+    result_id: str | None = Query(default=None, description="Optional result step identifier (defaults to primary recommendation)"),
+    service: ProvenanceService = Depends(get_provenance_service),
+) -> ProvenanceDerivationResponse:
+    try:
+        chain = service.get_derivation_path(decision_id=decision_id, trace_id=trace_id, result_id=result_id)
+        return ProvenanceDerivationResponse.from_domain(chain)
+    except (
+        DecisionNotFoundError,
+        PrvDecisionNotFoundError,
+        ProvenanceTraceNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (PrvCrossDecisionIsolationError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),

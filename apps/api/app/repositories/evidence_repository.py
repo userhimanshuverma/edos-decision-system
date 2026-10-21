@@ -243,3 +243,6 @@ class EvidenceRepository:
 
     def __len__(self) -> int:
         return len(self._evidence)
+
+    def __bool__(self) -> bool:
+        return True

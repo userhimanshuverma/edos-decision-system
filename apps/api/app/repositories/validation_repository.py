@@ -101,3 +101,6 @@ class ValidationRepository:
 
     def __len__(self) -> int:
         return len(self._reports)
+
+    def __bool__(self) -> bool:
+        return True

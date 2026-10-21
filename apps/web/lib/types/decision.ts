@@ -690,3 +690,156 @@ export interface CreateAssumptionRequest {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * ---------------------------------------------------------------------------
+ * Day 23: Decision Provenance Engine TypeScript Contracts
+ * ---------------------------------------------------------------------------
+ */
+
+export type ProvenanceStage = 'INPUT' | 'RULE' | 'CALCULATION' | 'RESULT';
+
+export type ProvenanceStepStatus = 'SUCCESS' | 'FAILED' | 'MISSING' | 'UNAVAILABLE' | 'SKIPPED';
+
+export type ProvenanceInputType =
+  | 'PRODUCT'
+  | 'WAREHOUSE'
+  | 'INVENTORY'
+  | 'DEMAND'
+  | 'SUPPLIER'
+  | 'CANDIDATE_ACTION'
+  | 'ASSUMPTION'
+  | 'CONTEXT_SNAPSHOT'
+  | 'DECISION_VERSION';
+
+export type ProvenanceRuleType =
+  | 'REPLENISHMENT_POLICY'
+  | 'CONSTRAINT_CHECK'
+  | 'SELECTION_STRATEGY'
+  | 'TIE_BREAKER';
+
+export type ProvenanceCalculationType =
+  | 'REPLENISHMENT_QUANTITY'
+  | 'STOCKOUT_EXPOSURE'
+  | 'RUNWAY_COVERAGE'
+  | 'SUPPLIER_RISK'
+  | 'COST_IMPACT'
+  | 'ACTION_SCORING';
+
+export type ProvenanceResultType =
+  | 'ACTION_EVALUATION'
+  | 'VALIDATION_REPORT'
+  | 'RECOMMENDATION'
+  | 'EVIDENCE_SHEET';
+
+export interface ProvenanceInputRecord {
+  id: string;
+  input_type: ProvenanceInputType;
+  source_id: string;
+  name: string;
+  value: unknown | null;
+  unit: string | null;
+  status: ProvenanceStepStatus;
+  evidence_id: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export type ProvenanceInputResponse = ProvenanceInputRecord;
+
+export interface ProvenanceRuleRecord {
+  id: string;
+  rule_type: ProvenanceRuleType;
+  rule_name: string;
+  action_id: string | null;
+  inputs_considered: string[];
+  status: ProvenanceStepStatus;
+  condition_met: boolean | null;
+  outcome: string;
+  validation_report_id: string | null;
+  notes: string[];
+  metadata: Record<string, unknown>;
+}
+
+export type ProvenanceRuleResponse = ProvenanceRuleRecord;
+
+export interface ProvenanceCalculationRecord {
+  id: string;
+  calculation_type: ProvenanceCalculationType;
+  calculation_name: string;
+  action_id: string | null;
+  formula: string | null;
+  inputs_used: string[];
+  rules_applied: string[];
+  status: ProvenanceStepStatus;
+  output_value: unknown | null;
+  unit: string | null;
+  error_message: string | null;
+  evidence_id: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export type ProvenanceCalculationResponse = ProvenanceCalculationRecord;
+
+export interface ProvenanceResultRecord {
+  id: string;
+  result_type: ProvenanceResultType;
+  result_id: string;
+  action_id: string | null;
+  status: ProvenanceStepStatus;
+  outcome_status: string;
+  summary: string;
+  calculations_used: string[];
+  rules_applied: string[];
+  value: unknown | null;
+  metadata: Record<string, unknown>;
+}
+
+export type ProvenanceResultResponse = ProvenanceResultRecord;
+
+export interface ProvenanceLineageEdge {
+  source_id: string;
+  target_id: string;
+  relationship: string;
+  metadata: Record<string, unknown>;
+}
+
+export type ProvenanceLineageEdgeResponse = ProvenanceLineageEdge;
+
+export interface DecisionProvenanceTraceRecord {
+  id: string;
+  decision_id: string;
+  version_id: string | null;
+  execution_id: string;
+  created_at: string;
+  trigger: string;
+  status: ProvenanceStepStatus;
+  inputs: ProvenanceInputRecord[];
+  rules: ProvenanceRuleRecord[];
+  calculations: ProvenanceCalculationRecord[];
+  results: ProvenanceResultRecord[];
+  lineage_edges: ProvenanceLineageEdge[];
+  graph_id: string | null;
+  summary: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+}
+
+export type DecisionProvenanceTraceResponse = DecisionProvenanceTraceRecord;
+
+export interface ProvenanceDerivationResponse {
+  result: ProvenanceResultRecord;
+  calculations: ProvenanceCalculationRecord[];
+  rules: ProvenanceRuleRecord[];
+  inputs: ProvenanceInputRecord[];
+  lineage_edges: ProvenanceLineageEdge[];
+}
+
+export interface CaptureProvenanceRequest {
+  version_id?: string | null;
+  policy_type?: string;
+  target_stock?: number | null;
+  enforce_reorder_trigger?: boolean;
+  record_to_graph?: boolean;
+  trigger?: string;
+  metadata?: Record<string, unknown>;
+}
+
+

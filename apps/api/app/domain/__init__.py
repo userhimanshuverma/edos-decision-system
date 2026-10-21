@@ -102,6 +102,21 @@ from app.domain.evidence import (
     EvidenceCategory,
     EvidenceType,
 )
+from app.domain.provenance import (
+    DecisionProvenanceTrace,
+    ProvenanceCalculationRecord,
+    ProvenanceCalculationType,
+    ProvenanceDerivationChain,
+    ProvenanceInputRecord,
+    ProvenanceInputType,
+    ProvenanceLineageEdge,
+    ProvenanceResultRecord,
+    ProvenanceResultType,
+    ProvenanceRuleRecord,
+    ProvenanceRuleType,
+    ProvenanceStage,
+    ProvenanceStepStatus,
+)
 
 
 __all__ = [
@@ -193,5 +208,18 @@ __all__ = [
     "DecisionEvidence",
     "DecisionEvidenceSummary",
     "DecisionEvidenceSheet",
+    "ProvenanceStage",
+    "ProvenanceStepStatus",
+    "ProvenanceInputType",
+    "ProvenanceRuleType",
+    "ProvenanceCalculationType",
+    "ProvenanceResultType",
+    "ProvenanceLineageEdge",
+    "ProvenanceInputRecord",
+    "ProvenanceRuleRecord",
+    "ProvenanceCalculationRecord",
+    "ProvenanceResultRecord",
+    "ProvenanceDerivationChain",
+    "DecisionProvenanceTrace",
 ]
 
