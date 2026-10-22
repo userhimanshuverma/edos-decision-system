@@ -1759,7 +1759,71 @@ In strict adherence to architectural boundaries:
 ### 13.6 Architecture Decisions and Known Limitations
 - **In-Memory Lifespan**: Consistent with the EDOS in-memory architecture, provenance traces reside in memory and do not persist across server restarts.
 - **Historic Reproducibility**: Live operational context changes (e.g. inventory decrements) will produce different derivation outputs unless captured against an immutable `DecisionVersion` snapshot. Traces record what occurred during the specific execution run.
-- **Scope Boundaries**: Decision Replay (Day 24) and Counterfactual Scenarios (Day 25) remain strictly out of scope. AI explanations remain decoupled and rely exclusively on structured provenance records.
+- **Scope Boundaries**: Decision Replay (Day 24) and Counterfactual Scenarios (Day 25) remain strictly decoupled. AI explanations remain decoupled and rely exclusively on structured provenance records.
+
+---
+
+## 14. Day 24: Decision Replay Engine
+
+### 14.1 Objective and Guiding Principles
+The Day 24 Decision Replay Engine enables EDOS to reconstruct a previously recorded decision execution, re-evaluate it using original recorded inputs and applicable rules, and compare the replayed result against the original recorded result.
+
+It answers three fundamental operational questions:
+1. **Can the original decision be reconstructed reliably?**
+2. **Does replay produce the same result?**
+3. **If the result differs or replay is incomplete, what can we establish about the difference?**
+
+Core principle: **"The system calculates. AI explains. Humans approve."**
+
+Deterministic reproducibility is enforced without AI-driven calculations or non-deterministic heuristics.
+
+### 14.2 Replay Domain Models and Statuses
+The replay domain is structured around typed models:
+- **`ReplayStatus`**:
+  - `MATCHED`: Replay completed and the defined business comparison found equivalent results across all dimensions.
+  - `DIFFERENT`: Replay completed, but meaningful result fields differ from the original recorded output.
+  - `INCOMPLETE`: Required historical operational inputs or rule definitions were missing or unavailable in the provenance trace. Zero data fabrication.
+  - `FAILED`: Replay execution failed due to an exception or invalid reference.
+- **`IncompleteReason`**: Actionable structured reason (`code`, `message`, `details`) explaining why historical reconstruction could not proceed.
+  - Reason codes: `MISSING_PROVENANCE_TRACE`, `MISSING_INPUT_RECORD`, `UNAVAILABLE_HISTORICAL_INPUT`, `UNAVAILABLE_RULE_DEFINITION`, `MISSING_CANDIDATE_ACTIONS`, `NO_RECORDED_RESULTS`.
+- **`ReplayFieldDifference`**: Granular field-level difference (`field_path`, `original_value`, `replayed_value`, `difference_description`).
+- **`DecisionReplayRecord`**: Stable forensic record (`RPL-XXXX`) maintaining bidirectional traceability to `decision_id`, `version_id`, `original_trace_id`, and distinct `replay_execution_id` (`REX-XXXX`).
+
+### 14.3 Compared vs Ignored Fields
+- **Compared Fields**:
+  - `recommendation.status`: Outcome status (e.g. `RECOMMENDED`, `NO_ACTION_REQUIRED`).
+  - `recommendation.recommended_action_id`: Selected candidate action identifier.
+  - `recommendation.recommended_action_type`: Selected candidate action category.
+  - `recommendation.tie_broken`: Whether tie-breaking rule was triggered.
+  - `evaluations[*].scoring_status`: Action evaluation status (`COMPUTED`, `UNAVAILABLE`).
+  - `evaluations[*].overall_score`: Composite evaluation score.
+  - `evaluations[*].recommended_replenishment_quantity`: Replenishment units recommended.
+  - `evaluations[*].shortfall_addressed`: Shortfall units addressed.
+  - `evaluations[*].remaining_shortfall`: Shortfall units remaining.
+  - `evaluations[*].exposure_index_delta`: Stockout exposure index delta.
+  - `evaluations[*].current_exposure_index`: Baseline lead-time exposure index.
+  - `evaluations[*].projected_exposure_index`: Projected lead-time exposure index.
+  - `evaluations[*].direct_procurement_cost`: Direct purchase cost.
+  - `evaluations[*].cost_status`: Cost calculation step status (`SUCCESS`, `UNAVAILABLE`).
+- **Ignored Fields**: Timestamps (`created_at`, `evaluated_at`), transient execution identifiers (`replay_execution_id`, `original_execution_id`, `id`, `recommendation_id`, `trace_id`), and non-semantic diagnostic notes.
+
+### 14.4 Historical Reproducibility & Isolation
+- **Pure Re-evaluation**: Replay reconstructs domain entities strictly from `DecisionProvenanceTrace.inputs` and `trace.rules`. It does not silently query current mutable inventory positions or supplier catalogs.
+- **Decision & Version Isolation**: Replay operations are decision-scoped. Cross-decision references are strictly rejected with `CrossDecisionIsolationError`.
+- **Immutability Invariant**: Replay never mutates the original decision, version snapshot, provenance trace, recommendation, or audit events.
+- **Decision Graph Integration**: When `record_to_graph=True`, DecisionGraph `RESULT` nodes are safely enriched with `latest_replay_id` and status without creating unsupported graph node types or relationship cycles.
+
+### 14.5 API Endpoints
+- `POST /api/decisions/{decision_id}/replay`: Execute deterministic replay and store a replay record.
+- `GET /api/decisions/{decision_id}/replay/latest`: Retrieve latest replay record (optional `version_id` filter).
+- `GET /api/decisions/{decision_id}/replay/records`: List replay records for a decision (newest first).
+- `GET /api/decisions/{decision_id}/replay/records/{replay_id}`: Retrieve a specific replay record by ID.
+- Direct aliases supported: `/decisions/...`, `/api/decision/...`, `/decision/...`.
+
+### 14.6 Architecture Decisions and Known Limitations
+- **In-Memory Lifespan**: Consistent with the EDOS in-memory architecture, replay records reside in memory and do not survive server restarts.
+- **Trace Dependency**: Reliable replay requires a captured `DecisionProvenanceTrace`. Decisions executed without provenance capture cannot be reliably reconstructed and return `INCOMPLETE`.
+- **Scope Boundaries**: Day 25 Scenario Engine and Day 26 AI Explanations remain out of scope.
 
 
 

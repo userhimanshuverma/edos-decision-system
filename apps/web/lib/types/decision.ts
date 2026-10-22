@@ -842,4 +842,103 @@ export interface CaptureProvenanceRequest {
   metadata?: Record<string, unknown>;
 }
 
+// ---------------------------------------------------------------------------
+// Day 24: Decision Replay Engine TypeScript Contracts
+// ---------------------------------------------------------------------------
+
+export type ReplayStatus = 'MATCHED' | 'DIFFERENT' | 'INCOMPLETE' | 'FAILED';
+
+export type IncompleteReasonCode =
+  | 'MISSING_PROVENANCE_TRACE'
+  | 'MISSING_INPUT_RECORD'
+  | 'UNAVAILABLE_HISTORICAL_INPUT'
+  | 'UNAVAILABLE_RULE_DEFINITION'
+  | 'MISSING_CANDIDATE_ACTIONS'
+  | 'NO_RECORDED_RESULTS'
+  | 'UNSUPPORTED_REPLAY_OPERATION';
+
+export interface IncompleteReason {
+  code: IncompleteReasonCode;
+  message: string;
+  details: Record<string, unknown>;
+}
+
+export type IncompleteReasonResponse = IncompleteReason;
+
+export interface ReplayFieldDifference {
+  field_path: string;
+  original_value: unknown;
+  replayed_value: unknown;
+  difference_description: string;
+}
+
+export type ReplayFieldDifferenceResponse = ReplayFieldDifference;
+
+export interface ReplayActionEvaluationRecord {
+  action_id: string;
+  scoring_status?: string | null;
+  overall_score?: number | null;
+  recommended_replenishment_quantity?: number | null;
+  shortfall_addressed?: number | null;
+  remaining_shortfall?: number | null;
+  exposure_index_delta?: number | null;
+  current_exposure_index?: number | null;
+  projected_exposure_index?: number | null;
+  direct_procurement_cost?: number | null;
+  cost_status?: string | null;
+}
+
+export type ReplayActionEvaluationResponse = ReplayActionEvaluationRecord;
+
+export interface ReplayResultSnapshotRecord {
+  recommendation_id?: string | null;
+  status?: string | null;
+  recommended_action_id?: string | null;
+  recommended_action_type?: string | null;
+  tie_broken?: boolean | null;
+  tie_break_method?: string | null;
+  selection_rule?: string | null;
+  evaluations: Record<string, ReplayActionEvaluationRecord>;
+  metadata: Record<string, unknown>;
+}
+
+export type ReplayResultSnapshotResponse = ReplayResultSnapshotRecord;
+
+export interface ReplayComparisonRecord {
+  status: ReplayStatus;
+  compared_fields: string[];
+  ignored_fields: string[];
+  differences: ReplayFieldDifference[];
+  summary: string;
+}
+
+export type ReplayComparisonResponse = ReplayComparisonRecord;
+
+export interface DecisionReplayRecord {
+  id: string;
+  decision_id: string;
+  version_id?: string | null;
+  original_trace_id?: string | null;
+  original_execution_id?: string | null;
+  replay_execution_id: string;
+  created_at: string;
+  status: ReplayStatus;
+  original_result?: ReplayResultSnapshotRecord | null;
+  replayed_result?: ReplayResultSnapshotRecord | null;
+  comparison?: ReplayComparisonRecord | null;
+  incomplete_reasons: IncompleteReason[];
+  error_message?: string | null;
+  reconstructed_inputs_summary: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+}
+
+export type DecisionReplayResponse = DecisionReplayRecord;
+
+export interface ReplayDecisionRequest {
+  version_id?: string | null;
+  trace_id?: string | null;
+  record_to_graph?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
 

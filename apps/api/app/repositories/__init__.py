@@ -48,6 +48,10 @@ from app.repositories.provenance_repository import (
     DuplicateProvenanceTraceError,
     ProvenanceRepository,
 )
+from app.repositories.replay_repository import (
+    DuplicateReplayRecordError,
+    ReplayRepository,
+)
 
 
 __all__ = [
@@ -79,5 +83,7 @@ __all__ = [
     "DuplicateEvidenceSheetError",
     "ProvenanceRepository",
     "DuplicateProvenanceTraceError",
+    "ReplayRepository",
+    "DuplicateReplayRecordError",
 ]
 

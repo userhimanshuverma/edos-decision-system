@@ -32,6 +32,16 @@ from app.domain.provenance import (
     ProvenanceRuleType,
     ProvenanceStepStatus,
 )
+from app.domain.replay import (
+    DecisionReplayRecord,
+    IncompleteReason,
+    IncompleteReasonCode,
+    ReplayActionEvaluationSnapshot,
+    ReplayComparisonResult,
+    ReplayFieldDifference,
+    ReplayResultSnapshot,
+    ReplayStatus,
+)
 from app.repositories.supplier_repository import SupplierRiskLevel, classify_supplier_risk
 
 
@@ -1968,6 +1978,205 @@ class ProvenanceDerivationResponse(BaseModel):
             rules=[ProvenanceRuleResponse.from_domain(r) for r in chain.rules],
             inputs=[ProvenanceInputResponse.from_domain(inp) for inp in chain.inputs],
             lineage_edges=[ProvenanceLineageEdgeResponse.from_domain(e) for e in chain.lineage_edges],
+        )
+
+
+# ---------------------------------------------------------------------------
+# Day 24: Decision Replay Engine Schemas
+# ---------------------------------------------------------------------------
+
+class ReplayDecisionRequest(BaseModel):
+    """Request payload for replaying a previously executed decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    version_id: str | None = Field(default=None, description="Optional decision version identifier (VER-XXXX)")
+    trace_id: str | None = Field(default=None, description="Optional original provenance trace identifier (PRV-XXXX)")
+    record_to_graph: bool = Field(default=False, description="Whether to update Decision Graph result node metadata")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary execution metadata")
+
+
+class IncompleteReasonResponse(BaseModel):
+    """Clean typed response representing an incomplete replay diagnostic reason."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    code: IncompleteReasonCode = Field(..., description="Machine-readable incomplete reason code")
+    message: str = Field(..., description="Human-readable explanation of why replay was incomplete")
+    details: dict[str, Any] = Field(default_factory=dict, description="Structured contextual diagnostics")
+
+    @classmethod
+    def from_domain(cls, reason: IncompleteReason) -> IncompleteReasonResponse:
+        return cls(
+            code=reason.code,
+            message=reason.message,
+            details=reason.details,
+        )
+
+
+class ReplayFieldDifferenceResponse(BaseModel):
+    """Clean typed response representing a granular field-level difference."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    field_path: str = Field(..., description="Dot-delimited path of the differing business field")
+    original_value: Any = Field(..., description="Observed original output value")
+    replayed_value: Any = Field(..., description="Recomputed replayed output value")
+    difference_description: str = Field(..., description="Explanation of how and why the values differ")
+
+    @classmethod
+    def from_domain(cls, diff: ReplayFieldDifference) -> ReplayFieldDifferenceResponse:
+        return cls(
+            field_path=diff.field_path,
+            original_value=diff.original_value,
+            replayed_value=diff.replayed_value,
+            difference_description=diff.difference_description,
+        )
+
+
+class ReplayActionEvaluationResponse(BaseModel):
+    """Business metrics evaluation snapshot for an individual action."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    action_id: str = Field(..., description="Evaluated candidate action identifier")
+    scoring_status: str | None = Field(default=None, description="Scoring status")
+    overall_score: float | None = Field(default=None, description="Composite evaluation score")
+    recommended_replenishment_quantity: int | None = Field(default=None, description="Replenishment quantity")
+    shortfall_addressed: int | None = Field(default=None, description="Shortfall addressed")
+    remaining_shortfall: int | None = Field(default=None, description="Remaining shortfall")
+    exposure_index_delta: float | None = Field(default=None, description="Stockout exposure index delta")
+    current_exposure_index: float | None = Field(default=None, description="Baseline exposure index")
+    projected_exposure_index: float | None = Field(default=None, description="Projected exposure index")
+    direct_procurement_cost: float | None = Field(default=None, description="Direct purchase cost")
+    cost_status: str | None = Field(default=None, description="Cost calculability status")
+
+    @classmethod
+    def from_domain(cls, ev: ReplayActionEvaluationSnapshot) -> ReplayActionEvaluationResponse:
+        return cls(
+            action_id=ev.action_id,
+            scoring_status=ev.scoring_status,
+            overall_score=ev.overall_score,
+            recommended_replenishment_quantity=ev.recommended_replenishment_quantity,
+            shortfall_addressed=ev.shortfall_addressed,
+            remaining_shortfall=ev.remaining_shortfall,
+            exposure_index_delta=ev.exposure_index_delta,
+            current_exposure_index=ev.current_exposure_index,
+            projected_exposure_index=ev.projected_exposure_index,
+            direct_procurement_cost=ev.direct_procurement_cost,
+            cost_status=ev.cost_status,
+        )
+
+
+class ReplayResultSnapshotResponse(BaseModel):
+    """Clean typed response representing a business result snapshot."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    recommendation_id: str | None = Field(default=None, description="Recommendation identifier")
+    status: str | None = Field(default=None, description="Primary outcome status")
+    recommended_action_id: str | None = Field(default=None, description="Selected candidate action identifier")
+    recommended_action_type: str | None = Field(default=None, description="Selected action type")
+    tie_broken: bool | None = Field(default=None, description="Whether tie-breaking was triggered")
+    tie_break_method: str | None = Field(default=None, description="Tie breaking method applied")
+    selection_rule: str | None = Field(default=None, description="Selection strategy rule name applied")
+    evaluations: dict[str, ReplayActionEvaluationResponse] = Field(
+        default_factory=dict,
+        description="Action-level evaluation snapshots",
+    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary result metadata")
+
+    @classmethod
+    def from_domain(cls, snap: ReplayResultSnapshot) -> ReplayResultSnapshotResponse:
+        return cls(
+            recommendation_id=snap.recommendation_id,
+            status=snap.status,
+            recommended_action_id=snap.recommended_action_id,
+            recommended_action_type=snap.recommended_action_type,
+            tie_broken=snap.tie_broken,
+            tie_break_method=snap.tie_break_method,
+            selection_rule=snap.selection_rule,
+            evaluations={k: ReplayActionEvaluationResponse.from_domain(v) for k, v in snap.evaluations.items()},
+            metadata=snap.metadata,
+        )
+
+
+class ReplayComparisonResponse(BaseModel):
+    """Clean typed response representing the structured comparison outcome."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    status: ReplayStatus = Field(..., description="Comparison outcome: MATCHED or DIFFERENT")
+    compared_fields: list[str] = Field(..., description="Explicit list of evaluated business fields")
+    ignored_fields: list[str] = Field(default_factory=list, description="Fields excluded from comparison")
+    differences: list[ReplayFieldDifferenceResponse] = Field(
+        default_factory=list,
+        description="Differences detected if DIFFERENT",
+    )
+    summary: str = Field(..., description="Comparison summary explanation")
+
+    @classmethod
+    def from_domain(cls, comp: ReplayComparisonResult) -> ReplayComparisonResponse:
+        return cls(
+            status=comp.status,
+            compared_fields=comp.compared_fields,
+            ignored_fields=comp.ignored_fields,
+            differences=[ReplayFieldDifferenceResponse.from_domain(d) for d in comp.differences],
+            summary=comp.summary,
+        )
+
+
+class DecisionReplayResponse(BaseModel):
+    """Clean typed response representing a Decision Replay execution record."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique replay record identifier (RPL-XXXX)")
+    decision_id: str = Field(..., description="Associated business decision identifier (DEC-XXXX)")
+    version_id: str | None = Field(default=None, description="Optional associated decision version identifier")
+    original_trace_id: str | None = Field(default=None, description="Associated original provenance trace")
+    original_execution_id: str | None = Field(default=None, description="Original run execution identifier")
+    replay_execution_id: str = Field(..., description="Replay execution run identifier (REX-XXXX)")
+    created_at: datetime = Field(..., description="UTC timestamp when replay was executed")
+    status: ReplayStatus = Field(..., description="Replay outcome: MATCHED, DIFFERENT, INCOMPLETE, FAILED")
+    original_result: ReplayResultSnapshotResponse | None = Field(default=None, description="Original result snapshot")
+    replayed_result: ReplayResultSnapshotResponse | None = Field(default=None, description="Recomputed result snapshot")
+    comparison: ReplayComparisonResponse | None = Field(default=None, description="Field-by-field comparison")
+    incomplete_reasons: list[IncompleteReasonResponse] = Field(
+        default_factory=list,
+        description="Actionable reason codes if INCOMPLETE",
+    )
+    error_message: str | None = Field(default=None, description="Error diagnostics if FAILED")
+    reconstructed_inputs_summary: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Summary of historical inputs recovered",
+    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Execution metadata")
+
+    @classmethod
+    def from_domain(cls, rec: DecisionReplayRecord) -> DecisionReplayResponse:
+        return cls(
+            id=rec.id,
+            decision_id=rec.decision_id,
+            version_id=rec.version_id,
+            original_trace_id=rec.original_trace_id,
+            original_execution_id=rec.original_execution_id,
+            replay_execution_id=rec.replay_execution_id,
+            created_at=rec.created_at,
+            status=rec.status,
+            original_result=ReplayResultSnapshotResponse.from_domain(rec.original_result)
+            if rec.original_result
+            else None,
+            replayed_result=ReplayResultSnapshotResponse.from_domain(rec.replayed_result)
+            if rec.replayed_result
+            else None,
+            comparison=ReplayComparisonResponse.from_domain(rec.comparison)
+            if rec.comparison
+            else None,
+            incomplete_reasons=[IncompleteReasonResponse.from_domain(r) for r in rec.incomplete_reasons],
+            error_message=rec.error_message,
+            reconstructed_inputs_summary=rec.reconstructed_inputs_summary,
+            metadata=rec.metadata,
         )
 
 

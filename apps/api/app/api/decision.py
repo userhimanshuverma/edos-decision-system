@@ -45,6 +45,8 @@ from app.api.schemas import (
     CaptureProvenanceRequest,
     DecisionProvenanceTraceResponse,
     ProvenanceDerivationResponse,
+    DecisionReplayResponse,
+    ReplayDecisionRequest,
 )
 from app.candidate_actions.service import (
     CandidateActionNotFoundError,
@@ -90,6 +92,19 @@ from app.provenance.service import (
 from app.repositories.provenance_repository import (
     DuplicateProvenanceTraceError,
     ProvenanceRepository,
+)
+from app.replay.service import (
+    CrossDecisionIsolationError as RplCrossDecisionIsolationError,
+    DecisionNotFoundError as RplDecisionNotFoundError,
+    DecisionVersionNotFoundError as RplVersionNotFoundError,
+    InvalidReplayRequestError as RplInvalidRequestError,
+    ProvenanceTraceNotFoundError as RplProvenanceNotFoundError,
+    ReplayRecordNotFoundError,
+    DecisionReplayService,
+)
+from app.repositories.replay_repository import (
+    DuplicateReplayRecordError,
+    ReplayRepository,
 )
 
 
@@ -328,6 +343,36 @@ def get_provenance_service() -> ProvenanceService:
         recommendation_repo=get_recommendation_repository(),
         validation_repo=get_validation_repository(),
         evidence_repo=get_evidence_repository(),
+        graph_repo=graph_repo,
+    )
+
+
+@lru_cache
+def get_replay_repository() -> ReplayRepository:
+    """Dependency provider returning singleton ReplayRepository."""
+    return ReplayRepository()
+
+
+@lru_cache
+def get_replay_service() -> DecisionReplayService:
+    """Dependency provider returning DecisionReplayService wired to repositories."""
+    dec_repo = get_decision_repository()
+    action_repo = get_candidate_action_repository()
+    version_repo = get_decision_version_repository()
+    graph_repo = get_decision_graph_repository()
+    shared_dataset = dec_repo.dataset
+    return DecisionReplayService(
+        decision_repo=dec_repo,
+        replay_repo=get_replay_repository(),
+        provenance_repo=get_provenance_repository(),
+        action_repo=action_repo,
+        version_repo=version_repo,
+        recommendation_repo=get_recommendation_repository(),
+        validation_repo=get_validation_repository(),
+        evaluation_service=get_action_evaluation_service(),
+        inventory_repo=get_inventory_repository(),
+        demand_repo=DemandRepository(dataset=shared_dataset),
+        supplier_repo=SupplierRepository(dataset=shared_dataset),
         graph_repo=graph_repo,
     )
 
@@ -1771,6 +1816,126 @@ def get_decision_provenance_derivation_endpoint(
             detail=str(exc),
         ) from exc
     except (PrvCrossDecisionIsolationError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Day 24: Decision Replay Engine Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/{decision_id}/replay",
+    response_model=DecisionReplayResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Replay a previously executed decision",
+    description="Reconstructs historical decision execution using recorded inputs and rules, recomputes outcomes, and compares with original result.",
+)
+def replay_decision_endpoint(
+    decision_id: str,
+    payload: ReplayDecisionRequest | None = None,
+    service: DecisionReplayService = Depends(get_replay_service),
+) -> DecisionReplayResponse:
+    req = payload or ReplayDecisionRequest()
+    try:
+        record = service.replay_decision(
+            decision_id=decision_id,
+            trace_id=req.trace_id,
+            version_id=req.version_id,
+            record_to_graph=req.record_to_graph,
+            metadata=req.metadata,
+        )
+        return DecisionReplayResponse.from_domain(record)
+    except (
+        DecisionNotFoundError,
+        RplDecisionNotFoundError,
+        RplVersionNotFoundError,
+        RplProvenanceNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (RplCrossDecisionIsolationError, RplInvalidRequestError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/replay/latest",
+    response_model=DecisionReplayResponse,
+    summary="Get latest decision replay record",
+    description="Retrieves the most recent replay record for a decision, optionally filtered by version.",
+)
+def get_latest_decision_replay_endpoint(
+    decision_id: str,
+    version_id: str | None = Query(default=None, description="Optional decision version filter"),
+    service: DecisionReplayService = Depends(get_replay_service),
+) -> DecisionReplayResponse:
+    try:
+        record = service.get_latest_replay(decision_id=decision_id, version_id=version_id)
+        if record is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No replay record found for decision '{decision_id}'",
+            )
+        return DecisionReplayResponse.from_domain(record)
+    except (DecisionNotFoundError, RplDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/replay/records",
+    response_model=list[DecisionReplayResponse],
+    summary="List decision replay records",
+    description="Retrieves all replay execution records for a decision, sorted chronologically descending.",
+)
+def list_decision_replay_records_endpoint(
+    decision_id: str,
+    version_id: str | None = Query(default=None, description="Optional decision version filter"),
+    service: DecisionReplayService = Depends(get_replay_service),
+) -> list[DecisionReplayResponse]:
+    try:
+        records = service.list_replay_records(decision_id=decision_id, version_id=version_id)
+        return [DecisionReplayResponse.from_domain(r) for r in records]
+    except (DecisionNotFoundError, RplDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/replay/records/{replay_id}",
+    response_model=DecisionReplayResponse,
+    summary="Get specific decision replay record",
+    description="Retrieves an individual replay record by ID, strictly enforcing decision isolation.",
+)
+def get_decision_replay_record_endpoint(
+    decision_id: str,
+    replay_id: str,
+    service: DecisionReplayService = Depends(get_replay_service),
+) -> DecisionReplayResponse:
+    try:
+        record = service.get_replay_record(decision_id=decision_id, replay_id=replay_id)
+        return DecisionReplayResponse.from_domain(record)
+    except (
+        DecisionNotFoundError,
+        RplDecisionNotFoundError,
+        ReplayRecordNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (RplCrossDecisionIsolationError,) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),

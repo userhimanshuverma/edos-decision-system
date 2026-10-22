@@ -117,6 +117,17 @@ from app.domain.provenance import (
     ProvenanceStage,
     ProvenanceStepStatus,
 )
+from app.domain.replay import (
+    DecisionReplayRecord,
+    IncompleteReason,
+    IncompleteReasonCode,
+    ReplayActionEvaluationSnapshot,
+    ReplayComparisonResult,
+    ReplayFieldDifference,
+    ReplayResultSnapshot,
+    ReplayStatus,
+    compare_replay_results,
+)
 
 
 __all__ = [
@@ -221,5 +232,14 @@ __all__ = [
     "ProvenanceResultRecord",
     "ProvenanceDerivationChain",
     "DecisionProvenanceTrace",
+    "ReplayStatus",
+    "IncompleteReasonCode",
+    "IncompleteReason",
+    "ReplayFieldDifference",
+    "ReplayActionEvaluationSnapshot",
+    "ReplayResultSnapshot",
+    "ReplayComparisonResult",
+    "DecisionReplayRecord",
+    "compare_replay_results",
 ]
 

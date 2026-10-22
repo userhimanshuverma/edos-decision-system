@@ -4,6 +4,8 @@ from app.api.decision import (
     get_decision_replenishment_service,
     get_decision_repository,
     get_decision_stockout_risk_service,
+    get_replay_repository,
+    get_replay_service,
     router as decision_router,
 )
 from app.api.demand import get_demand_repository, router as demand_router
@@ -73,6 +75,8 @@ __all__ = [
     "get_replenishment_service",
     "get_stockout_risk_service",
     "get_supplier_repository",
+    "get_replay_repository",
+    "get_replay_service",
     "inventory_router",
     "supplier_router",
 ]
