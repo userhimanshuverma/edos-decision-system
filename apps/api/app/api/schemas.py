@@ -42,6 +42,22 @@ from app.domain.replay import (
     ReplayResultSnapshot,
     ReplayStatus,
 )
+from app.domain.scenario import (
+    CostOverride,
+    DecisionScenarioRecord,
+    DemandOverride,
+    LeadTimeOverride,
+    MetricDelta,
+    ScenarioActionEvaluationSnapshot,
+    ScenarioComparison,
+    ScenarioFieldDifference,
+    ScenarioIncompleteReason,
+    ScenarioIncompleteReasonCode,
+    ScenarioOverrides,
+    ScenarioResultSnapshot,
+    ScenarioStatus,
+)
+
 from app.repositories.supplier_repository import SupplierRiskLevel, classify_supplier_risk
 
 
@@ -2178,6 +2194,382 @@ class DecisionReplayResponse(BaseModel):
             reconstructed_inputs_summary=rec.reconstructed_inputs_summary,
             metadata=rec.metadata,
         )
+
+
+# ---------------------------------------------------------------------------
+# Day 25: Decision Scenario Engine Request & Response Schemas
+# ---------------------------------------------------------------------------
+
+
+class DemandOverrideRequest(BaseModel):
+    """Controlled override of demand assumptions.
+
+    Supports either an absolute average daily demand (units/day) or a proportional multiplier.
+    Exactly one of demand_value or demand_multiplier must be provided.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    demand_value: float | None = Field(
+        default=None,
+        ge=0.0,
+        description="Absolute average daily demand in units/day (non-negative)",
+    )
+    demand_multiplier: float | None = Field(
+        default=None,
+        ge=0.0,
+        description="Proportional demand multiplier, e.g. 1.25 for +25% or 0.8 for -20%",
+    )
+
+    @model_validator(mode="after")
+    def validate_single_demand_override(self) -> DemandOverrideRequest:
+        has_val = self.demand_value is not None
+        has_mult = self.demand_multiplier is not None
+        if not has_val and not has_mult:
+            raise ValueError("DemandOverride requires either 'demand_value' or 'demand_multiplier'")
+        if has_val and has_mult:
+            raise ValueError("DemandOverride cannot specify both 'demand_value' and 'demand_multiplier' simultaneously")
+        return self
+
+    def to_domain(self) -> DemandOverride:
+        return DemandOverride(
+            demand_value=self.demand_value,
+            demand_multiplier=self.demand_multiplier,
+        )
+
+
+class LeadTimeOverrideRequest(BaseModel):
+    """Controlled override of supplier fulfillment lead time in calendar days."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    lead_time_days: int = Field(
+        ...,
+        ge=0,
+        le=365,
+        description="Fulfillment lead time in calendar days (0 to 365)",
+    )
+
+    def to_domain(self) -> LeadTimeOverride:
+        return LeadTimeOverride(lead_time_days=self.lead_time_days)
+
+
+class CostOverrideRequest(BaseModel):
+    """Controlled override of unit cost assumptions in standard currency USD.
+
+    Supports either an absolute unit cost or a proportional multiplier.
+    Exactly one of unit_cost or cost_multiplier must be provided.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    unit_cost: float | None = Field(
+        default=None,
+        ge=0.0,
+        description="Absolute catalog unit cost in standard currency USD (non-negative)",
+    )
+    cost_multiplier: float | None = Field(
+        default=None,
+        ge=0.0,
+        description="Proportional unit-cost multiplier, e.g. 1.10 for +10% or 0.90 for -10%",
+    )
+
+    @model_validator(mode="after")
+    def validate_single_cost_override(self) -> CostOverrideRequest:
+        has_val = self.unit_cost is not None
+        has_mult = self.cost_multiplier is not None
+        if not has_val and not has_mult:
+            raise ValueError("CostOverride requires either 'unit_cost' or 'cost_multiplier'")
+        if has_val and has_mult:
+            raise ValueError("CostOverride cannot specify both 'unit_cost' and 'cost_multiplier' simultaneously")
+        return self
+
+    def to_domain(self) -> CostOverride:
+        return CostOverride(
+            unit_cost=self.unit_cost,
+            cost_multiplier=self.cost_multiplier,
+        )
+
+
+class ScenarioOverridesRequest(BaseModel):
+    """Typed container for scenario assumption overrides.
+
+    EDOS Day 25 strictly supports only:
+    1. Demand: demand_value or demand_multiplier
+    2. Supplier lead time: lead_time_days
+    3. Cost: unit_cost or cost_multiplier
+
+    At least one override category must be provided. Unsupported override categories are forbidden.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    demand: DemandOverrideRequest | None = Field(default=None, description="Demand assumption override")
+    lead_time: LeadTimeOverrideRequest | None = Field(default=None, description="Supplier lead time override")
+    cost: CostOverrideRequest | None = Field(default=None, description="Product unit cost override")
+
+    @model_validator(mode="after")
+    def validate_at_least_one_override(self) -> ScenarioOverridesRequest:
+        if self.demand is None and self.lead_time is None and self.cost is None:
+            raise ValueError("At least one scenario override (demand, lead_time, or cost) must be specified")
+        return self
+
+    def to_domain(self) -> ScenarioOverrides:
+        return ScenarioOverrides(
+            demand=self.demand.to_domain() if self.demand else None,
+            lead_time=self.lead_time.to_domain() if self.lead_time else None,
+            cost=self.cost.to_domain() if self.cost else None,
+        )
+
+
+class ExecuteScenarioRequest(BaseModel):
+    """Payload contract for executing a scenario against a business decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    overrides: ScenarioOverridesRequest = Field(..., description="Assumption overrides to apply")
+    name: str | None = Field(default=None, description="Optional user-facing descriptive scenario label")
+    version_id: str | None = Field(default=None, description="Optional target decision version identifier")
+    trace_id: str | None = Field(default=None, description="Optional target baseline provenance trace identifier")
+    record_to_graph: bool = Field(default=False, description="Whether to safely record scenario outcome to DecisionGraph")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary scenario execution metadata")
+
+
+class ScenarioIncompleteReasonResponse(BaseModel):
+    """Clean typed response representing reasons why a scenario is INCOMPLETE."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    code: ScenarioIncompleteReasonCode = Field(..., description="Machine-readable incomplete reason code")
+    message: str = Field(..., description="Actionable explanation")
+    details: dict[str, Any] = Field(default_factory=dict, description="Contextual diagnostics")
+
+    @classmethod
+    def from_domain(cls, r: ScenarioIncompleteReason) -> ScenarioIncompleteReasonResponse:
+        return cls(code=r.code, message=r.message, details=r.details)
+
+
+class ScenarioFieldDifferenceResponse(BaseModel):
+    """Clean typed response representing a field difference between baseline and scenario."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    field_path: str = Field(..., description="Path representation of differing field")
+    baseline_value: Any = Field(..., description="Observed baseline value")
+    scenario_value: Any = Field(..., description="Recalculated scenario value")
+    difference_description: str = Field(..., description="Explanation of difference")
+
+    @classmethod
+    def from_domain(cls, d: ScenarioFieldDifference) -> ScenarioFieldDifferenceResponse:
+        return cls(
+            field_path=d.field_path,
+            baseline_value=d.baseline_value,
+            scenario_value=d.scenario_value,
+            difference_description=d.difference_description,
+        )
+
+
+class ScenarioMetricDeltaResponse(BaseModel):
+    """Clean typed response representing metric delta between baseline and scenario."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    baseline_value: Any | None = Field(default=None, description="Baseline value")
+    scenario_value: Any | None = Field(default=None, description="Scenario value")
+    difference: Any | None = Field(default=None, description="Delta: scenario - baseline")
+    unit: str | None = Field(default=None, description="Measurement unit")
+
+    @classmethod
+    def from_domain(cls, m: MetricDelta) -> ScenarioMetricDeltaResponse:
+        return cls(
+            baseline_value=m.baseline_value,
+            scenario_value=m.scenario_value,
+            difference=m.difference,
+            unit=m.unit,
+        )
+
+
+class ScenarioActionEvaluationResponse(BaseModel):
+    """Clean typed response representing an action evaluation snapshot."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    action_id: str = Field(..., description="Candidate action identifier")
+    action_type: str | None = Field(default=None, description="Candidate action type")
+    scoring_status: str | None = Field(default=None, description="Action scoring status")
+    overall_score: float | None = Field(default=None, description="Overall score if calculated")
+    recommended_replenishment_quantity: int | None = Field(default=None, description="Replenishment shortfall units")
+    shortfall_addressed: int | None = Field(default=None, description="Shortfall units addressed")
+    remaining_shortfall: int | None = Field(default=None, description="Shortfall units remaining")
+    exposure_index_delta: float | None = Field(default=None, description="Stockout exposure index delta")
+    current_exposure_index: float | None = Field(default=None, description="Baseline exposure index")
+    projected_exposure_index: float | None = Field(default=None, description="Projected exposure index")
+    projected_risk_level: str | None = Field(default=None, description="Projected stockout risk level")
+    direct_procurement_cost: float | None = Field(default=None, description="Direct purchase cost")
+    cost_status: str | None = Field(default=None, description="Cost status classification")
+    is_valid: bool | None = Field(default=None, description="Whether action satisfies hard constraints")
+    violated_constraints: list[str] = Field(default_factory=list, description="Violated constraints if invalid")
+
+    @classmethod
+    def from_domain(cls, ev: ScenarioActionEvaluationSnapshot) -> ScenarioActionEvaluationResponse:
+        return cls(
+            action_id=ev.action_id,
+            action_type=ev.action_type,
+            scoring_status=ev.scoring_status,
+            overall_score=ev.overall_score,
+            recommended_replenishment_quantity=ev.recommended_replenishment_quantity,
+            shortfall_addressed=ev.shortfall_addressed,
+            remaining_shortfall=ev.remaining_shortfall,
+            exposure_index_delta=ev.exposure_index_delta,
+            current_exposure_index=ev.current_exposure_index,
+            projected_exposure_index=ev.projected_exposure_index,
+            projected_risk_level=ev.projected_risk_level,
+            direct_procurement_cost=ev.direct_procurement_cost,
+            cost_status=ev.cost_status,
+            is_valid=ev.is_valid,
+            violated_constraints=ev.violated_constraints,
+        )
+
+
+class ScenarioResultSnapshotResponse(BaseModel):
+    """Clean typed response representing a scenario or baseline outcome snapshot."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    recommendation_id: str | None = Field(default=None, description="Recommendation identifier")
+    status: str | None = Field(default=None, description="Outcome status")
+    recommended_action_id: str | None = Field(default=None, description="Selected candidate action identifier")
+    recommended_action_type: str | None = Field(default=None, description="Selected action type")
+    tie_broken: bool | None = Field(default=None, description="Whether tie-breaking was triggered")
+    tie_break_method: str | None = Field(default=None, description="Tie breaking method applied")
+    selection_rule: str | None = Field(default=None, description="Selection rule applied")
+    validation_status: str | None = Field(default=None, description="Constraint validation status")
+    evaluations: dict[str, ScenarioActionEvaluationResponse] = Field(
+        default_factory=dict,
+        description="Action-level evaluation snapshots",
+    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary result metadata")
+
+    @classmethod
+    def from_domain(cls, snap: ScenarioResultSnapshot) -> ScenarioResultSnapshotResponse:
+        return cls(
+            recommendation_id=snap.recommendation_id,
+            status=snap.status,
+            recommended_action_id=snap.recommended_action_id,
+            recommended_action_type=snap.recommended_action_type,
+            tie_broken=snap.tie_broken,
+            tie_break_method=snap.tie_break_method,
+            selection_rule=snap.selection_rule,
+            validation_status=snap.validation_status,
+            evaluations={k: ScenarioActionEvaluationResponse.from_domain(v) for k, v in snap.evaluations.items()},
+            metadata=snap.metadata,
+        )
+
+
+class ScenarioComparisonResponse(BaseModel):
+    """Clean typed response representing baseline-versus-scenario comparison results."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    recommendation_changed: bool = Field(..., description="Whether recommended action or outcome changed")
+    baseline_recommendation_id: str | None = Field(default=None, description="Baseline recommendation identifier")
+    scenario_recommendation_id: str | None = Field(default=None, description="Scenario recommendation identifier")
+    baseline_action_id: str | None = Field(default=None, description="Baseline selected action identifier")
+    scenario_action_id: str | None = Field(default=None, description="Scenario selected action identifier")
+    baseline_action_type: str | None = Field(default=None, description="Baseline selected action type")
+    scenario_action_type: str | None = Field(default=None, description="Scenario selected action type")
+    replenishment_quantity: ScenarioMetricDeltaResponse = Field(..., description="Replenishment quantity comparison")
+    procurement_cost: ScenarioMetricDeltaResponse = Field(..., description="Direct procurement cost comparison")
+    lead_time_exposure: ScenarioMetricDeltaResponse = Field(..., description="Stockout exposure index comparison")
+    validation_status_changed: bool = Field(default=False, description="Whether constraint validation status changed")
+    baseline_validation_status: str | None = Field(default=None, description="Baseline validation status")
+    scenario_validation_status: str | None = Field(default=None, description="Scenario validation status")
+    newly_violated_constraints: list[str] = Field(default_factory=list, description="Newly violated constraints")
+    newly_satisfied_constraints: list[str] = Field(default_factory=list, description="Newly satisfied constraints")
+    differences: list[ScenarioFieldDifferenceResponse] = Field(default_factory=list, description="Granular field differences")
+    compared_fields: list[str] = Field(default_factory=list, description="Fields evaluated in comparison")
+    summary: str = Field(..., description="Deterministic human-readable comparison summary")
+
+    @classmethod
+    def from_domain(cls, comp: ScenarioComparison) -> ScenarioComparisonResponse:
+        return cls(
+            recommendation_changed=comp.recommendation_changed,
+            baseline_recommendation_id=comp.baseline_recommendation_id,
+            scenario_recommendation_id=comp.scenario_recommendation_id,
+            baseline_action_id=comp.baseline_action_id,
+            scenario_action_id=comp.scenario_action_id,
+            baseline_action_type=comp.baseline_action_type,
+            scenario_action_type=comp.scenario_action_type,
+            replenishment_quantity=ScenarioMetricDeltaResponse.from_domain(comp.replenishment_quantity),
+            procurement_cost=ScenarioMetricDeltaResponse.from_domain(comp.procurement_cost),
+            lead_time_exposure=ScenarioMetricDeltaResponse.from_domain(comp.lead_time_exposure),
+            validation_status_changed=comp.validation_status_changed,
+            baseline_validation_status=comp.baseline_validation_status,
+            scenario_validation_status=comp.scenario_validation_status,
+            newly_violated_constraints=comp.newly_violated_constraints,
+            newly_satisfied_constraints=comp.newly_satisfied_constraints,
+            differences=[ScenarioFieldDifferenceResponse.from_domain(d) for d in comp.differences],
+            compared_fields=comp.compared_fields,
+            summary=comp.summary,
+        )
+
+
+class DecisionScenarioResponse(BaseModel):
+    """Clean typed response representing a Decision Scenario execution record."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    id: str = Field(..., description="Unique scenario record identifier (SCN-XXXX)")
+    decision_id: str = Field(..., description="Associated business decision identifier (DEC-XXXX)")
+    version_id: str | None = Field(default=None, description="Optional associated decision version identifier")
+    baseline_trace_id: str | None = Field(default=None, description="Associated baseline provenance trace")
+    baseline_replay_id: str | None = Field(default=None, description="Associated baseline replay record")
+    scenario_execution_id: str = Field(..., description="Scenario execution run identifier (SCX-XXXX)")
+    name: str | None = Field(default=None, description="User-facing scenario name")
+    created_at: datetime = Field(..., description="UTC timestamp when scenario was evaluated")
+    status: ScenarioStatus = Field(..., description="Scenario execution outcome: COMPLETED, INCOMPLETE, FAILED")
+    overrides: dict[str, Any] = Field(..., description="Applied assumption overrides")
+    baseline_inputs_summary: dict[str, Any] = Field(default_factory=dict, description="Summary of baseline inputs")
+    applied_inputs_summary: dict[str, Any] = Field(default_factory=dict, description="Summary of scenario inputs")
+    baseline_result: ScenarioResultSnapshotResponse | None = Field(default=None, description="Baseline result snapshot")
+    scenario_result: ScenarioResultSnapshotResponse | None = Field(default=None, description="Scenario result snapshot")
+    comparison: ScenarioComparisonResponse | None = Field(default=None, description="Baseline-vs-scenario comparison")
+    incomplete_reasons: list[ScenarioIncompleteReasonResponse] = Field(
+        default_factory=list,
+        description="Actionable reason codes if INCOMPLETE",
+    )
+    error_message: str | None = Field(default=None, description="Error diagnostics if FAILED")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Execution metadata")
+
+    @classmethod
+    def from_domain(cls, rec: DecisionScenarioRecord) -> DecisionScenarioResponse:
+        return cls(
+            id=rec.id,
+            decision_id=rec.decision_id,
+            version_id=rec.version_id,
+            baseline_trace_id=rec.baseline_trace_id,
+            baseline_replay_id=rec.baseline_replay_id,
+            scenario_execution_id=rec.scenario_execution_id,
+            name=rec.name,
+            created_at=rec.created_at,
+            status=rec.status,
+            overrides=rec.overrides.model_dump(exclude_none=True),
+            baseline_inputs_summary=rec.baseline_inputs_summary,
+            applied_inputs_summary=rec.applied_inputs_summary,
+            baseline_result=ScenarioResultSnapshotResponse.from_domain(rec.baseline_result)
+            if rec.baseline_result
+            else None,
+            scenario_result=ScenarioResultSnapshotResponse.from_domain(rec.scenario_result)
+            if rec.scenario_result
+            else None,
+            comparison=ScenarioComparisonResponse.from_domain(rec.comparison)
+            if rec.comparison
+            else None,
+            incomplete_reasons=[ScenarioIncompleteReasonResponse.from_domain(r) for r in rec.incomplete_reasons],
+            error_message=rec.error_message,
+            metadata=rec.metadata,
+        )
+
 
 
 

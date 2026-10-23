@@ -941,4 +941,156 @@ export interface ReplayDecisionRequest {
   metadata?: Record<string, unknown>;
 }
 
+// ---------------------------------------------------------------------------
+// Day 25: Decision Scenario Engine TypeScript Contracts
+// ---------------------------------------------------------------------------
+
+export type ScenarioStatus = 'COMPLETED' | 'INCOMPLETE' | 'FAILED';
+
+export type ScenarioIncompleteReasonCode =
+  | 'MISSING_PROVENANCE_TRACE'
+  | 'MISSING_INPUT_RECORD'
+  | 'UNAVAILABLE_HISTORICAL_INPUT'
+  | 'UNAVAILABLE_RULE_DEFINITION'
+  | 'MISSING_CANDIDATE_ACTIONS'
+  | 'NO_RECORDED_RESULTS'
+  | 'UNSUPPORTED_OVERRIDE';
+
+export interface ScenarioIncompleteReason {
+  code: ScenarioIncompleteReasonCode;
+  message: string;
+  details: Record<string, unknown>;
+}
+
+export type ScenarioIncompleteReasonResponse = ScenarioIncompleteReason;
+
+export interface DemandOverride {
+  demand_value?: number | null;
+  demand_multiplier?: number | null;
+}
+
+export interface LeadTimeOverride {
+  lead_time_days: number;
+}
+
+export interface CostOverride {
+  unit_cost?: number | null;
+  cost_multiplier?: number | null;
+}
+
+export interface ScenarioOverrides {
+  demand?: DemandOverride | null;
+  lead_time?: LeadTimeOverride | null;
+  cost?: CostOverride | null;
+}
+
+export interface MetricDelta {
+  baseline_value: unknown | null;
+  scenario_value: unknown | null;
+  difference: unknown | null;
+  unit?: string | null;
+}
+
+export type MetricDeltaResponse = MetricDelta;
+
+export interface ScenarioFieldDifference {
+  field_path: string;
+  baseline_value: unknown;
+  scenario_value: unknown;
+  difference_description: string;
+}
+
+export type ScenarioFieldDifferenceResponse = ScenarioFieldDifference;
+
+export interface ScenarioActionEvaluationRecord {
+  action_id: string;
+  action_type?: string | null;
+  scoring_status?: string | null;
+  overall_score?: number | null;
+  recommended_replenishment_quantity?: number | null;
+  shortfall_addressed?: number | null;
+  remaining_shortfall?: number | null;
+  exposure_index_delta?: number | null;
+  current_exposure_index?: number | null;
+  projected_exposure_index?: number | null;
+  projected_risk_level?: string | null;
+  direct_procurement_cost?: number | null;
+  cost_status?: string | null;
+  is_valid?: boolean | null;
+  violated_constraints: string[];
+}
+
+export type ScenarioActionEvaluationResponse = ScenarioActionEvaluationRecord;
+
+export interface ScenarioResultSnapshotRecord {
+  recommendation_id?: string | null;
+  status?: string | null;
+  recommended_action_id?: string | null;
+  recommended_action_type?: string | null;
+  tie_broken?: boolean | null;
+  tie_break_method?: string | null;
+  selection_rule?: string | null;
+  validation_status?: string | null;
+  evaluations: Record<string, ScenarioActionEvaluationRecord>;
+  metadata: Record<string, unknown>;
+}
+
+export type ScenarioResultSnapshotResponse = ScenarioResultSnapshotRecord;
+
+export interface ScenarioComparisonRecord {
+  recommendation_changed: boolean;
+  baseline_recommendation_id?: string | null;
+  scenario_recommendation_id?: string | null;
+  baseline_action_id?: string | null;
+  scenario_action_id?: string | null;
+  baseline_action_type?: string | null;
+  scenario_action_type?: string | null;
+  replenishment_quantity: MetricDelta;
+  procurement_cost: MetricDelta;
+  lead_time_exposure: MetricDelta;
+  validation_status_changed: boolean;
+  baseline_validation_status?: string | null;
+  scenario_validation_status?: string | null;
+  newly_violated_constraints: string[];
+  newly_satisfied_constraints: string[];
+  differences: ScenarioFieldDifference[];
+  compared_fields: string[];
+  summary: string;
+}
+
+export type ScenarioComparisonResponse = ScenarioComparisonRecord;
+
+export interface DecisionScenarioRecord {
+  id: string;
+  decision_id: string;
+  version_id?: string | null;
+  baseline_trace_id?: string | null;
+  baseline_replay_id?: string | null;
+  scenario_execution_id: string;
+  name?: string | null;
+  created_at: string;
+  status: ScenarioStatus;
+  overrides: Record<string, unknown>;
+  baseline_inputs_summary: Record<string, unknown>;
+  applied_inputs_summary: Record<string, unknown>;
+  baseline_result?: ScenarioResultSnapshotRecord | null;
+  scenario_result?: ScenarioResultSnapshotRecord | null;
+  comparison?: ScenarioComparisonRecord | null;
+  incomplete_reasons: ScenarioIncompleteReason[];
+  error_message?: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export type DecisionScenarioResponse = DecisionScenarioRecord;
+
+export interface ExecuteScenarioRequest {
+  overrides: ScenarioOverrides;
+  name?: string | null;
+  version_id?: string | null;
+  trace_id?: string | null;
+  record_to_graph?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+
 

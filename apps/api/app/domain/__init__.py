@@ -128,6 +128,23 @@ from app.domain.replay import (
     ReplayStatus,
     compare_replay_results,
 )
+from app.domain.scenario import (
+    CostOverride,
+    DecisionScenarioRecord,
+    DemandOverride,
+    LeadTimeOverride,
+    MetricDelta,
+    ScenarioActionEvaluationSnapshot,
+    ScenarioComparison,
+    ScenarioFieldDifference,
+    ScenarioIncompleteReason,
+    ScenarioIncompleteReasonCode,
+    ScenarioOverrides,
+    ScenarioResultSnapshot,
+    ScenarioStatus,
+    compare_scenario_results,
+)
+
 
 
 __all__ = [
@@ -241,5 +258,20 @@ __all__ = [
     "ReplayComparisonResult",
     "DecisionReplayRecord",
     "compare_replay_results",
+    "ScenarioStatus",
+    "ScenarioIncompleteReasonCode",
+    "ScenarioIncompleteReason",
+    "DemandOverride",
+    "LeadTimeOverride",
+    "CostOverride",
+    "ScenarioOverrides",
+    "ScenarioActionEvaluationSnapshot",
+    "ScenarioResultSnapshot",
+    "MetricDelta",
+    "ScenarioFieldDifference",
+    "ScenarioComparison",
+    "DecisionScenarioRecord",
+    "compare_scenario_results",
 ]
+
 

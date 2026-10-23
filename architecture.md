@@ -1825,5 +1825,100 @@ The replay domain is structured around typed models:
 - **Trace Dependency**: Reliable replay requires a captured `DecisionProvenanceTrace`. Decisions executed without provenance capture cannot be reliably reconstructed and return `INCOMPLETE`.
 - **Scope Boundaries**: Day 25 Scenario Engine and Day 26 AI Explanations remain out of scope.
 
+---
+
+## 15. Day 25: Scenario Engine
+
+### 15.1 Objective and Guiding Principles
+The Day 25 Scenario Engine answers the operational question:
+**“How would the existing decision change if specific business assumptions changed?”**
+
+It allows decision-makers to evaluate counterfactual assumptions against an immutable baseline decision, observe deterministic changes across key operational metrics (replenishment quantity, projected procurement cost, lead-time exposure, constraint outcomes), and assess whether the original recommendation remains valid.
+
+Core principle: **"The system calculates. AI explains. Humans approve."**
+
+No AI/LLM calculates the scenario outcomes. Recalculation is entirely deterministic and relies strictly on existing domain engines.
+
+### 15.2 What a Scenario Represents
+A scenario in EDOS is an isolated, counterfactual evaluation associated with a specific operational decision (and optionally an immutable decision version).
+- **Not a forecast**: Scenarios are deterministic evaluations under explicit assumption overrides; they do not represent statistical projections or market predictions.
+- **Not a mutation**: Executing a scenario leaves the baseline decision, version snapshots, provenance traces, candidate actions, and audit logs completely unchanged.
+- **Traceable record**: Each scenario generates an auditable record (`SCN-XXXX`) with an execution identifier (`SCX-XXXX`), linking back to the baseline trace (`baseline_trace_id`) and recording applied overrides, full input summaries, baseline vs scenario result snapshots, structured metric deltas, and execution status.
+
+### 15.3 Supported Override Categories and Units
+To preserve domain integrity and prevent arbitrary calculation branches, overrides are strictly constrained to three typed categories:
+
+1. **Demand Overrides (`DemandOverride`)**:
+   - `demand_value`: Absolute daily consumption rate in **units/day** (`float >= 0.0`).
+   - `demand_multiplier`: Proportional demand scalar (`float > 0.0`, e.g., `1.25` for a +25% surge).
+   - Validation: Exactly one of `demand_value` or `demand_multiplier` must be specified per demand override.
+2. **Supplier Lead Time Overrides (`LeadTimeOverride`)**:
+   - `lead_time_days`: Absolute procurement lead time in **days** (`int >= 1`).
+   - Validation: Must be an integer greater than or equal to 1. Proportional multipliers are excluded to prevent fractional day ambiguities.
+3. **Cost Overrides (`CostOverride`)**:
+   - `unit_cost`: Absolute catalog unit purchase price in **USD/unit** (`float >= 0.0`).
+   - `cost_multiplier`: Proportional unit price scalar (`float > 0.0`, e.g., `1.10` for a +10% price increase).
+   - Validation: Exactly one of `unit_cost` or `cost_multiplier` must be specified per cost override.
+
+General Override Invariants:
+- A `ScenarioOverrides` container must provide at least one valid override.
+- Unknown, arbitrary, or unsupported override categories are rejected at validation time.
+
+### 15.4 Baseline Acquisition & Historical Reconstruction
+Baseline inputs are reconstructed deterministically:
+1. **Historical Provenance Trace**: The engine retrieves the recorded `DecisionProvenanceTrace` associated with the decision (or explicitly requested `trace_id`).
+2. **Recorded Historical Inputs**: Product master, warehouse configuration, current inventory positions (on hand, reserved), and active supplier terms are extracted directly from the immutable trace input records.
+3. **No Live Mutation Substitution**: If a decision lacks recorded historical inputs or if the provenance trace is missing, the scenario engine does **not** substitute current live context. Instead, it marks the scenario as `INCOMPLETE` with structured reason codes.
+
+### 15.5 Deterministic Recalculation Flow
+When sufficient historical inputs are present, the recalculation pipeline executes:
+1. **Isolated Cloning**: Historical inputs are cloned into deep, isolated copies.
+2. **Override Application**:
+   - `DemandOverride`: Adjusts `daily_demand_rate` on the isolated demand context.
+   - `LeadTimeOverride`: Adjusts `lead_time_days` on the supplier term and updates `CandidateAction` parameters.
+   - `CostOverride`: Adjusts `unit_cost` on the supplier term and product master.
+3. **Engine Reuse**:
+   - **Replenishment Calculation**: `calculate_replenishment_quantity` deterministically recomputes net stock, safety stock, target stock, and gross/recommended replenishment quantities using the overridden inputs.
+   - **Action Evaluation**: `evaluate_candidate_action` recomputes replenishment impacts, deterministic stockout exposure indices, and projected direct procurement costs.
+   - **Constraint Validation**: `validate_candidate_action` re-evaluates all candidate actions against applicable operational constraints (e.g., supplier minimum order quantities, warehouse storage capacity, budget limits).
+   - **Recommendation Selection**: `select_deterministic_recommendation` executes the rule-based recommendation engine, ranking valid actions according to established priority and tie-breaking rules.
+
+### 15.6 Scenario Comparison & Metric Interpretation
+The comparison engine (`compare_scenario_results`) outputs a typed `ScenarioComparison`:
+- **Recommendation Comparison**:
+  - `recommendation_changed`: Boolean indicating whether the selected action or outcome status changed.
+  - `baseline_action_id` vs `scenario_action_id`
+  - `baseline_action_type` vs `scenario_action_type`
+- **Metric Deltas (`MetricDelta`)**:
+  - `replenishment_quantity`: Net change in recommended units (`scenario - baseline`).
+  - `projected_procurement_cost`: Net change in direct procurement cost in USD.
+  - `lead_time_exposure`: Net change in lead-time stockout exposure index.
+  - Uncalculable or unavailable metrics are explicitly preserved as `None` without fabricating zeros.
+- **Validation Changes**:
+  - Compares baseline vs scenario overall validation status (`ALL_SATISFIED`, `SOME_VIOLATED`, `ALL_VIOLATED`).
+  - Identifies newly satisfied or newly violated constraints for each candidate action.
+- **Granular Differences (`ScenarioFieldDifference`)**:
+  - Captures exact dot-delimited field paths and values where scenario evaluation diverged from baseline.
+
+### 15.7 Scenario Statuses and Failure Semantics
+- **`COMPLETED`**: Overrides successfully applied, recalculation completed deterministically, and comparison metrics generated.
+- **`INCOMPLETE`**: Required historical operational inputs or provenance traces were unavailable. The engine returns an actionable `incomplete_reasons` array (e.g., `MISSING_PROVENANCE_TRACE`, `MISSING_INPUT_RECORD`) rather than fabricating data.
+- **`FAILED`**: Recalculation encountered an unhandled exception or constraint boundary violation. Diagnostic error details are captured in `error_message`.
+
+### 15.8 API Endpoints
+- `POST /api/decisions/{decision_id}/scenarios`: Execute a scenario with overrides and return the recorded scenario record.
+- `GET /api/decisions/{decision_id}/scenarios/latest`: Retrieve the latest scenario record for a decision (supports optional `version_id`).
+- `GET /api/decisions/{decision_id}/scenarios`: List all scenario records associated with a decision in reverse chronological order.
+- `GET /api/decisions/{decision_id}/scenarios/{scenario_id}`: Retrieve a specific scenario record by ID (enforcing strict decision isolation).
+- `GET /api/decisions/{decision_id}/scenarios/{scenario_id}/comparison`: Retrieve the structured baseline-vs-scenario comparison.
+- Direct path aliases supported: `/decisions/...`, `/api/decision/...`, `/decision/...`.
+
+### 15.9 Architecture Decisions and Known Limitations
+- **In-Memory Lifespan**: In alignment with the EDOS repository architecture, scenario records (`SCN-XXXX`) reside in memory and do not persist across server restarts.
+- **Trace Dependency**: High-fidelity counterfactual recalculation relies on complete historical provenance traces captured at decision creation. Scenarios executed without provenance return `INCOMPLETE`.
+- **Supported Scope**: Scenarios currently alter demand rate, supplier lead time, and purchase costs. Structural changes (e.g. altering constraint rule logic, adding new warehouses, or multi-echelon network topology) remain out of scope.
+- **Scope Boundaries**: Day 26 AI-driven narrative explanations and sensitivity analyses remain cleanly decoupled and will consume the structured `ScenarioComparison` output without embedding LLM logic into recalculation.
+
+
 
 

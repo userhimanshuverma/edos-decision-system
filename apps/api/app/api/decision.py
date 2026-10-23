@@ -47,7 +47,11 @@ from app.api.schemas import (
     ProvenanceDerivationResponse,
     DecisionReplayResponse,
     ReplayDecisionRequest,
+    DecisionScenarioResponse,
+    ExecuteScenarioRequest,
+    ScenarioComparisonResponse,
 )
+
 from app.candidate_actions.service import (
     CandidateActionNotFoundError,
     CandidateActionService,
@@ -106,6 +110,21 @@ from app.repositories.replay_repository import (
     DuplicateReplayRecordError,
     ReplayRepository,
 )
+from app.scenario.service import (
+    CrossDecisionIsolationError as ScnCrossDecisionIsolationError,
+    DecisionNotFoundError as ScnDecisionNotFoundError,
+    DecisionScenarioError,
+    DecisionVersionNotFoundError as ScnVersionNotFoundError,
+    InvalidScenarioRequestError as ScnInvalidRequestError,
+    ProvenanceTraceNotFoundError as ScnProvenanceNotFoundError,
+    ScenarioRecordNotFoundError,
+    ScenarioService,
+)
+from app.repositories.scenario_repository import (
+    DuplicateScenarioRecordError,
+    ScenarioRepository,
+)
+
 
 
 
@@ -375,6 +394,37 @@ def get_replay_service() -> DecisionReplayService:
         supplier_repo=SupplierRepository(dataset=shared_dataset),
         graph_repo=graph_repo,
     )
+
+
+@lru_cache
+def get_scenario_repository() -> ScenarioRepository:
+    """Dependency provider returning singleton ScenarioRepository."""
+    return ScenarioRepository()
+
+
+@lru_cache
+def get_scenario_service() -> ScenarioService:
+    """Dependency provider returning ScenarioService wired to repositories."""
+    dec_repo = get_decision_repository()
+    action_repo = get_candidate_action_repository()
+    version_repo = get_decision_version_repository()
+    graph_repo = get_decision_graph_repository()
+    shared_dataset = dec_repo.dataset
+    return ScenarioService(
+        decision_repo=dec_repo,
+        scenario_repo=get_scenario_repository(),
+        provenance_repo=get_provenance_repository(),
+        action_repo=action_repo,
+        version_repo=version_repo,
+        recommendation_repo=get_recommendation_repository(),
+        validation_repo=get_validation_repository(),
+        evaluation_service=get_action_evaluation_service(),
+        inventory_repo=get_inventory_repository(),
+        demand_repo=DemandRepository(dataset=shared_dataset),
+        supplier_repo=SupplierRepository(dataset=shared_dataset),
+        graph_repo=graph_repo,
+    )
+
 
 
 
@@ -1940,5 +1990,158 @@ def get_decision_replay_record_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Day 25: Decision Scenario Engine Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{decision_id}/scenarios",
+    response_model=DecisionScenarioResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Execute a what-if scenario for a decision",
+    description="Recalculates decision outcomes under modified demand, lead-time, or cost assumptions and compares against baseline.",
+)
+def execute_scenario_endpoint(
+    decision_id: str,
+    payload: ExecuteScenarioRequest,
+    service: ScenarioService = Depends(get_scenario_service),
+) -> DecisionScenarioResponse:
+    try:
+        record = service.execute_scenario(
+            decision_id=decision_id,
+            overrides=payload.overrides.to_domain(),
+            version_id=payload.version_id,
+            trace_id=payload.trace_id,
+            name=payload.name,
+            record_to_graph=payload.record_to_graph,
+            metadata=payload.metadata,
+        )
+        return DecisionScenarioResponse.from_domain(record)
+    except (
+        DecisionNotFoundError,
+        ScnDecisionNotFoundError,
+        ScnVersionNotFoundError,
+        ScnProvenanceNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except (ScnCrossDecisionIsolationError, ScnInvalidRequestError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/scenarios/latest",
+    response_model=DecisionScenarioResponse,
+    summary="Get latest decision scenario record",
+    description="Retrieves the most recent scenario record for a decision, optionally filtered by version.",
+)
+def get_latest_decision_scenario_endpoint(
+    decision_id: str,
+    version_id: str | None = Query(default=None, description="Optional decision version filter"),
+    service: ScenarioService = Depends(get_scenario_service),
+) -> DecisionScenarioResponse:
+    try:
+        record = service.get_latest_scenario(decision_id=decision_id, version_id=version_id)
+        if record is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No scenario record found for decision '{decision_id}'",
+            )
+        return DecisionScenarioResponse.from_domain(record)
+    except (DecisionNotFoundError, ScnDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/scenarios",
+    response_model=list[DecisionScenarioResponse],
+    summary="List decision scenario records",
+    description="Retrieves all scenario execution records for a decision, sorted chronologically descending.",
+)
+def list_decision_scenarios_endpoint(
+    decision_id: str,
+    version_id: str | None = Query(default=None, description="Optional decision version filter"),
+    service: ScenarioService = Depends(get_scenario_service),
+) -> list[DecisionScenarioResponse]:
+    try:
+        records = service.list_scenario_records(decision_id=decision_id, version_id=version_id)
+        return [DecisionScenarioResponse.from_domain(r) for r in records]
+    except (DecisionNotFoundError, ScnDecisionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/scenarios/{scenario_id}",
+    response_model=DecisionScenarioResponse,
+    summary="Get specific decision scenario record",
+    description="Retrieves an individual scenario record by ID, strictly enforcing decision isolation.",
+)
+def get_decision_scenario_record_endpoint(
+    decision_id: str,
+    scenario_id: str,
+    service: ScenarioService = Depends(get_scenario_service),
+) -> DecisionScenarioResponse:
+    try:
+        record = service.get_scenario_record(decision_id=decision_id, scenario_id=scenario_id)
+        return DecisionScenarioResponse.from_domain(record)
+    except (
+        DecisionNotFoundError,
+        ScnDecisionNotFoundError,
+        ScenarioRecordNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ScnCrossDecisionIsolationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/{decision_id}/scenarios/{scenario_id}/comparison",
+    response_model=ScenarioComparisonResponse,
+    summary="Get baseline-versus-scenario comparison",
+    description="Retrieves structured baseline-versus-scenario comparison results for an executed scenario.",
+)
+def get_decision_scenario_comparison_endpoint(
+    decision_id: str,
+    scenario_id: str,
+    service: ScenarioService = Depends(get_scenario_service),
+) -> ScenarioComparisonResponse:
+    try:
+        comparison = service.get_scenario_comparison(decision_id=decision_id, scenario_id=scenario_id)
+        return ScenarioComparisonResponse.from_domain(comparison)
+    except (
+        DecisionNotFoundError,
+        ScnDecisionNotFoundError,
+        ScenarioRecordNotFoundError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ScnCrossDecisionIsolationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
 
 

@@ -52,6 +52,11 @@ from app.repositories.replay_repository import (
     DuplicateReplayRecordError,
     ReplayRepository,
 )
+from app.repositories.scenario_repository import (
+    DuplicateScenarioRecordError,
+    ScenarioRepository,
+)
+
 
 
 __all__ = [
@@ -85,5 +90,8 @@ __all__ = [
     "DuplicateProvenanceTraceError",
     "ReplayRepository",
     "DuplicateReplayRecordError",
+    "ScenarioRepository",
+    "DuplicateScenarioRecordError",
 ]
+
 
