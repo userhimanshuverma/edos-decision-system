@@ -50,6 +50,8 @@ from app.api.schemas import (
     DecisionScenarioResponse,
     ExecuteScenarioRequest,
     ScenarioComparisonResponse,
+    GenerateExplanationRequest,
+    DecisionExplanationResponse,
 )
 
 from app.candidate_actions.service import (
@@ -123,6 +125,25 @@ from app.scenario.service import (
 from app.repositories.scenario_repository import (
     DuplicateScenarioRecordError,
     ScenarioRepository,
+)
+from app.config import get_settings
+from app.explanation.ollama_client import (
+    OllamaClient,
+    OllamaConnectionError,
+    OllamaModelNotFoundError,
+    OllamaResponseError,
+    OllamaTimeoutError,
+)
+from app.explanation.context_collector import (
+    DecisionExplanationContextCollector,
+    DecisionNotFoundError as ExpDecisionNotFoundError,
+    DecisionVersionNotFoundError as ExpVersionNotFoundError,
+)
+from app.explanation.service import (
+    ExplanationService,
+    InsufficientContextError,
+    InvalidModelOutputError,
+    UngroundedEvidenceError,
 )
 
 
@@ -426,11 +447,41 @@ def get_scenario_service() -> ScenarioService:
     )
 
 
+@lru_cache
+def get_ollama_client() -> OllamaClient:
+    """Dependency provider returning singleton OllamaClient configured from app settings."""
+    cfg = get_settings()
+    return OllamaClient(
+        base_url=cfg.ollama_base_url,
+        model=cfg.ollama_model,
+        timeout=cfg.ollama_timeout_seconds,
+    )
 
 
+@lru_cache
+def get_explanation_context_collector() -> DecisionExplanationContextCollector:
+    """Dependency provider returning singleton DecisionExplanationContextCollector."""
+    return DecisionExplanationContextCollector(
+        decision_repo=get_decision_repository(),
+        version_repo=get_decision_version_repository(),
+        recommendation_repo=get_recommendation_repository(),
+        recommendation_service=get_recommendation_service(),
+        validation_repo=get_validation_repository(),
+        validation_service=get_validation_service(),
+        action_repo=get_candidate_action_repository(),
+        evidence_repo=get_evidence_repository(),
+        evidence_service=get_evidence_service(),
+        provenance_repo=get_provenance_repository(),
+        replay_repo=get_replay_repository(),
+        scenario_repo=get_scenario_repository(),
+    )
 
 
-
+def get_explanation_service(
+    ollama_client: OllamaClient = Depends(get_ollama_client),
+) -> ExplanationService:
+    """Dependency provider returning ExplanationService wired to Ollama client."""
+    return ExplanationService(ollama_client=ollama_client)
 
 @router.post(
     "",
@@ -2144,4 +2195,46 @@ def get_decision_scenario_comparison_endpoint(
         ) from exc
 
 
+# ---------------------------------------------------------------------------
+# Day 26: Local LLM Explanation Layer Endpoint (Ollama)
+# ---------------------------------------------------------------------------
 
+
+@router.post(
+    "/{decision_id}/explanation",
+    response_model=DecisionExplanationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate structured explanation for a decision using local LLM",
+    description="Invokes the local Ollama LLM to synthesize an auditable, grounded natural-language explanation for an existing decision.",
+)
+def generate_decision_explanation_endpoint(
+    decision_id: str,
+    payload: GenerateExplanationRequest | None = None,
+    context_collector: DecisionExplanationContextCollector = Depends(get_explanation_context_collector),
+    service: ExplanationService = Depends(get_explanation_service),
+) -> DecisionExplanationResponse:
+    version_id = payload.version_id if payload else None
+    try:
+        context = context_collector.collect_context(decision_id=decision_id, version_id=version_id)
+        explanation = service.generate_explanation(context=context)
+        return DecisionExplanationResponse.from_domain(explanation)
+    except (DecisionNotFoundError, ExpDecisionNotFoundError, ExpVersionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except InsufficientContextError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except (OllamaConnectionError, OllamaTimeoutError, OllamaModelNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except (OllamaResponseError, InvalidModelOutputError, UngroundedEvidenceError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc

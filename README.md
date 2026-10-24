@@ -71,8 +71,10 @@ The repository currently establishes:
 - Deterministic Action Evaluation Engine (`ActionEvaluationService`, `evaluate_candidate_action`) assessing candidate actions individually across stockout exposure, replenishment impact, supplier impact, and defensible cost without arbitrary composite scoring
 - Deterministic Recommendation Engine (`RecommendationService`, `select_deterministic_recommendation`) ranking candidate actions via Lexicographic Operational Dominance (LOD) and selecting optimal recommendations with explicit tie-breaking and audit evidence
 - Deterministic Hard-Constraint Validation Engine (`ValidationService`, `validate_candidate_action`, `validate_decision_actions`) screening candidate actions against physical and business policies (`WAREHOUSE_CAPACITY`, active statuses, supplier eligibility, budget ceilings, quantity bounds) with traceable PASS, FAIL, and UNABLE_TO_EVALUATE semantics
+- Deterministic Decision Replay Engine (Day 24) and Counterfactual Scenario Engine (Day 25)
+- Local LLM Explanation Layer (Day 26) powered by local Ollama (`POST /api/decisions/{decision_id}/explanation`): auditable natural-language narrative strictly explaining deterministic calculations and recommendations without mutating decisions or business logic (see [Explanation Layer Documentation](docs/explanation-layer.md))
 - In-memory repositories with deep defensive copies, deterministic ordering, and Decision Graph consistency
-- Comprehensive automated test suites across domain, repository, service, API, and graph integration layers (700 backend tests, 16 frontend tests)
+- Comprehensive automated test suites across domain, repository, service, API, and graph integration layers (854 backend tests, 37 frontend tests)
 
 
 

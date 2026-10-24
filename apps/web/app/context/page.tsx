@@ -19,6 +19,7 @@ import { LoadingState } from "../../components/ui/loading-state";
 import { ErrorState } from "../../components/ui/error-state";
 import { EmptyState } from "../../components/ui/empty-state";
 import { Button } from "../../components/ui/button";
+import { ExplanationPanel } from "../../components/explanation/explanation-panel";
 
 function ContextContent() {
   const searchParams = useSearchParams();
@@ -183,6 +184,11 @@ function ContextContent() {
               {/* Section E: Supplier Context */}
               <SupplierContextCard context={contextData} />
             </div>
+          </div>
+
+          {/* Section G: AI Explanation Layer (Day 26 Local LLM) */}
+          <div style={{ marginTop: "24px" }}>
+            <ExplanationPanel initialDecisionId="DEC-0001" />
           </div>
         </div>
       )}

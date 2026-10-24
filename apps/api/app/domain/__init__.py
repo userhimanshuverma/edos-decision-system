@@ -144,6 +144,10 @@ from app.domain.scenario import (
     ScenarioStatus,
     compare_scenario_results,
 )
+from app.domain.explanation import (
+    DecisionExplanation,
+    DecisionExplanationContext,
+)
 
 
 
@@ -272,6 +276,8 @@ __all__ = [
     "ScenarioComparison",
     "DecisionScenarioRecord",
     "compare_scenario_results",
+    "DecisionExplanationContext",
+    "DecisionExplanation",
 ]
 
 

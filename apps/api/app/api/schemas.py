@@ -57,6 +57,7 @@ from app.domain.scenario import (
     ScenarioResultSnapshot,
     ScenarioStatus,
 )
+from app.domain.explanation import DecisionExplanation
 
 from app.repositories.supplier_repository import SupplierRiskLevel, classify_supplier_risk
 
@@ -2571,5 +2572,86 @@ class DecisionScenarioResponse(BaseModel):
         )
 
 
+# ---------------------------------------------------------------------------
+# Day 26: Decision Explanation Layer Schemas (Ollama)
+# ---------------------------------------------------------------------------
 
 
+class GenerateExplanationRequest(BaseModel):
+    """Payload contract for requesting an AI explanation for an existing decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    version_id: str | None = Field(
+        default=None,
+        description="Optional decision version identifier to scope the explanation",
+    )
+
+
+class DecisionExplanationResponse(BaseModel):
+    """Clean typed response representing a structured decision explanation produced by local LLM."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", protected_namespaces=())
+
+    decision_id: str = Field(..., description="Associated business decision identifier (DEC-XXXX)")
+    decision_version_id: str | None = Field(
+        default=None,
+        description="Associated decision version identifier if version-scoped",
+    )
+    recommendation_summary: str = Field(
+        ...,
+        description="Summary of what the deterministic system recommended",
+    )
+    reasoning_summary: str = Field(
+        ...,
+        description="Concise rationale grounded in recorded facts and calculation results",
+    )
+    supporting_evidence: list[str] = Field(
+        default_factory=list,
+        description="Grounded references to evidence, calculation, or action IDs",
+    )
+    risks_and_constraints: list[str] = Field(
+        default_factory=list,
+        description="Operational risks, evaluated constraints, and threshold considerations",
+    )
+    assumptions_and_missing_information: list[str] = Field(
+        default_factory=list,
+        description="Explicit assumptions and material missing or incomplete inputs",
+    )
+    review_considerations: list[str] = Field(
+        default_factory=list,
+        description="Actionable considerations for the human reviewer prior to approval",
+    )
+    limitations: list[str] = Field(
+        default_factory=list,
+        description="Known operational and model limitations",
+    )
+    model_name: str = Field(
+        ...,
+        description="Configured local Ollama model identifier that generated the narrative",
+    )
+    generated_at: datetime = Field(
+        ...,
+        description="UTC timestamp of explanation generation",
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Runtime execution metadata",
+    )
+
+    @classmethod
+    def from_domain(cls, exp: DecisionExplanation) -> DecisionExplanationResponse:
+        return cls(
+            decision_id=exp.decision_id,
+            decision_version_id=exp.decision_version_id,
+            recommendation_summary=exp.recommendation_summary,
+            reasoning_summary=exp.reasoning_summary,
+            supporting_evidence=exp.supporting_evidence,
+            risks_and_constraints=exp.risks_and_constraints,
+            assumptions_and_missing_information=exp.assumptions_and_missing_information,
+            review_considerations=exp.review_considerations,
+            limitations=exp.limitations,
+            model_name=exp.model_name,
+            generated_at=exp.generated_at,
+            metadata=exp.metadata,
+        )
