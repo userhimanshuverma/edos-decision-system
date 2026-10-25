@@ -1919,6 +1919,63 @@ The comparison engine (`compare_scenario_results`) outputs a typed `ScenarioComp
 - **Supported Scope**: Scenarios currently alter demand rate, supplier lead time, and purchase costs. Structural changes (e.g. altering constraint rule logic, adding new warehouses, or multi-echelon network topology) remain out of scope.
 - **Scope Boundaries**: Day 26 AI-driven narrative explanations and sensitivity analyses remain cleanly decoupled and will consume the structured `ScenarioComparison` output without embedding LLM logic into recalculation.
 
+---
+
+## 16. AI Explanation & Decision Q&A Layer (Days 26–27)
+
+### 16.1 Architectural Mandate & Governing Principle
+The AI Explanation and Decision Q&A Layer operates on an inviolable boundary:
+
+> **The system calculates. AI explains. Humans approve.**
+
+The language model operates strictly as an auditable interpretation and Q&A layer over deterministic records. It cannot:
+- Compute replenishment quantities, order points, or safety buffers.
+- Alter decision statuses (DRAFT, EVALUATING, READY, APPROVED, REJECTED).
+- Fabricate calculation evidence, provenance traces, or constraint results.
+- Mutate candidate actions or replace deterministic recommendations.
+
+### 16.2 Component Structure
+
+```text
+Decision Context + Version Snapshot + Provenance Traces + Constraints + Evidence
+                                 │
+                                 ▼
+               [DecisionExplanationContextCollector]
+                 • Bounded to target decision & version
+                 • Distinguishes facts from assumptions & limitations
+                                 │
+                 ┌───────────────┴───────────────┐
+                 ▼                               ▼
+       [ExplanationService]            [DecisionQAService]
+       (Day 26: Narrative)             (Day 27: Decision Q&A)
+                 │                               │
+                 └───────────────┬───────────────┘
+                                 ▼
+                     [OllamaClient] (Local LLM)
+                                 │
+                 ┌───────────────┴───────────────┐
+                 ▼                               ▼
+POST /api/decisions/{id}/explanation  POST /api/decisions/{id}/questions
+```
+
+### 16.3 Decision Q&A Service (`DecisionQAService`)
+The Decision Q&A service receives reviewer questions and executes:
+1. **Context Assembly**: Retrieves strictly decision-isolated facts, constraints, recommendations, and evidence items via `DecisionExplanationContextCollector`.
+2. **Untrusted Prompt Isolation**: Frames reviewer questions and external notes as untrusted text within a strictly governed system prompt.
+3. **Local LLM Invocation**: Calls the configured Ollama model (default `llama3.2:1b`) with a JSON formatting contract.
+4. **Citation Grounding Check**: Cross-references every cited ID (`EVD-XXXX`, `ACT-XXXX`, etc.) against supplied context. Any fabricated citation ID immediately triggers `UngroundedEvidenceError` (HTTP 502).
+5. **Honest Limitations**: If context is missing or incomplete, the service returns `INSUFFICIENT_CONTEXT` rather than extrapolating or guessing.
+
+### 16.4 API Endpoints
+- `POST /api/decisions/{decision_id}/questions`: Canonical endpoint for decision-scoped reviewer Q&A.
+- `POST /api/decisions/{decision_id}/qa`: Convenience alias endpoint.
+- `POST /api/decisions/{decision_id}/explanation`: Day 26 comprehensive narrative explanation endpoint.
+
+### 16.5 Known Limitations & Persistence
+- **In-Memory Lifespan**: Decisions, recommendations, evidence, versions, and replay snapshots reside in volatile memory and do not persist across restarts.
+- **Historical Scope**: Without an explicit `version_id`, context reflects the latest recorded decision state. If historical traces are absent, limitations are disclosed explicitly.
+
+
 
 
 

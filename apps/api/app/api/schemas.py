@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 from datetime import datetime
 from typing import Any
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 from app.domain.decision import Decision, DecisionStatus
@@ -57,7 +57,7 @@ from app.domain.scenario import (
     ScenarioResultSnapshot,
     ScenarioStatus,
 )
-from app.domain.explanation import DecisionExplanation
+from app.domain.explanation import DecisionExplanation, DecisionQuestionAnswer, DecisionQuestionStatus
 
 from app.repositories.supplier_repository import SupplierRiskLevel, classify_supplier_risk
 
@@ -2654,4 +2654,87 @@ class DecisionExplanationResponse(BaseModel):
             model_name=exp.model_name,
             generated_at=exp.generated_at,
             metadata=exp.metadata,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Day 27: Decision Q&A Layer Schemas (Ollama)
+# ---------------------------------------------------------------------------
+
+
+class DecisionQuestionRequest(BaseModel):
+    """Payload contract for asking a natural-language question about an existing decision."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    question: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="Natural-language question regarding the decision",
+    )
+    version_id: str | None = Field(
+        default=None,
+        description="Optional decision version identifier to scope the question",
+    )
+
+    @field_validator("question")
+    @classmethod
+    def validate_question_non_empty(cls, value: str) -> str:
+        clean = value.strip()
+        if not clean:
+            raise ValueError("Question cannot be empty or solely whitespace.")
+        return clean
+
+
+class DecisionQuestionResponse(BaseModel):
+    """Clean typed response representing a structured answer to a decision question."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", protected_namespaces=())
+
+    decision_id: str = Field(..., description="Associated business decision identifier (DEC-XXXX)")
+    decision_version_id: str | None = Field(
+        default=None,
+        description="Associated decision version identifier if version-scoped",
+    )
+    question: str = Field(..., description="Original reviewer question")
+    answer: str = Field(..., description="Grounded natural-language answer synthesized from recorded facts")
+    status: str = Field(
+        ...,
+        description="Outcome status of the question evaluation (ANSWERED, INSUFFICIENT_CONTEXT, UNANSWERABLE)",
+    )
+    supporting_evidence: list[str] = Field(
+        default_factory=list,
+        description="Verified references to evidence, calculation, or action IDs cited from context",
+    )
+    limitations: list[str] = Field(
+        default_factory=list,
+        description="Explicit disclosure of missing context, assumptions, or operational boundaries",
+    )
+    model_name: str = Field(
+        ...,
+        description="Configured local Ollama model identifier that generated the response",
+    )
+    answered_at: datetime = Field(
+        ...,
+        description="UTC timestamp of question evaluation",
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Runtime execution metadata",
+    )
+
+    @classmethod
+    def from_domain(cls, qa: DecisionQuestionAnswer) -> DecisionQuestionResponse:
+        return cls(
+            decision_id=qa.decision_id,
+            decision_version_id=qa.decision_version_id,
+            question=qa.question,
+            answer=qa.answer,
+            status=qa.status.value if hasattr(qa.status, "value") else str(qa.status),
+            supporting_evidence=qa.supporting_evidence,
+            limitations=qa.limitations,
+            model_name=qa.model_name,
+            answered_at=qa.answered_at,
+            metadata=qa.metadata,
         )

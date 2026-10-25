@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -100,6 +101,60 @@ class DecisionExplanation(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict, description="Runtime execution metadata")
 
     @field_validator("generated_at")
+    @classmethod
+    def ensure_utc_timestamp(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+
+class DecisionQuestionStatus(str, Enum):
+    """Evaluation status for a decision Q&A query."""
+
+    ANSWERED = "ANSWERED"
+    INSUFFICIENT_CONTEXT = "INSUFFICIENT_CONTEXT"
+    UNANSWERABLE = "UNANSWERABLE"
+
+
+class DecisionQuestionAnswer(BaseModel):
+    """Structured, auditable answer to a natural-language question regarding a specific decision.
+
+    Adheres strictly to the core principle:
+    "The system calculates. AI explains. Humans approve."
+
+    Guarantees:
+    - Grounded strictly in the decision's recorded context and calculation results.
+    - Cites only validated evidence, calculation, or action IDs from context.
+    - Does not mutate recommendations, calculate new numbers, or approve decisions.
+    - Transparently reports when data is incomplete or unavailable.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", protected_namespaces=())
+
+    decision_id: str = Field(..., min_length=1, description="Associated business decision identifier")
+    decision_version_id: str | None = Field(default=None, description="Associated decision version identifier if version-scoped")
+    question: str = Field(..., min_length=1, description="Original reviewer question")
+    answer: str = Field(..., min_length=1, description="Grounded, auditable answer produced by local LLM")
+    status: DecisionQuestionStatus = Field(
+        default=DecisionQuestionStatus.ANSWERED,
+        description="Outcome status of the question evaluation",
+    )
+    supporting_evidence: list[str] = Field(
+        default_factory=list,
+        description="References to verified evidence IDs or recorded calculation IDs from context",
+    )
+    limitations: list[str] = Field(
+        default_factory=list,
+        description="Explicit limitations, missing data caveats, or boundaries disclosed in the response",
+    )
+    model_name: str = Field(..., min_length=1, description="Configured local model identifier that generated the response")
+    answered_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="UTC timestamp of question answering",
+    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Runtime execution metadata")
+
+    @field_validator("answered_at")
     @classmethod
     def ensure_utc_timestamp(cls, value: datetime) -> datetime:
         if value.tzinfo is None:

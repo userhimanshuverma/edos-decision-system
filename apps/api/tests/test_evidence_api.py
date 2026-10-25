@@ -7,6 +7,7 @@ from app.api.decision import (
     get_candidate_action_repository,
     get_decision_repository,
     get_evidence_repository,
+    get_recommendation_repository,
     get_validation_repository,
 )
 from app.domain.candidate_action import (
@@ -28,16 +29,19 @@ def clean_repositories():
     action_repo = get_candidate_action_repository()
     val_repo = get_validation_repository()
     ev_repo = get_evidence_repository()
+    rec_repo = get_recommendation_repository()
 
     dec_repo.clear()
     action_repo.clear()
     val_repo.clear()
     ev_repo.clear()
+    rec_repo.clear()
     yield
     dec_repo.clear()
     action_repo.clear()
     val_repo.clear()
     ev_repo.clear()
+    rec_repo.clear()
 
 
 @pytest.fixture

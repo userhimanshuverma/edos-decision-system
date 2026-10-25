@@ -61,17 +61,17 @@ class DecisionExplanationContextCollector:
         scenario_repo: ScenarioRepository | None = None,
     ) -> None:
         self._decision_repo = decision_repo
-        self._version_repo = version_repo or getattr(decision_repo, "version_repository", None)
-        self._recommendation_repo = recommendation_repo or RecommendationRepository()
+        self._version_repo = version_repo if version_repo is not None else getattr(decision_repo, "version_repository", None)
+        self._recommendation_repo = recommendation_repo if recommendation_repo is not None else RecommendationRepository()
         self._recommendation_service = recommendation_service
-        self._validation_repo = validation_repo or ValidationRepository()
+        self._validation_repo = validation_repo if validation_repo is not None else ValidationRepository()
         self._validation_service = validation_service
-        self._action_repo = action_repo or getattr(decision_repo, "action_repository", None) or CandidateActionRepository()
-        self._evidence_repo = evidence_repo or EvidenceRepository()
+        self._action_repo = action_repo if action_repo is not None else (getattr(decision_repo, "action_repository", None) or CandidateActionRepository())
+        self._evidence_repo = evidence_repo if evidence_repo is not None else EvidenceRepository()
         self._evidence_service = evidence_service
-        self._provenance_repo = provenance_repo or ProvenanceRepository()
-        self._replay_repo = replay_repo or ReplayRepository()
-        self._scenario_repo = scenario_repo or ScenarioRepository()
+        self._provenance_repo = provenance_repo if provenance_repo is not None else ProvenanceRepository()
+        self._replay_repo = replay_repo if replay_repo is not None else ReplayRepository()
+        self._scenario_repo = scenario_repo if scenario_repo is not None else ScenarioRepository()
 
     def collect_context(
         self,

@@ -52,6 +52,8 @@ from app.api.schemas import (
     ScenarioComparisonResponse,
     GenerateExplanationRequest,
     DecisionExplanationResponse,
+    DecisionQuestionRequest,
+    DecisionQuestionResponse,
 )
 
 from app.candidate_actions.service import (
@@ -144,6 +146,10 @@ from app.explanation.service import (
     InsufficientContextError,
     InvalidModelOutputError,
     UngroundedEvidenceError,
+)
+from app.explanation.qa_service import (
+    DecisionQAService,
+    InvalidQuestionError,
 )
 
 
@@ -482,6 +488,13 @@ def get_explanation_service(
 ) -> ExplanationService:
     """Dependency provider returning ExplanationService wired to Ollama client."""
     return ExplanationService(ollama_client=ollama_client)
+
+
+def get_decision_qa_service(
+    ollama_client: OllamaClient = Depends(get_ollama_client),
+) -> DecisionQAService:
+    """Dependency provider returning DecisionQAService wired to Ollama client."""
+    return DecisionQAService(ollama_client=ollama_client)
 
 @router.post(
     "",
@@ -2224,6 +2237,57 @@ def generate_decision_explanation_endpoint(
             detail=str(exc),
         ) from exc
     except InsufficientContextError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except (OllamaConnectionError, OllamaTimeoutError, OllamaModelNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except (OllamaResponseError, InvalidModelOutputError, UngroundedEvidenceError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Day 27: Decision Q&A Layer Endpoints (Ollama)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{decision_id}/questions",
+    response_model=DecisionQuestionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Ask a grounded natural-language question about an existing decision",
+    description="Invokes the local Ollama LLM to answer reviewer questions strictly grounded in recorded decision data and constraints.",
+)
+@router.post(
+    "/{decision_id}/qa",
+    response_model=DecisionQuestionResponse,
+    status_code=status.HTTP_200_OK,
+    include_in_schema=False,
+)
+def ask_decision_question_endpoint(
+    decision_id: str,
+    payload: DecisionQuestionRequest,
+    context_collector: DecisionExplanationContextCollector = Depends(get_explanation_context_collector),
+    qa_service: DecisionQAService = Depends(get_decision_qa_service),
+) -> DecisionQuestionResponse:
+    version_id = payload.version_id if payload else None
+    try:
+        context = context_collector.collect_context(decision_id=decision_id, version_id=version_id)
+        answer = qa_service.answer_question(context=context, question=payload.question)
+        return DecisionQuestionResponse.from_domain(answer)
+    except (DecisionNotFoundError, ExpDecisionNotFoundError, ExpVersionNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except InvalidQuestionError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),

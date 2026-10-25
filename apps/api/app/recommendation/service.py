@@ -63,7 +63,11 @@ class RecommendationService:
         self._decision_repo = decision_repo
         self._action_repo = action_repo
         self._evaluation_service = evaluation_service
-        self._recommendation_repo = recommendation_repo or RecommendationRepository()
+        self._recommendation_repo = (
+            recommendation_repo
+            if recommendation_repo is not None
+            else RecommendationRepository()
+        )
         self._graph_repo = graph_repo
 
     @property

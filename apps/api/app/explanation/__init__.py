@@ -19,6 +19,11 @@ from app.explanation.service import (
     InvalidModelOutputError,
     UngroundedEvidenceError,
 )
+from app.explanation.qa_service import (
+    DecisionQAService,
+    DecisionQAServiceError,
+    InvalidQuestionError,
+)
 
 __all__ = [
     "OllamaClient",
@@ -36,4 +41,7 @@ __all__ = [
     "InsufficientContextError",
     "InvalidModelOutputError",
     "UngroundedEvidenceError",
+    "DecisionQAService",
+    "DecisionQAServiceError",
+    "InvalidQuestionError",
 ]

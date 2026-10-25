@@ -150,6 +150,59 @@ If the local Ollama runtime is unavailable, the core EDOS decision engine contin
 
 ---
 
+## EDOS Day 27: Decision Q&A Layer
+
+### Overview & Operational Purpose
+
+Day 27 extends the Day 26 AI Explanation Layer into an interactive, decision-scoped natural-language inquiry service. Human decision-makers and inventory reviewers can ask ad-hoc questions about specific replenishment decisions (e.g., *"Why was this replenishment recommended?"*, *"What recorded evidence supports this action?"*, *"Which constraints affect the decision?"*).
+
+The Q&A layer is strictly read-only and strictly bounded to the selected decision and optional historical version.
+
+### API Specification: `POST /api/decisions/{decision_id}/questions`
+
+- **Methods & Route Aliases:**
+  - `POST /api/decisions/{decision_id}/questions` (primary canonical endpoint)
+  - `POST /api/decisions/{decision_id}/qa` (convenience alias)
+  - `POST /decisions/{decision_id}/questions` (root alias)
+- **Request Body:**
+  ```json
+  {
+    "question": "Why was this replenishment recommended?",
+    "version_id": "VER-0001"
+  }
+  ```
+- **Response Model (`DecisionQuestionResponse` - HTTP 200):**
+  ```json
+  {
+    "decision_id": "DEC-0001",
+    "decision_version_id": "VER-0001",
+    "question": "Why was this replenishment recommended?",
+    "answer": "The system recommended ordering 60 units because the current inventory position of 45 units is below the reorder point of 80 units.",
+    "status": "ANSWERED",
+    "supporting_evidence": ["EVD-0001", "ACT-0001", "CALC-0001"],
+    "limitations": ["Supplier volatility not included in calculation."],
+    "model_name": "llama3.2:1b",
+    "generated_at": "2026-10-25T20:30:00Z"
+  }
+  ```
+
+### Answer Status Contract
+
+| Status | Definition |
+|---|---|
+| `ANSWERED` | The question was answered completely and grounded in the decision's recorded context. |
+| `INSUFFICIENT_CONTEXT` | The requested information is absent or incomplete in recorded evidence (e.g., unexecuted replay or unrecorded supplier constraints). Honest limitation disclosure without hallucination. |
+| `UNANSWERABLE` | The question is out of scope for operational replenishment decisions or contradicts deterministic records. |
+
+### Grounding & Guardrails in Q&A
+
+1. **Untrusted Reviewer Input:** Question text and recorded notes are treated strictly as untrusted data, never as prompt instructions.
+2. **Citation Verification:** Supporting citations returned by the LLM (`EVD-XXXX`, `ACT-XXXX`, etc.) are checked against the actual items in `DecisionExplanationContext`. Ungrounded citations trigger HTTP 502 (`UngroundedEvidenceError`).
+3. **No Decision Mutation:** The endpoint is strictly read-only. It cannot approve, reject, execute, re-evaluate, or alter decisions, candidate actions, quantities, or logs.
+4. **Honest Context Disclosure:** When data is unavailable, the service returns `INSUFFICIENT_CONTEXT` rather than inferring or extrapolating live facts into historical snapshots.
+
+---
+
 ## Testing Without Ollama
 
 All automated test suites in EDOS are fully decoupled from local daemons or external network calls. Tests use `httpx.MockTransport` to simulate Ollama responses, connection errors, timeouts, and edge cases.
@@ -158,17 +211,17 @@ All automated test suites in EDOS are fully decoupled from local daemons or exte
 
 ```bash
 cd apps/api
-pytest tests/test_ollama_client.py tests/test_context_collector.py tests/test_explanation_service.py tests/test_explanation_api.py -v
+pytest tests/test_decision_qa_service.py tests/test_decision_qa_api.py -v
 ```
 
 Run entire backend suite:
 ```bash
-pytest -q
+pytest apps/api/tests/ -q
 ```
 
 ### Running Frontend Tests
 
 ```bash
 cd apps/web
-node --test tests/explanation.test.mjs
+node --test tests/qa.test.mjs tests/explanation.test.mjs
 ```

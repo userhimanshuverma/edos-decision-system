@@ -20,6 +20,7 @@ import { ErrorState } from "../../components/ui/error-state";
 import { EmptyState } from "../../components/ui/empty-state";
 import { Button } from "../../components/ui/button";
 import { ExplanationPanel } from "../../components/explanation/explanation-panel";
+import { DecisionQAPanel } from "../../components/explanation/decision-qa-panel";
 
 function ContextContent() {
   const searchParams = useSearchParams();
@@ -189,6 +190,11 @@ function ContextContent() {
           {/* Section G: AI Explanation Layer (Day 26 Local LLM) */}
           <div style={{ marginTop: "24px" }}>
             <ExplanationPanel initialDecisionId="DEC-0001" />
+          </div>
+
+          {/* Section H: Decision Q&A Layer (Day 27 Local LLM) */}
+          <div style={{ marginTop: "24px" }}>
+            <DecisionQAPanel initialDecisionId="DEC-0001" />
           </div>
         </div>
       )}
