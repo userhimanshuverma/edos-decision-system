@@ -13,8 +13,8 @@ export default function OverviewPage() {
       <section className="edos-overview__hero" aria-labelledby="overview-title">
         <div className="edos-overview__hero-pre">
           <Badge variant="default">Foundation Phase</Badge>
-          <Badge variant="neutral">Day 3</Badge>
-          <Badge variant="success">Day 10 Live</Badge>
+          <Badge variant="neutral">Day 28</Badge>
+          <Badge variant="success">Workspace Live</Badge>
         </div>
         <h1 id="overview-title" className="edos-overview__hero-title">
           Overview
@@ -23,7 +23,7 @@ export default function OverviewPage() {
           Operational Decision System
         </h2>
         <p className="edos-overview__hero-description">
-          Monitor and review operational decisions from one workspace.
+          Monitor and review operational decisions from one cohesive workspace.
         </p>
       </section>
 
@@ -34,36 +34,85 @@ export default function OverviewPage() {
       >
         {/* Card 1: Active Decisions */}
         <Metric
-          label="Active Decisions"
-          value="—"
-          badge="Idle"
-          badgeVariant="neutral"
-          note="No decision runs currently in progress"
+          label="Decision Workspace"
+          value={<Link href="/decisions" style={{ color: "var(--accent)", textDecoration: "none" }}>Open →</Link>}
+          badge="Live"
+          badgeVariant="success"
+          note="Review decisions, actions, trust & AI explanation"
         />
 
         {/* Card 2: Pending Reviews */}
         <Metric
-          label="Pending Reviews"
-          value="—"
-          badge="Queue 0"
-          badgeVariant="neutral"
-          note="Human approval queue awaiting triggers"
+          label="Human Approval Boundary"
+          value={<span style={{ color: "var(--success)" }}>READY</span>}
+          badge="Evaluated"
+          badgeVariant="success"
+          note="System calculates. AI explains. Humans approve."
         />
 
         {/* Card 3: System Status */}
         <Metric
           label="System Status"
-          value={<span style={{ color: "var(--success)" }}>READY</span>}
+          value={<span style={{ color: "var(--success)" }}>OPERATIONAL</span>}
           badge="READY"
           badgeVariant="success"
           note={
             <StatusIndicator
               tone="ready"
-              label="FastAPI & Web Shell Operational"
+              label="Decision Pipeline & Services Online"
               pulse
             />
           }
         />
+      </section>
+
+      {/* Decision Workspace Featured Section (Day 28) */}
+      <section className="edos-section" aria-labelledby="workspace-section-title">
+        <div className="edos-section__header">
+          <h3 id="workspace-section-title" className="edos-section__title">
+            Unified Decision Workspace
+          </h3>
+          <span className="edos-section__tag">DAY 28 MILESTONE — LIVE</span>
+        </div>
+
+        <Card
+          title="Integrated Decision Review Experience"
+          description="A single cohesive workspace connecting decision lifecycle, candidate actions, recommendation ranking, hard constraints, evidence sheets, provenance traces, decision replay, and local LLM explanation & Q&A."
+          headerAction={
+            <Link
+              href="/decisions"
+              className="edos-btn edos-btn--primary edos-btn--sm"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 18px",
+                background: "var(--accent)",
+                color: "#ffffff",
+                borderRadius: "var(--radius-md)",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                textDecoration: "none",
+              }}
+            >
+              Open Decision Workspace →
+            </Link>
+          }
+        >
+          <div className="edos-overview-context-banner">
+            <div className="edos-overview-context-banner__meta">
+              <span className="edos-overview-context-sku">4 Integrated Sections</span>
+              <span className="edos-overview-context-title">
+                Overview &bull; Recommended Action &amp; Scenarios &bull; Evidence &amp; Decision Trust &bull; AI Explanation &amp; Q&amp;A
+              </span>
+            </div>
+            <div className="edos-overview-context-banner__badges">
+              <Badge variant="success">Deterministic Engine</Badge>
+              <Badge variant="neutral">Lexicographic Dominance</Badge>
+              <Badge variant="outline">Grounded AI</Badge>
+            </div>
+          </div>
+        </Card>
       </section>
 
       {/* Operational Situation Context Workspace (Day 10) */}

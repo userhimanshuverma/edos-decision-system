@@ -2895,3 +2895,620 @@ a {
     padding: 0 var(--space-4);
   }
 }
+
+/* ==========================================================================
+   Day 28: Decision Workspace Integration Styles
+   ========================================================================== */
+
+.edos-ws-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.edos-ws-header {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.edos-ws-header__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.edos-ws-header__meta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.edos-ws-header__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.edos-ws-header__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.edos-ws-header__subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.edos-ws-header__context-tags {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.edos-ws-tag {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.edos-ws-header__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.edos-ws-switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.edos-ws-switcher__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Lifecycle progression stepper */
+.edos-ws-lifecycle {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.edos-ws-lifecycle__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.edos-ws-lifecycle__stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.edos-ws-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.edos-ws-step__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  background: var(--border);
+  color: var(--text-muted);
+}
+
+.edos-ws-step--completed {
+  color: var(--success);
+}
+
+.edos-ws-step--completed .edos-ws-step__dot {
+  background: var(--success-subtle);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}
+
+.edos-ws-step--current {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.edos-ws-step--current .edos-ws-step__dot {
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: var(--shadow-glow);
+}
+
+.edos-ws-step__connector {
+  display: inline-block;
+  width: 16px;
+  height: 2px;
+  background: var(--border);
+  margin: 0 var(--space-1);
+}
+
+/* Human Approval Boundary Callout */
+.edos-ws-approval-boundary {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--success-subtle);
+  border: 1px solid var(--success-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.edos-ws-approval-boundary__icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.edos-ws-approval-boundary__note {
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+/* Hero recommendation card */
+.edos-ws-hero-card {
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-subtle) 100%);
+  border: 1px solid var(--border-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-card);
+  margin-bottom: var(--space-6);
+}
+
+.edos-ws-hero-card__badge-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.edos-ws-hero-card__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.edos-ws-hero-card__action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-2) 0;
+  flex-wrap: wrap;
+}
+
+.edos-ws-hero-card__action-type {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.edos-ws-hero-card__action-qty,
+.edos-ws-hero-card__action-sup {
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: var(--surface);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.edos-ws-hero-card__rationale {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: var(--space-3) 0;
+}
+
+.edos-ws-hero-card__meta {
+  display: flex;
+  gap: var(--space-6);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+}
+
+/* Grids */
+.edos-ws-grid--3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+}
+
+.edos-ws-grid--2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .edos-ws-grid--3col,
+  .edos-ws-grid--2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.edos-ws-metric-strip {
+  margin-bottom: var(--space-4);
+}
+
+/* Section Header */
+.edos-ws-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.edos-ws-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.edos-ws-section__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.edos-ws-section__tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+/* Navigation Quick Bar */
+.edos-ws-nav-bar {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-6);
+  overflow-x: auto;
+}
+
+.edos-ws-nav-btn {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.edos-ws-nav-btn:hover {
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+}
+
+.edos-ws-nav-btn--active {
+  background: var(--accent);
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+/* Scenario Box */
+.edos-ws-scenario-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.edos-ws-scenario-box__notice {
+  display: flex;
+  gap: var(--space-3);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.edos-ws-scenario-form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) auto;
+  gap: var(--space-4);
+  align-items: flex-end;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .edos-ws-scenario-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.edos-form-group--submit {
+  display: flex;
+  align-items: flex-end;
+}
+
+.edos-ws-scenario-chips {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+.edos-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.edos-chip:hover {
+  border-color: var(--accent);
+}
+
+.edos-chip--active {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.edos-ws-comp-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.edos-ws-comp-card h5 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-2);
+}
+
+.edos-ws-comp-card--scenario {
+  border-left: 3px solid var(--warning);
+}
+
+.edos-ws-comp-card--baseline {
+  border-left: 3px solid var(--info);
+}
+
+/* Trust & Provenance */
+.edos-ws-summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  margin-right: var(--space-4);
+}
+
+.edos-ws-validation-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--surface-subtle);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.edos-ws-stat-card {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+}
+
+.edos-ws-stat-card__label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.edos-ws-stat-card__val {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.edos-ws-stat-card__sub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.edos-ws-pipeline-track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  flex-wrap: wrap;
+}
+
+.edos-ws-stage-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  flex: 1;
+  min-width: 140px;
+}
+
+.edos-ws-stage-box__num {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.edos-ws-stage-box h6 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 2px 0;
+}
+
+.edos-ws-stage-box__count {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.edos-ws-stage-box--result {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.edos-ws-provenance-meta {
+  display: flex;
+  gap: var(--space-4);
+  font-size: 0.8125rem;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+/* AI Box */
+.edos-ws-ai-banner {
+  display: flex;
+  gap: var(--space-3);
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.edos-ws-ai-banner__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.edos-ws-ai-banner__principle {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--accent-hover);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.edos-ws-ai-banner__description {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* Modal */
+.edos-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--space-4);
+}
+
+.edos-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  max-width: 520px;
+  width: 100%;
+  box-shadow: var(--shadow-elevated);
+}
+
+.edos-ws-empty-panel {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.edos-ws-assumption-notice {
+  background: var(--warning-subtle);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.edos-bullet-list {
+  padding-left: 20px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+

@@ -31,11 +31,10 @@ export const navigationSections: NavSection[] = [
     title: "DECISIONS",
     items: [
       {
-        id: "all-decisions",
-        label: "All Decisions",
+        id: "decision-workspace",
+        label: "Decision Workspace",
         href: "/decisions",
-        disabled: true,
-        badge: "Coming Soon",
+        badge: "Live",
       },
     ],
   },
