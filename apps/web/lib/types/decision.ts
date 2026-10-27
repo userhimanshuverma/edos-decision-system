@@ -1092,5 +1092,28 @@ export interface ExecuteScenarioRequest {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Day 29: Section loading and reliability status across the Decision Workspace.
+ */
+export type SectionLoadStatus =
+  | 'idle'
+  | 'loading'
+  | 'success'
+  | 'empty'
+  | 'incomplete'
+  | 'unavailable'
+  | 'error';
+
+/**
+ * Day 29: Structured failure representation for workspace sections.
+ */
+export interface SectionErrorState {
+  message: string;
+  errorCode?: string;
+  category?: string;
+  statusCode?: number;
+  isRetryable?: boolean;
+}
+
 
 

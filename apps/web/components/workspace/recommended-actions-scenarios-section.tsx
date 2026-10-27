@@ -7,19 +7,30 @@ import type {
   DecisionScenarioRecord,
   ScenarioComparisonRecord,
   ScenarioOverrides,
+  SectionLoadStatus,
+  SectionErrorState,
 } from "../../lib/types/decision";
 import { executeDecisionScenario, getDecisionScenarioComparison } from "../../lib/api/decision";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { KeyValue } from "../ui/key-value";
+import { ErrorState } from "../ui/error-state";
+import { LoadingState } from "../ui/loading-state";
+import { EmptyState } from "../ui/empty-state";
 
 export interface RecommendedActionsScenariosSectionProps {
   decisionId: string;
   candidateActions: CandidateActionRecord[];
+  actionsStatus?: SectionLoadStatus;
+  actionsError?: SectionErrorState | null;
+  onRetryActions?: () => void;
   recommendation: RecommendationRecord | null;
   scenarios: DecisionScenarioRecord[];
+  scenariosStatus?: SectionLoadStatus;
+  scenariosError?: SectionErrorState | null;
   onRefreshScenarios: () => void;
+  onRetryScenarios?: () => void;
   onSeedActionsPrompt?: () => void;
   isLoading?: boolean;
 }
@@ -27,9 +38,15 @@ export interface RecommendedActionsScenariosSectionProps {
 export function RecommendedActionsScenariosSection({
   decisionId,
   candidateActions,
+  actionsStatus = "idle",
+  actionsError = null,
+  onRetryActions,
   recommendation,
   scenarios,
+  scenariosStatus = "idle",
+  scenariosError = null,
   onRefreshScenarios,
+  onRetryScenarios,
   onSeedActionsPrompt,
   isLoading = false,
 }: RecommendedActionsScenariosSectionProps) {
@@ -66,6 +83,7 @@ export function RecommendedActionsScenariosSection({
 
   const handleRunScenario = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isExecutingScenario) return; // Guard against overlapping duplicate submissions
     setIsExecutingScenario(true);
     setScenarioError(null);
 
@@ -91,6 +109,9 @@ export function RecommendedActionsScenariosSection({
     }
   };
 
+  const isActionsLoading = isLoading || actionsStatus === "loading";
+  const hasActionsError = actionsStatus === "error" || Boolean(actionsError);
+
   return (
     <section className="edos-ws-section" aria-labelledby="actions-scenarios-heading">
       <div className="edos-ws-section__header">
@@ -105,22 +126,35 @@ export function RecommendedActionsScenariosSection({
         title="Candidate Actions Evaluated"
         description={`${candidateActions.length} operational actions registered for evaluation against deterministic policy.`}
         headerAction={
-          candidateActions.length === 0 && onSeedActionsPrompt ? (
+          !hasActionsError && candidateActions.length === 0 && onSeedActionsPrompt ? (
             <Button size="sm" variant="outline" onClick={onSeedActionsPrompt}>
               + Register Default Candidates
             </Button>
           ) : undefined
         }
       >
-        {candidateActions.length === 0 ? (
-          <div className="edos-ws-empty-panel">
-            <p>No candidate actions registered yet for this decision run.</p>
-            {onSeedActionsPrompt && (
-              <Button size="sm" variant="primary" onClick={onSeedActionsPrompt} style={{ marginTop: "8px" }}>
-                Generate Standard Candidates (DO_NOTHING & PLACE_ORDER)
-              </Button>
-            )}
-          </div>
+        {isActionsLoading ? (
+          <LoadingState label="Loading registered candidate actions..." />
+        ) : hasActionsError && actionsError ? (
+          <ErrorState
+            title="Candidate Actions Retrieval Failed"
+            message={actionsError.message}
+            code={actionsError.errorCode || `HTTP_${actionsError.statusCode || 500}`}
+            onRetry={onRetryActions}
+            retryLabel="Retry Actions Load"
+          />
+        ) : candidateActions.length === 0 ? (
+          <EmptyState
+            title="No Candidate Actions Registered"
+            description="No candidate actions have been registered yet for this decision run. Candidate actions must be registered to calculate policy recommendations."
+            action={
+              onSeedActionsPrompt ? (
+                <Button size="sm" variant="primary" onClick={onSeedActionsPrompt}>
+                  Register Standard Candidates (DO_NOTHING & PLACE_ORDER)
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="edos-table-container">
             <table className="edos-table" aria-label="Candidate actions list">

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import time
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import ValidationError
+from app.observability import log_decision_operation
 
 
 from app.api.inventory import get_inventory_repository
@@ -508,12 +510,27 @@ def create_decision(
     decision_repo: DecisionRepository = Depends(get_decision_repository),
     inventory_repo: InventoryRepository = Depends(get_inventory_repository),
 ) -> DecisionResponse:
+    t0 = time.perf_counter()
     if not inventory_repo.product_exists(payload.product_id):
+        log_decision_operation(
+            "create_decision",
+            outcome="FAILED",
+            error_code="PRODUCT_NOT_FOUND",
+            error_category="NOT_FOUND",
+            message=f"Product '{payload.product_id}' not found",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product '{payload.product_id}' not found",
         )
     if not inventory_repo.warehouse_exists(payload.warehouse_id):
+        log_decision_operation(
+            "create_decision",
+            outcome="FAILED",
+            error_code="WAREHOUSE_NOT_FOUND",
+            error_category="NOT_FOUND",
+            message=f"Warehouse '{payload.warehouse_id}' not found",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Warehouse '{payload.warehouse_id}' not found",
@@ -522,6 +539,14 @@ def create_decision(
     decision = decision_repo.create(
         product_id=payload.product_id,
         warehouse_id=payload.warehouse_id,
+    )
+    duration_ms = (time.perf_counter() - t0) * 1000
+    log_decision_operation(
+        "create_decision",
+        decision_id=decision.id,
+        outcome="SUCCESS",
+        duration_ms=duration_ms,
+        details={"product_id": payload.product_id, "warehouse_id": payload.warehouse_id},
     )
     return DecisionResponse.from_domain(decision)
 
@@ -571,8 +596,17 @@ def update_decision_status(
     payload: UpdateDecisionStatusRequest,
     repo: DecisionRepository = Depends(get_decision_repository),
 ) -> DecisionResponse:
+    t0 = time.perf_counter()
     existing = repo.get_by_id(decision_id)
     if existing is None:
+        log_decision_operation(
+            "update_decision_status",
+            decision_id=decision_id,
+            outcome="FAILED",
+            error_code="DECISION_NOT_FOUND",
+            error_category="NOT_FOUND",
+            message=f"Decision '{decision_id}' not found",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Decision '{decision_id}' not found",
@@ -581,6 +615,16 @@ def update_decision_status(
     try:
         updated = repo.update_status(decision_id=decision_id, new_status=payload.status)
     except InvalidLifecycleTransitionError as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "update_decision_status",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="INVALID_LIFECYCLE_TRANSITION",
+            error_category="LIFECYCLE",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -592,6 +636,14 @@ def update_decision_status(
             detail=f"Decision '{decision_id}' not found",
         )
 
+    duration_ms = (time.perf_counter() - t0) * 1000
+    log_decision_operation(
+        "update_decision_status",
+        decision_id=decision_id,
+        outcome="SUCCESS",
+        duration_ms=duration_ms,
+        details={"old_status": existing.status.value, "new_status": payload.status.value},
+    )
     return DecisionResponse.from_domain(updated)
 
 
@@ -1952,6 +2004,7 @@ def replay_decision_endpoint(
     payload: ReplayDecisionRequest | None = None,
     service: DecisionReplayService = Depends(get_replay_service),
 ) -> DecisionReplayResponse:
+    t0 = time.perf_counter()
     req = payload or ReplayDecisionRequest()
     try:
         record = service.replay_decision(
@@ -1961,6 +2014,15 @@ def replay_decision_endpoint(
             record_to_graph=req.record_to_graph,
             metadata=req.metadata,
         )
+        duration_ms = (time.perf_counter() - t0) * 1000
+        outcome = "SUCCESS" if record.status.value in ("MATCHED", "DIFFERENT") else "INCOMPLETE"
+        log_decision_operation(
+            "replay_decision",
+            decision_id=decision_id,
+            outcome=outcome,
+            duration_ms=duration_ms,
+            details={"replay_status": record.status.value, "incomplete_reasons": [r.code.value for r in record.incomplete_reasons]},
+        )
         return DecisionReplayResponse.from_domain(record)
     except (
         DecisionNotFoundError,
@@ -1968,11 +2030,31 @@ def replay_decision_endpoint(
         RplVersionNotFoundError,
         RplProvenanceNotFoundError,
     ) as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "replay_decision",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="RESOURCE_NOT_FOUND",
+            error_category="REPLAY",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
     except (RplCrossDecisionIsolationError, RplInvalidRequestError, ValueError) as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "replay_decision",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="INVALID_REPLAY_REQUEST",
+            error_category="REPLAY",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -2073,6 +2155,7 @@ def execute_scenario_endpoint(
     payload: ExecuteScenarioRequest,
     service: ScenarioService = Depends(get_scenario_service),
 ) -> DecisionScenarioResponse:
+    t0 = time.perf_counter()
     try:
         record = service.execute_scenario(
             decision_id=decision_id,
@@ -2083,6 +2166,14 @@ def execute_scenario_endpoint(
             record_to_graph=payload.record_to_graph,
             metadata=payload.metadata,
         )
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "execute_scenario",
+            decision_id=decision_id,
+            outcome="SUCCESS",
+            duration_ms=duration_ms,
+            details={"scenario_id": record.id, "scenario_status": record.status.value},
+        )
         return DecisionScenarioResponse.from_domain(record)
     except (
         DecisionNotFoundError,
@@ -2090,11 +2181,31 @@ def execute_scenario_endpoint(
         ScnVersionNotFoundError,
         ScnProvenanceNotFoundError,
     ) as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "execute_scenario",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="RESOURCE_NOT_FOUND",
+            error_category="SCENARIO",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
     except (ScnCrossDecisionIsolationError, ScnInvalidRequestError, ValueError) as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "execute_scenario",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="INVALID_SCENARIO_PARAMETERS",
+            error_category="SCENARIO",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -2226,27 +2337,76 @@ def generate_decision_explanation_endpoint(
     context_collector: DecisionExplanationContextCollector = Depends(get_explanation_context_collector),
     service: ExplanationService = Depends(get_explanation_service),
 ) -> DecisionExplanationResponse:
+    t0 = time.perf_counter()
     version_id = payload.version_id if payload else None
     try:
         context = context_collector.collect_context(decision_id=decision_id, version_id=version_id)
         explanation = service.generate_explanation(context=context)
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "generate_explanation",
+            decision_id=decision_id,
+            outcome="SUCCESS",
+            duration_ms=duration_ms,
+            details={"model_name": explanation.model_name},
+        )
         return DecisionExplanationResponse.from_domain(explanation)
     except (DecisionNotFoundError, ExpDecisionNotFoundError, ExpVersionNotFoundError) as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "generate_explanation",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="DECISION_NOT_FOUND",
+            error_category="NOT_FOUND",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
     except InsufficientContextError as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "generate_explanation",
+            decision_id=decision_id,
+            outcome="INCOMPLETE",
+            duration_ms=duration_ms,
+            error_code="INSUFFICIENT_CONTEXT",
+            error_category="CONTEXT",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
     except (OllamaConnectionError, OllamaTimeoutError, OllamaModelNotFoundError) as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "generate_explanation",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="LLM_RUNTIME_UNAVAILABLE",
+            error_category="AI_PROVIDER",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
     except (OllamaResponseError, InvalidModelOutputError, UngroundedEvidenceError) as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "generate_explanation",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="LLM_UNGROUNDED_EVIDENCE",
+            error_category="AI_PROVIDER",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
@@ -2277,27 +2437,76 @@ def ask_decision_question_endpoint(
     context_collector: DecisionExplanationContextCollector = Depends(get_explanation_context_collector),
     qa_service: DecisionQAService = Depends(get_decision_qa_service),
 ) -> DecisionQuestionResponse:
+    t0 = time.perf_counter()
     version_id = payload.version_id if payload else None
     try:
         context = context_collector.collect_context(decision_id=decision_id, version_id=version_id)
         answer = qa_service.answer_question(context=context, question=payload.question)
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "ask_decision_question",
+            decision_id=decision_id,
+            outcome="SUCCESS",
+            duration_ms=duration_ms,
+            details={"status": answer.status.value, "model_name": answer.model_name},
+        )
         return DecisionQuestionResponse.from_domain(answer)
     except (DecisionNotFoundError, ExpDecisionNotFoundError, ExpVersionNotFoundError) as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "ask_decision_question",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="DECISION_NOT_FOUND",
+            error_category="NOT_FOUND",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
     except InvalidQuestionError as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "ask_decision_question",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="INVALID_QUESTION",
+            error_category="QA",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
     except (OllamaConnectionError, OllamaTimeoutError, OllamaModelNotFoundError) as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "ask_decision_question",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="LLM_RUNTIME_UNAVAILABLE",
+            error_category="AI_PROVIDER",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
     except (OllamaResponseError, InvalidModelOutputError, UngroundedEvidenceError) as exc:
+        duration_ms = (time.perf_counter() - t0) * 1000
+        log_decision_operation(
+            "ask_decision_question",
+            decision_id=decision_id,
+            outcome="FAILED",
+            duration_ms=duration_ms,
+            error_code="LLM_UNGROUNDED_EVIDENCE",
+            error_category="AI_PROVIDER",
+            message=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),

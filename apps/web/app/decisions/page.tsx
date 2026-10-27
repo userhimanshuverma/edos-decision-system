@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, Suspense } from "react";
+import React, { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type {
   DecisionRecord,
@@ -13,6 +13,8 @@ import type {
   DecisionScenarioRecord,
   DecisionVersionRecord,
   DecisionStatus,
+  SectionLoadStatus,
+  SectionErrorState,
 } from "../../lib/types/decision";
 import type { DecisionContext } from "../../lib/types/context";
 import {
@@ -28,6 +30,7 @@ import {
   getDecisionReplay,
   getDecisionScenarios,
   getDecisionVersions,
+  DecisionApiError,
 } from "../../lib/api/decision";
 import { getDecisionContext, PRESET_SITUATIONS } from "../../lib/api/context";
 
@@ -39,9 +42,30 @@ import { DecisionAISection } from "../../components/workspace/decision-ai-sectio
 
 import { LoadingState } from "../../components/ui/loading-state";
 import { EmptyState } from "../../components/ui/empty-state";
-import { ErrorState } from "../../components/ui/error-state";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
+
+function parseErrorState(err: unknown, fallbackMessage: string): SectionErrorState {
+  if (err instanceof DecisionApiError) {
+    return {
+      message: err.message,
+      errorCode: err.errorCode,
+      category: err.category,
+      statusCode: err.statusCode,
+      isRetryable: err.isRetryable,
+    };
+  }
+  if (err instanceof Error) {
+    return {
+      message: err.message,
+      isRetryable: true,
+    };
+  }
+  return {
+    message: fallbackMessage,
+    isRetryable: true,
+  };
+}
 
 function DecisionWorkspaceContent() {
   const searchParams = useSearchParams();
@@ -56,18 +80,43 @@ function DecisionWorkspaceContent() {
 
   // Loaded operational details for active decision
   const [context, setContext] = useState<DecisionContext | null>(null);
-  const [candidateActions, setCandidateActions] = useState<CandidateActionRecord[]>([]);
-  const [recommendation, setRecommendation] = useState<RecommendationRecord | null>(null);
-  const [validation, setValidation] = useState<DecisionValidationRecord | null>(null);
-  const [evidenceSheet, setEvidenceSheet] = useState<DecisionEvidenceSheetRecord | null>(null);
-  const [provenance, setProvenance] = useState<DecisionProvenanceTraceRecord | null>(null);
-  const [replay, setReplay] = useState<DecisionReplayRecord | null>(null);
-  const [scenarios, setScenarios] = useState<DecisionScenarioRecord[]>([]);
-  const [versions, setVersions] = useState<DecisionVersionRecord[]>([]);
+  const [contextStatus, setContextStatus] = useState<SectionLoadStatus>("idle");
+  const [contextError, setContextError] = useState<SectionErrorState | null>(null);
 
-  // State indicators
+  const [candidateActions, setCandidateActions] = useState<CandidateActionRecord[]>([]);
+  const [actionsStatus, setActionsStatus] = useState<SectionLoadStatus>("idle");
+  const [actionsError, setActionsError] = useState<SectionErrorState | null>(null);
+
+  const [recommendation, setRecommendation] = useState<RecommendationRecord | null>(null);
+  const [recommendationStatus, setRecommendationStatus] = useState<SectionLoadStatus>("idle");
+  const [recommendationError, setRecommendationError] = useState<SectionErrorState | null>(null);
+
+  const [validation, setValidation] = useState<DecisionValidationRecord | null>(null);
+  const [validationStatus, setValidationStatus] = useState<SectionLoadStatus>("idle");
+  const [validationError, setValidationError] = useState<SectionErrorState | null>(null);
+
+  const [evidenceSheet, setEvidenceSheet] = useState<DecisionEvidenceSheetRecord | null>(null);
+  const [evidenceStatus, setEvidenceStatus] = useState<SectionLoadStatus>("idle");
+  const [evidenceError, setEvidenceError] = useState<SectionErrorState | null>(null);
+
+  const [provenance, setProvenance] = useState<DecisionProvenanceTraceRecord | null>(null);
+  const [provenanceStatus, setProvenanceStatus] = useState<SectionLoadStatus>("idle");
+  const [provenanceError, setProvenanceError] = useState<SectionErrorState | null>(null);
+
+  const [replay, setReplay] = useState<DecisionReplayRecord | null>(null);
+  const [replayStatus, setReplayStatus] = useState<SectionLoadStatus>("idle");
+  const [replayErrorState, setReplayErrorState] = useState<SectionErrorState | null>(null);
+
+  const [scenarios, setScenarios] = useState<DecisionScenarioRecord[]>([]);
+  const [scenariosStatus, setScenariosStatus] = useState<SectionLoadStatus>("idle");
+  const [scenariosError, setScenariosError] = useState<SectionErrorState | null>(null);
+
+  const [versions, setVersions] = useState<DecisionVersionRecord[]>([]);
+  const [versionsStatus, setVersionsStatus] = useState<SectionLoadStatus>("idle");
+  const [versionsError, setVersionsError] = useState<SectionErrorState | null>(null);
+
+  // Overall state indicators
   const [isLoadingDecisions, setIsLoadingDecisions] = useState<boolean>(true);
-  const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // New decision creation modal/bar state
@@ -75,9 +124,13 @@ function DecisionWorkspaceContent() {
   const [newProductId, setNewProductId] = useState<string>("prod-001");
   const [newWarehouseId, setNewWarehouseId] = useState<string>("wh-001");
   const [isCreatingDecision, setIsCreatingDecision] = useState<boolean>(false);
+  const [isSeedingActions, setIsSeedingActions] = useState<boolean>(false);
 
   // View section focus filter (all or specific tab)
   const [activeSection, setActiveSection] = useState<string>("all");
+
+  // Sequence ref to prevent out-of-order response race conditions when switching decisions
+  const requestSeqRef = useRef<number>(0);
 
   // Load decision list
   const loadDecisionsList = useCallback(async (selectId?: string) => {
@@ -101,8 +154,8 @@ function DecisionWorkspaceContent() {
         setActiveDecision(null);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load decisions";
-      setErrorMessage(msg);
+      const parsed = parseErrorState(err, "Failed to load decisions list");
+      setErrorMessage(parsed.message);
     } finally {
       setIsLoadingDecisions(false);
     }
@@ -112,71 +165,175 @@ function DecisionWorkspaceContent() {
     loadDecisionsList();
   }, [loadDecisionsList]);
 
-  // Load active decision data
+  // Load active decision data with isolated error handling & race condition guard
   const loadActiveDecisionData = useCallback(async (dec: DecisionRecord) => {
-    setIsLoadingDetails(true);
-    try {
-      // 1. Fetch Decision Context in parallel with other entities
-      const contextPromise = getDecisionContext(dec.product_id, dec.warehouse_id)
-        .then((data) => setContext(data))
-        .catch(() => setContext(null));
+    const currentSeq = ++requestSeqRef.current;
 
-      // 2. Candidate Actions
-      const actionsPromise = getCandidateActions(dec.id)
-        .then((data) => setCandidateActions(data))
-        .catch(() => setCandidateActions([]));
+    // Reset statuses to loading and clear errors
+    setContextStatus("loading");
+    setContextError(null);
 
-      // 3. Recommendation
-      const recPromise = getDecisionRecommendation(dec.id)
-        .then((data) => setRecommendation(data))
-        .catch(() => setRecommendation(null));
+    setActionsStatus("loading");
+    setActionsError(null);
 
-      // 4. Validation Report
-      const valPromise = getDecisionValidation(dec.id)
-        .then((data) => setValidation(data))
-        .catch(() => setValidation(null));
+    setRecommendationStatus("loading");
+    setRecommendationError(null);
 
-      // 5. Evidence Sheet
-      const evPromise = getDecisionEvidenceSheet(dec.id, true)
-        .then((data) => setEvidenceSheet(data))
-        .catch(() => setEvidenceSheet(null));
+    setValidationStatus("loading");
+    setValidationError(null);
 
-      // 6. Provenance Trace
-      const prvPromise = getDecisionProvenance(dec.id)
-        .then((data) => setProvenance(data))
-        .catch(() => setProvenance(null));
+    setEvidenceStatus("loading");
+    setEvidenceError(null);
 
-      // 7. Decision Replay
-      const rplPromise = getDecisionReplay(dec.id)
-        .then((data) => setReplay(data))
-        .catch(() => setReplay(null));
+    setProvenanceStatus("loading");
+    setProvenanceError(null);
 
-      // 8. Scenarios
-      const scnPromise = getDecisionScenarios(dec.id)
-        .then((data) => setScenarios(data))
-        .catch(() => setScenarios([]));
+    setReplayStatus("loading");
+    setReplayErrorState(null);
 
-      // 9. Versions
-      const verPromise = getDecisionVersions(dec.id)
-        .then((data) => setVersions(data))
-        .catch(() => setVersions([]));
+    setScenariosStatus("loading");
+    setScenariosError(null);
 
-      await Promise.allSettled([
-        contextPromise,
-        actionsPromise,
-        recPromise,
-        valPromise,
-        evPromise,
-        prvPromise,
-        rplPromise,
-        scnPromise,
-        verPromise,
-      ]);
-    } catch {
-      // Non-blocking fallback; individual panels represent missing/unavailable data accurately
-    } finally {
-      setIsLoadingDetails(false);
-    }
+    setVersionsStatus("loading");
+    setVersionsError(null);
+
+    // 1. Fetch Decision Context
+    const contextPromise = getDecisionContext(dec.product_id, dec.warehouse_id)
+      .then((data) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setContext(data);
+        setContextStatus("success");
+      })
+      .catch((err) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setContext(null);
+        setContextError(parseErrorState(err, "Unable to load operational context"));
+        setContextStatus("error");
+      });
+
+    // 2. Candidate Actions
+    const actionsPromise = getCandidateActions(dec.id)
+      .then((data) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setCandidateActions(data);
+        setActionsStatus(data.length === 0 ? "empty" : "success");
+      })
+      .catch((err) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setCandidateActions([]);
+        setActionsError(parseErrorState(err, "Unable to load candidate actions"));
+        setActionsStatus("error");
+      });
+
+    // 3. Recommendation
+    const recPromise = getDecisionRecommendation(dec.id)
+      .then((data) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setRecommendation(data);
+        setRecommendationStatus(data ? "success" : "empty");
+      })
+      .catch((err) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setRecommendation(null);
+        setRecommendationError(parseErrorState(err, "Unable to compute recommendation"));
+        setRecommendationStatus("error");
+      });
+
+    // 4. Validation Report
+    const valPromise = getDecisionValidation(dec.id)
+      .then((data) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setValidation(data);
+        setValidationStatus(data ? "success" : "empty");
+      })
+      .catch((err) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setValidation(null);
+        setValidationError(parseErrorState(err, "Unable to load validation report"));
+        setValidationStatus("error");
+      });
+
+    // 5. Evidence Sheet
+    const evPromise = getDecisionEvidenceSheet(dec.id, true)
+      .then((data) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setEvidenceSheet(data);
+        setEvidenceStatus(data ? "success" : "empty");
+      })
+      .catch((err) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setEvidenceSheet(null);
+        setEvidenceError(parseErrorState(err, "Unable to load evidence sheet"));
+        setEvidenceStatus("error");
+      });
+
+    // 6. Provenance Trace
+    const prvPromise = getDecisionProvenance(dec.id)
+      .then((data) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setProvenance(data);
+        setProvenanceStatus(data ? "success" : "empty");
+      })
+      .catch((err) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setProvenance(null);
+        setProvenanceError(parseErrorState(err, "Unable to load provenance trace"));
+        setProvenanceStatus("error");
+      });
+
+    // 7. Decision Replay
+    const rplPromise = getDecisionReplay(dec.id)
+      .then((data) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setReplay(data);
+        setReplayStatus(data ? "success" : "empty");
+      })
+      .catch((err) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setReplay(null);
+        setReplayErrorState(parseErrorState(err, "Unable to load replay record"));
+        setReplayStatus("error");
+      });
+
+    // 8. Scenarios
+    const scnPromise = getDecisionScenarios(dec.id)
+      .then((data) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setScenarios(data);
+        setScenariosStatus(data.length === 0 ? "empty" : "success");
+      })
+      .catch((err) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setScenarios([]);
+        setScenariosError(parseErrorState(err, "Unable to load scenarios"));
+        setScenariosStatus("error");
+      });
+
+    // 9. Versions
+    const verPromise = getDecisionVersions(dec.id)
+      .then((data) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setVersions(data);
+        setVersionsStatus(data.length === 0 ? "empty" : "success");
+      })
+      .catch((err) => {
+        if (currentSeq !== requestSeqRef.current) return;
+        setVersions([]);
+        setVersionsError(parseErrorState(err, "Unable to load versions"));
+        setVersionsStatus("error");
+      });
+
+    await Promise.allSettled([
+      contextPromise,
+      actionsPromise,
+      recPromise,
+      valPromise,
+      evPromise,
+      prvPromise,
+      rplPromise,
+      scnPromise,
+      verPromise,
+    ]);
   }, []);
 
   // Sync active decision whenever activeDecisionId changes
@@ -195,8 +352,122 @@ function DecisionWorkspaceContent() {
     router.push(`/decisions?id=${encodeURIComponent(decisionId)}`);
   };
 
+  // Safe retry handlers for independent workspace sections
+  const handleRetryContext = useCallback(async () => {
+    if (!activeDecision) return;
+    setContextStatus("loading");
+    setContextError(null);
+    try {
+      const data = await getDecisionContext(activeDecision.product_id, activeDecision.warehouse_id);
+      setContext(data);
+      setContextStatus("success");
+    } catch (err: unknown) {
+      setContextError(parseErrorState(err, "Unable to load operational context"));
+      setContextStatus("error");
+    }
+  }, [activeDecision]);
+
+  const handleRetryActions = useCallback(async () => {
+    if (!activeDecision) return;
+    setActionsStatus("loading");
+    setActionsError(null);
+    try {
+      const data = await getCandidateActions(activeDecision.id);
+      setCandidateActions(data);
+      setActionsStatus(data.length === 0 ? "empty" : "success");
+    } catch (err: unknown) {
+      setActionsError(parseErrorState(err, "Unable to load candidate actions"));
+      setActionsStatus("error");
+    }
+  }, [activeDecision]);
+
+  const handleRetryRecommendation = useCallback(async () => {
+    if (!activeDecision) return;
+    setRecommendationStatus("loading");
+    setRecommendationError(null);
+    try {
+      const data = await getDecisionRecommendation(activeDecision.id);
+      setRecommendation(data);
+      setRecommendationStatus(data ? "success" : "empty");
+    } catch (err: unknown) {
+      setRecommendationError(parseErrorState(err, "Unable to compute recommendation"));
+      setRecommendationStatus("error");
+    }
+  }, [activeDecision]);
+
+  const handleRetryValidation = useCallback(async () => {
+    if (!activeDecision) return;
+    setValidationStatus("loading");
+    setValidationError(null);
+    try {
+      const data = await getDecisionValidation(activeDecision.id, true);
+      setValidation(data);
+      setValidationStatus(data ? "success" : "empty");
+    } catch (err: unknown) {
+      setValidationError(parseErrorState(err, "Unable to load validation report"));
+      setValidationStatus("error");
+    }
+  }, [activeDecision]);
+
+  const handleRetryEvidence = useCallback(async () => {
+    if (!activeDecision) return;
+    setEvidenceStatus("loading");
+    setEvidenceError(null);
+    try {
+      const data = await getDecisionEvidenceSheet(activeDecision.id, true);
+      setEvidenceSheet(data);
+      setEvidenceStatus(data ? "success" : "empty");
+    } catch (err: unknown) {
+      setEvidenceError(parseErrorState(err, "Unable to load evidence sheet"));
+      setEvidenceStatus("error");
+    }
+  }, [activeDecision]);
+
+  const handleRetryProvenance = useCallback(async () => {
+    if (!activeDecision) return;
+    setProvenanceStatus("loading");
+    setProvenanceError(null);
+    try {
+      const data = await getDecisionProvenance(activeDecision.id);
+      setProvenance(data);
+      setProvenanceStatus(data ? "success" : "empty");
+    } catch (err: unknown) {
+      setProvenanceError(parseErrorState(err, "Unable to load provenance trace"));
+      setProvenanceStatus("error");
+    }
+  }, [activeDecision]);
+
+  const handleRetryReplay = useCallback(async () => {
+    if (!activeDecision) return;
+    setReplayStatus("loading");
+    setReplayErrorState(null);
+    try {
+      const data = await getDecisionReplay(activeDecision.id);
+      setReplay(data);
+      setReplayStatus(data ? "success" : "empty");
+    } catch (err: unknown) {
+      setReplayErrorState(parseErrorState(err, "Unable to load replay record"));
+      setReplayStatus("error");
+    }
+  }, [activeDecision]);
+
+  const handleRetryScenarios = useCallback(async () => {
+    if (!activeDecision) return;
+    setScenariosStatus("loading");
+    setScenariosError(null);
+    try {
+      const data = await getDecisionScenarios(activeDecision.id);
+      setScenarios(data);
+      setScenariosStatus(data.length === 0 ? "empty" : "success");
+    } catch (err: unknown) {
+      setScenariosError(parseErrorState(err, "Unable to load scenarios"));
+      setScenariosStatus("error");
+    }
+  }, [activeDecision]);
+
   // Seed / Create demonstration decision if repository is empty
   const handleInitializeDemoDecision = async () => {
+    if (isCreatingDecision) return;
     setIsCreatingDecision(true);
     setErrorMessage(null);
     try {
@@ -239,8 +510,8 @@ function DecisionWorkspaceContent() {
       await loadDecisionsList(newDec.id);
       router.push(`/decisions?id=${encodeURIComponent(newDec.id)}`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to seed demo decision";
-      setErrorMessage(msg);
+      const parsed = parseErrorState(err, "Failed to seed demo decision");
+      setErrorMessage(parsed.message);
     } finally {
       setIsCreatingDecision(false);
     }
@@ -249,6 +520,7 @@ function DecisionWorkspaceContent() {
   // Create custom new decision
   const handleCreateCustomDecision = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCreatingDecision) return;
     setIsCreatingDecision(true);
     setErrorMessage(null);
     try {
@@ -260,8 +532,8 @@ function DecisionWorkspaceContent() {
       await loadDecisionsList(created.id);
       router.push(`/decisions?id=${encodeURIComponent(created.id)}`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to create decision";
-      setErrorMessage(msg);
+      const parsed = parseErrorState(err, "Failed to create decision");
+      setErrorMessage(parsed.message);
     } finally {
       setIsCreatingDecision(false);
     }
@@ -269,7 +541,8 @@ function DecisionWorkspaceContent() {
 
   // Seed default candidate actions for current decision if empty
   const handleSeedDefaultActions = async () => {
-    if (!activeDecision) return;
+    if (!activeDecision || isSeedingActions) return;
+    setIsSeedingActions(true);
     try {
       await createCandidateAction(activeDecision.id, {
         type: "DO_NOTHING",
@@ -283,8 +556,10 @@ function DecisionWorkspaceContent() {
       });
       loadActiveDecisionData(activeDecision);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to register candidate actions";
-      setErrorMessage(msg);
+      const parsed = parseErrorState(err, "Failed to register candidate actions");
+      setErrorMessage(parsed.message);
+    } finally {
+      setIsSeedingActions(false);
     }
   };
 
@@ -296,10 +571,10 @@ function DecisionWorkspaceContent() {
         activeDecision={activeDecision}
         onSelectDecision={handleSelectDecision}
         onCreateDecisionPrompt={() => setShowCreateModal(true)}
-        isLoading={isLoadingDecisions || isLoadingDetails}
+        isLoading={isLoadingDecisions}
       />
 
-      {/* Error Banner */}
+      {/* Global Error Notice if decision list fails */}
       {errorMessage && (
         <div className="edos-alert edos-alert--danger" role="alert" style={{ margin: "16px 0" }}>
           {errorMessage}
@@ -436,8 +711,14 @@ function DecisionWorkspaceContent() {
               <DecisionOverviewSection
                 decision={activeDecision}
                 context={context}
+                contextStatus={contextStatus}
+                contextError={contextError}
+                onRetryContext={handleRetryContext}
                 recommendation={recommendation}
-                isLoadingContext={isLoadingDetails}
+                recommendationStatus={recommendationStatus}
+                recommendationError={recommendationError}
+                onRetryRecommendation={handleRetryRecommendation}
+                isLoadingContext={contextStatus === "loading"}
               />
             </div>
           )}
@@ -448,15 +729,27 @@ function DecisionWorkspaceContent() {
               <RecommendedActionsScenariosSection
                 decisionId={activeDecision.id}
                 candidateActions={candidateActions}
+                actionsStatus={actionsStatus}
+                actionsError={actionsError}
+                onRetryActions={handleRetryActions}
                 recommendation={recommendation}
                 scenarios={scenarios}
+                scenariosStatus={scenariosStatus}
+                scenariosError={scenariosError}
                 onRefreshScenarios={() => {
                   getDecisionScenarios(activeDecision.id)
-                    .then((sc) => setScenarios(sc))
-                    .catch(() => {});
+                    .then((sc) => {
+                      setScenarios(sc);
+                      setScenariosStatus(sc.length === 0 ? "empty" : "success");
+                    })
+                    .catch((err) => {
+                      setScenariosError(parseErrorState(err, "Failed to refresh scenarios"));
+                      setScenariosStatus("error");
+                    });
                 }}
+                onRetryScenarios={handleRetryScenarios}
                 onSeedActionsPrompt={handleSeedDefaultActions}
-                isLoading={isLoadingDetails}
+                isLoading={actionsStatus === "loading"}
               />
             </div>
           )}
@@ -467,20 +760,44 @@ function DecisionWorkspaceContent() {
               <EvidenceTrustSection
                 decisionId={activeDecision.id}
                 validation={validation}
+                validationStatus={validationStatus}
+                validationError={validationError}
+                onRetryValidation={handleRetryValidation}
                 evidenceSheet={evidenceSheet}
+                evidenceStatus={evidenceStatus}
+                evidenceError={evidenceError}
+                onRetryEvidence={handleRetryEvidence}
                 provenance={provenance}
+                provenanceStatus={provenanceStatus}
+                provenanceError={provenanceError}
+                onRetryProvenance={handleRetryProvenance}
                 replay={replay}
+                replayStatus={replayStatus}
+                replayErrorState={replayErrorState}
+                onRetryReplay={handleRetryReplay}
                 onRefreshReplay={() => {
                   getDecisionReplay(activeDecision.id)
-                    .then((r) => setReplay(r))
-                    .catch(() => {});
+                    .then((r) => {
+                      setReplay(r);
+                      setReplayStatus(r ? "success" : "empty");
+                    })
+                    .catch((err) => {
+                      setReplayErrorState(parseErrorState(err, "Failed to refresh replay record"));
+                      setReplayStatus("error");
+                    });
                 }}
                 onRevalidatePrompt={() => {
                   getDecisionValidation(activeDecision.id, true)
-                    .then((v) => setValidation(v))
-                    .catch(() => {});
+                    .then((v) => {
+                      setValidation(v);
+                      setValidationStatus(v ? "success" : "empty");
+                    })
+                    .catch((err) => {
+                      setValidationError(parseErrorState(err, "Failed to revalidate constraints"));
+                      setValidationStatus("error");
+                    });
                 }}
-                isLoading={isLoadingDetails}
+                isLoading={validationStatus === "loading"}
               />
             </div>
           )}

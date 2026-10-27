@@ -35,13 +35,29 @@ import type {
 
 export class DecisionApiError extends Error {
   statusCode: number;
+  errorCode?: string;
+  category?: string;
   detail?: string;
+  isRetryable: boolean;
 
-  constructor(message: string, statusCode: number, detail?: string) {
+  constructor(
+    message: string,
+    statusCode: number,
+    detail?: string,
+    errorCode?: string,
+    category?: string
+  ) {
     super(message);
     this.name = "DecisionApiError";
     this.statusCode = statusCode;
     this.detail = detail;
+    this.errorCode = errorCode;
+    this.category = category;
+    this.isRetryable =
+      statusCode === 0 ||
+      statusCode === 408 ||
+      statusCode === 429 ||
+      statusCode >= 500;
   }
 }
 
@@ -62,9 +78,19 @@ function getApiBaseUrl(): string {
 async function handleResponse<T>(response: Response, entityName: string): Promise<T> {
   if (!response.ok) {
     let detail = "";
+    let errorCode: string | undefined;
+    let category: string | undefined;
+    let serverMessage: string | undefined;
+
     try {
       const errJson = await response.json();
-      detail = errJson.detail || JSON.stringify(errJson);
+      detail =
+        typeof errJson.detail === "string"
+          ? errJson.detail
+          : JSON.stringify(errJson.detail || errJson);
+      errorCode = errJson.error_code;
+      category = errJson.category;
+      serverMessage = errJson.message;
     } catch {
       try {
         detail = await response.text();
@@ -73,16 +99,20 @@ async function handleResponse<T>(response: Response, entityName: string): Promis
       }
     }
 
-    if (response.status === 404) {
-      throw new DecisionApiError(`${entityName} not found: ${detail}`, 404, detail);
-    }
-    if (response.status === 422) {
-      throw new DecisionApiError(`Validation error for ${entityName}: ${detail}`, 422, detail);
-    }
+    const message =
+      serverMessage ||
+      (response.status === 404
+        ? `${entityName} not found: ${detail}`
+        : response.status === 422
+        ? `Validation error for ${entityName}: ${detail}`
+        : `Failed request for ${entityName} (HTTP ${response.status}): ${detail}`);
+
     throw new DecisionApiError(
-      `Failed request for ${entityName} (HTTP ${response.status}): ${detail}`,
+      message,
       response.status,
-      detail
+      detail,
+      errorCode,
+      category
     );
   }
   return (await response.json()) as T;

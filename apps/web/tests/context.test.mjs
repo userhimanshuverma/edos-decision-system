@@ -51,7 +51,25 @@ test("Decision Context API - Input Validation", async () => {
   );
 });
 
-test("Decision Context API - Live HTTP Integration with FastAPI", async () => {
+// Helper to detect if backend is active for live integration tests
+async function checkBackendLiveness() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/health", {
+      signal: AbortSignal.timeout(600),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+test("Decision Context API - Live HTTP Integration with FastAPI", async (t) => {
+  const isLive = await checkBackendLiveness();
+  if (!isLive) {
+    t.skip("FastAPI backend is offline on port 8000; live HTTP integration test skipped");
+    return;
+  }
+
   const { getDecisionContext } = await import("../lib/api/context.ts");
 
   // Tests live fetching against the running backend on port 8000
@@ -94,7 +112,13 @@ test("Decision Context API - Live HTTP Integration with FastAPI", async () => {
   assert.equal(context.status, "ATTENTION");
 });
 
-test("Decision Context API - 404 Error Handling for Unknown Context", async () => {
+test("Decision Context API - 404 Error Handling for Unknown Context", async (t) => {
+  const isLive = await checkBackendLiveness();
+  if (!isLive) {
+    t.skip("FastAPI backend is offline on port 8000; live HTTP integration test skipped");
+    return;
+  }
+
   const { getDecisionContext, ContextApiError } = await import("../lib/api/context.ts");
 
   await assert.rejects(
@@ -110,7 +134,13 @@ test("Decision Context API - 404 Error Handling for Unknown Context", async () =
   );
 });
 
-test("Decision Context API - Supplier Override Support", async () => {
+test("Decision Context API - Supplier Override Support", async (t) => {
+  const isLive = await checkBackendLiveness();
+  if (!isLive) {
+    t.skip("FastAPI backend is offline on port 8000; live HTTP integration test skipped");
+    return;
+  }
+
   const { getDecisionContext } = await import("../lib/api/context.ts");
 
   const context = await getDecisionContext("prod-001", "wh-001", "sup-002");

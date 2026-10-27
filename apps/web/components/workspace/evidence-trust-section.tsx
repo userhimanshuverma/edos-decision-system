@@ -6,6 +6,8 @@ import type {
   DecisionEvidenceSheetRecord,
   DecisionProvenanceTraceRecord,
   DecisionReplayRecord,
+  SectionLoadStatus,
+  SectionErrorState,
 } from "../../lib/types/decision";
 import { executeDecisionReplay } from "../../lib/api/decision";
 import { Card } from "../ui/card";
@@ -13,13 +15,28 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Tabs, TabItem } from "../ui/tabs";
 import { KeyValue } from "../ui/key-value";
+import { ErrorState } from "../ui/error-state";
+import { LoadingState } from "../ui/loading-state";
+import { EmptyState } from "../ui/empty-state";
 
 export interface EvidenceTrustSectionProps {
   decisionId: string;
   validation: DecisionValidationRecord | null;
+  validationStatus?: SectionLoadStatus;
+  validationError?: SectionErrorState | null;
+  onRetryValidation?: () => void;
   evidenceSheet: DecisionEvidenceSheetRecord | null;
+  evidenceStatus?: SectionLoadStatus;
+  evidenceError?: SectionErrorState | null;
+  onRetryEvidence?: () => void;
   provenance: DecisionProvenanceTraceRecord | null;
+  provenanceStatus?: SectionLoadStatus;
+  provenanceError?: SectionErrorState | null;
+  onRetryProvenance?: () => void;
   replay: DecisionReplayRecord | null;
+  replayStatus?: SectionLoadStatus;
+  replayErrorState?: SectionErrorState | null;
+  onRetryReplay?: () => void;
   onRefreshReplay: () => void;
   onRevalidatePrompt?: () => void;
   isLoading?: boolean;
@@ -28,9 +45,21 @@ export interface EvidenceTrustSectionProps {
 export function EvidenceTrustSection({
   decisionId,
   validation,
+  validationStatus = "idle",
+  validationError = null,
+  onRetryValidation,
   evidenceSheet,
+  evidenceStatus = "idle",
+  evidenceError = null,
+  onRetryEvidence,
   provenance,
+  provenanceStatus = "idle",
+  provenanceError = null,
+  onRetryProvenance,
   replay,
+  replayStatus = "idle",
+  replayErrorState = null,
+  onRetryReplay,
   onRefreshReplay,
   onRevalidatePrompt,
   isLoading = false,
@@ -43,25 +72,27 @@ export function EvidenceTrustSection({
     {
       id: "constraints",
       label: `Constraints (${validation?.action_results?.length ?? 0})`,
-      badge: validation?.status === "ALL_SATISFIED" ? "PASS" : validation?.status ? "CHECK" : undefined,
+      badge: validationError ? "ERROR" : validation?.status === "ALL_SATISFIED" ? "PASS" : validation?.status ? "CHECK" : undefined,
     },
     {
       id: "evidence",
       label: `Evidence Sheet (${(evidenceSheet?.items?.length ?? 0) + (evidenceSheet?.assumptions?.length ?? 0)})`,
+      badge: evidenceError ? "ERROR" : undefined,
     },
     {
       id: "provenance",
       label: "Provenance Trace",
-      badge: provenance?.status || "PENDING",
+      badge: provenanceError ? "ERROR" : provenance?.status || "PENDING",
     },
     {
       id: "replay",
       label: "Decision Replay",
-      badge: replay?.status || "NOT RUN",
+      badge: replayErrorState ? "ERROR" : replay?.status || "NOT RUN",
     },
   ];
 
   const handleRunReplay = async () => {
+    if (isExecutingReplay) return;
     setIsExecutingReplay(true);
     setReplayError(null);
     try {
@@ -108,15 +139,28 @@ export function EvidenceTrustSection({
                 ) : undefined
               }
             >
-              {!validation ? (
-                <div className="edos-ws-empty-panel">
-                  <p>No validation report recorded for this decision.</p>
-                  {onRevalidatePrompt && (
-                    <Button size="sm" variant="primary" onClick={onRevalidatePrompt} style={{ marginTop: "8px" }}>
-                      Run Constraint Validation
-                    </Button>
-                  )}
-                </div>
+              {validationStatus === "loading" || isLoading ? (
+                <LoadingState label="Loading constraint validation report..." />
+              ) : validationError ? (
+                <ErrorState
+                  title="Constraint Validation Report Failed"
+                  message={validationError.message}
+                  code={validationError.errorCode || `HTTP_${validationError.statusCode || 500}`}
+                  onRetry={onRetryValidation}
+                  retryLabel="Retry Validation Load"
+                />
+              ) : !validation ? (
+                <EmptyState
+                  title="No Validation Report Recorded"
+                  description="No constraint validation report recorded for this decision run."
+                  action={
+                    onRevalidatePrompt ? (
+                      <Button size="sm" variant="primary" onClick={onRevalidatePrompt} style={{ marginTop: "8px" }}>
+                        Run Constraint Validation
+                      </Button>
+                    ) : undefined
+                  }
+                />
               ) : (
                 <>
                   <div className="edos-ws-validation-summary">
@@ -219,10 +263,21 @@ export function EvidenceTrustSection({
               title="Consolidated Evidence Sheet (Day 22)"
               description="Explicit separation of empirical facts, operational assumptions, and derived mathematical formulas."
             >
-              {!evidenceSheet ? (
-                <div className="edos-ws-empty-panel">
-                  No consolidated evidence sheet compiled yet.
-                </div>
+              {evidenceStatus === "loading" || isLoading ? (
+                <LoadingState label="Loading evidence sheet and assumptions..." />
+              ) : evidenceError ? (
+                <ErrorState
+                  title="Evidence Sheet Retrieval Failed"
+                  message={evidenceError.message}
+                  code={evidenceError.errorCode || `HTTP_${evidenceError.statusCode || 500}`}
+                  onRetry={onRetryEvidence}
+                  retryLabel="Retry Evidence Load"
+                />
+              ) : !evidenceSheet ? (
+                <EmptyState
+                  title="No Evidence Sheet Compiled"
+                  description="No consolidated evidence sheet compiled yet for this decision run."
+                />
               ) : (
                 (() => {
                   const facts = evidenceSheet.items?.filter((i) => i.evidence_type === "FACT") || [];
@@ -355,11 +410,24 @@ export function EvidenceTrustSection({
               title="Provenance Lineage Trace (Day 23)"
               description="Four-stage computational lineage guaranteeing end-to-end auditability: INPUT → RULE → CALCULATION → RESULT."
             >
-              {!provenance ? (
+              {provenanceStatus === "loading" || isLoading ? (
+                <LoadingState label="Loading provenance derivation trace..." />
+              ) : provenanceError ? (
+                <ErrorState
+                  title="Provenance Trace Retrieval Failed"
+                  message={provenanceError.message}
+                  code={provenanceError.errorCode || `HTTP_${provenanceError.statusCode || 500}`}
+                  onRetry={onRetryProvenance}
+                  retryLabel="Retry Provenance Load"
+                />
+              ) : !provenance ? (
                 <div className="edos-ws-empty-panel">
-                  <p>No provenance trace has been captured yet for this decision run.</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                    <Badge variant="warning">HISTORICAL DATA UNAVAILABLE</Badge>
+                  </div>
+                  <p>Historical provenance trace is incomplete or unavailable for this decision run.</p>
                   <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-                    Provenance is captured automatically when recommendation generation completes.
+                    EDOS maintains mathematical auditability and never fabricates missing derivation steps or inputs.
                   </span>
                 </div>
               ) : (
@@ -478,15 +546,30 @@ export function EvidenceTrustSection({
                 </div>
               )}
 
-              {!replay ? (
-                <div className="edos-ws-empty-panel">
-                  <p>No replay verification record exists yet for this decision.</p>
-                  <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-                    Click &quot;Run Replay Verification&quot; above to deterministically replay the recommendation calculation.
-                  </p>
-                </div>
+              {replayStatus === "loading" || isLoading ? (
+                <LoadingState label="Loading decision replay record..." />
+              ) : replayErrorState ? (
+                <ErrorState
+                  title="Replay Record Retrieval Failed"
+                  message={replayErrorState.message}
+                  code={replayErrorState.errorCode || `HTTP_${replayErrorState.statusCode || 500}`}
+                  onRetry={onRetryReplay}
+                  retryLabel="Retry Replay Record"
+                />
+              ) : !replay ? (
+                <EmptyState
+                  title="No Replay Verification Record"
+                  description="No replay verification has been executed yet for this decision. Click 'Run Replay Verification' above to evaluate mathematical determinism."
+                />
               ) : (
                 <div className="edos-ws-replay-results">
+                  {replay.status === "INCOMPLETE" && (
+                    <div className="edos-alert edos-alert--warning" style={{ marginBottom: "16px" }}>
+                      <strong>Historical Inputs Incomplete:</strong> Replay execution could not fully complete because past provenance traces or snapshots are partially unavailable.
+                      EDOS strictly refused to substitute live context for missing historical data.
+                    </div>
+                  )}
+
                   <div className="edos-ws-replay-status-row">
                     <span>Replay Match Status:</span>
                     <Badge

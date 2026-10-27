@@ -13,6 +13,9 @@ class Settings:
     ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
     ollama_timeout_seconds: float = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120.0"))
 
+    # Observability & Logging (Day 29)
+    log_level: str = os.getenv("LOG_LEVEL", "INFO")
+
 
 def get_settings() -> Settings:
     return Settings()

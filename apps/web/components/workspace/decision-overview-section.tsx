@@ -1,26 +1,48 @@
 "use client";
 
 import React from "react";
-import type { DecisionRecord, RecommendationRecord } from "../../lib/types/decision";
+import type {
+  DecisionRecord,
+  RecommendationRecord,
+  SectionLoadStatus,
+  SectionErrorState,
+} from "../../lib/types/decision";
 import type { DecisionContext } from "../../lib/types/context";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Metric } from "../ui/metric";
 import { KeyValue } from "../ui/key-value";
+import { ErrorState } from "../ui/error-state";
+import { Button } from "../ui/button";
 
 export interface DecisionOverviewSectionProps {
   decision: DecisionRecord;
   context: DecisionContext | null;
+  contextStatus?: SectionLoadStatus;
+  contextError?: SectionErrorState | null;
+  onRetryContext?: () => void;
   recommendation: RecommendationRecord | null;
+  recommendationStatus?: SectionLoadStatus;
+  recommendationError?: SectionErrorState | null;
+  onRetryRecommendation?: () => void;
   isLoadingContext?: boolean;
 }
 
 export function DecisionOverviewSection({
   decision,
   context,
+  contextStatus = "idle",
+  contextError = null,
+  onRetryContext,
   recommendation,
+  recommendationStatus = "idle",
+  recommendationError = null,
+  onRetryRecommendation,
   isLoadingContext = false,
 }: DecisionOverviewSectionProps) {
+  const isContextLoading = isLoadingContext || contextStatus === "loading";
+  const hasContextError = contextStatus === "error" || Boolean(contextError);
+
   const inv = context?.inventory;
   const dem = context?.demand;
   const sup = context?.supplier;
@@ -46,19 +68,40 @@ export function DecisionOverviewSection({
             <span className="edos-ws-hero-card__label">Current Engine Recommendation</span>
             <Badge
               variant={
-                recommendation?.status === "RECOMMENDED"
+                recommendationError
+                  ? "danger"
+                  : recommendation?.status === "RECOMMENDED"
                   ? "success"
                   : recommendation?.status === "NO_ACTION_REQUIRED"
                   ? "neutral"
+                  : recommendationStatus === "loading"
+                  ? "outline"
                   : "warning"
               }
             >
-              {recommendation ? recommendation.status : "CALCULATING"}
+              {recommendationError
+                ? "CALCULATION ERROR"
+                : recommendation
+                ? recommendation.status
+                : recommendationStatus === "loading"
+                ? "CALCULATING"
+                : "PENDING"}
             </Badge>
           </div>
 
           <div className="edos-ws-hero-card__action">
-            {recommendation ? (
+            {recommendationError ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                <span className="edos-ws-hero-card__pending" style={{ color: "var(--danger-foreground, #f87171)" }}>
+                  Failed to compute recommendation: {recommendationError.message}
+                </span>
+                {onRetryRecommendation && (
+                  <Button variant="outline" size="sm" onClick={onRetryRecommendation}>
+                    Retry Calculation
+                  </Button>
+                )}
+              </div>
+            ) : recommendation ? (
               <>
                 <span className="edos-ws-hero-card__action-type">{recActionType}</span>
                 {recParams && "quantity" in recParams && (
@@ -74,14 +117,18 @@ export function DecisionOverviewSection({
               </>
             ) : (
               <span className="edos-ws-hero-card__pending">
-                Recommendation calculation in progress...
+                {recommendationStatus === "loading"
+                  ? "Recommendation calculation in progress..."
+                  : "No recommendation computed yet. Add and evaluate candidate actions to generate a recommendation."}
               </span>
             )}
           </div>
 
           <p className="edos-ws-hero-card__rationale">
-            {recommendation?.selection_rationale ||
-              "Synthesizing operational context and evaluating candidate actions against inventory policy."}
+            {recommendationError
+              ? `Operational error occurred: ${recommendationError.errorCode || "ENGINE_ERROR"}. Core decision engine remains deterministic; retry calculation when ready.`
+              : recommendation?.selection_rationale ||
+                "Synthesizing operational context and evaluating candidate actions against inventory policy."}
           </p>
 
           <div className="edos-ws-hero-card__meta">
@@ -99,6 +146,18 @@ export function DecisionOverviewSection({
           </div>
         </div>
       </div>
+
+      {hasContextError && contextError && (
+        <div style={{ marginBottom: "16px" }}>
+          <ErrorState
+            title="Operational Context Retrieval Error"
+            message={contextError.message}
+            code={contextError.errorCode || `HTTP_${contextError.statusCode || 500}`}
+            onRetry={onRetryContext}
+            retryLabel="Retry Context Load"
+          />
+        </div>
+      )}
 
       {/* Context Pillars Grid: Inventory, Demand, Supplier */}
       <div className="edos-ws-grid edos-ws-grid--3col">

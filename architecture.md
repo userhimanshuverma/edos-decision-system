@@ -1975,6 +1975,108 @@ The Decision Q&A service receives reviewer questions and executes:
 - **In-Memory Lifespan**: Decisions, recommendations, evidence, versions, and replay snapshots reside in volatile memory and do not persist across restarts.
 - **Historical Scope**: Without an explicit `version_id`, context reflects the latest recorded decision state. If historical traces are absent, limitations are disclosed explicitly.
 
+---
+
+## 17. Integrated Decision Workspace (Day 28)
+
+### 17.1 Architectural Mandate
+Day 28 consolidated the modular backend engines into a unified single-screen operational Decision Workspace (`/decisions`), replacing fragmented diagnostic pages with a cohesive interface adhering strictly to:
+
+> **"The system calculates. AI explains. Humans approve."**
+
+### 17.2 Workspace Section Architecture
+The workspace arranges all operational dimensions into four structured sections:
+
+1. **Section A: Decision Overview (`DecisionOverviewSection`)**:
+   - Primary operational context: Decision ID, SKU, Warehouse, Creation Timestamp.
+   - Lifecycle progression tracker: `DRAFT` ➔ `CONTEXTUALIZING` ➔ `CONSTRUCTING` ➔ `VALIDATING` ➔ `EVALUATING` ➔ `READY`.
+   - Demand and stock pillars: Stock on hand, forecasted demand, net coverage days, inventory position.
+   - Top-line recommendation banner highlighting recommended intervention and financial exposure.
+
+2. **Section B: Recommended Action and Scenarios (`RecommendedActionsScenariosSection`)**:
+   - Ranked candidate actions matrix with quantitative scores (service level, cost impact, lead time).
+   - What-if scenario execution drawer: Evaluates counterfactual overrides (e.g. demand surge, supplier delays) without mutating baseline recommendations.
+
+3. **Section C: Evidence and Decision Trust (`EvidenceTrustSection`)**:
+   - **Constraints Tab**: Hard business rules and policy screenings (pass/fail status with threshold details).
+   - **Evidence Tab**: Quantitative proof sheets and intermediate calculation audit items.
+   - **Provenance Tab**: Immutable derivation steps and input snapshot hashes.
+   - **Replay Tab**: Deterministic re-execution verifying that re-running calculations against historical inputs reproduces identical recommendations.
+
+4. **Section D: AI Explanation and Decision Q&A (`AIExplanationQASection`)**:
+   - Executive AI explanation synthesizing grounded calculation facts into natural-language narratives.
+   - Interactive Decision Q&A: Decision-scoped reviewer inquiries strictly checked for citation grounding against evidence.
+
+---
+
+## 18. Observability, Failure Handling & Reliability (Day 29)
+
+### 18.1 Architectural Goals
+Day 29 improves the reliability, fault tolerance, and diagnostic visibility of the EDOS Decision Workspace and API layer under real-world failure modes (missing historical data, network drops, unconfigured AI providers, and concurrent operations), without expanding product scope or introducing heavy third-party monitoring stacks.
+
+### 18.2 Backend Observability Architecture
+Operational visibility is integrated directly into existing FastAPI routes and services via lightweight, structured logging:
+
+- **Structured Operational Logging (`observability.py`)**:
+  - Emits JSON/structured log events with standardized fields: `timestamp`, `level`, `operation`, `decision_id`, `outcome`, `duration_ms`, `error_code`, `error_category`.
+  - Operations instrumented: `decision.create`, `decision.status_update`, `decision.replay`, `scenario.execute`, `ai.explanation.generate`, `ai.qa.ask`.
+  - Sensitive data sanitization: `sanitize_data` scrubs passwords, authorization tokens, API keys, credentials, and truncates large payloads before logging.
+- **Request Observability Middleware (`ObservabilityMiddleware`)**:
+  - Assigns unique `X-Request-ID` correlation identifiers to every incoming request.
+  - Computes and returns `X-Response-Time-Ms` response header.
+  - Logs HTTP method, URL path, response status code, and execution duration.
+
+### 18.3 Standardized API Failure Handling
+Backend endpoints return structured, client-safe error payloads while preserving internal diagnostic logs:
+
+```json
+{
+  "detail": "Decision DEC-0001 not found",
+  "error_code": "DECISION_NOT_FOUND",
+  "category": "NOT_FOUND",
+  "message": "Decision DEC-0001 not found",
+  "details": { "decision_id": "DEC-0001" }
+}
+```
+
+- **Backwards Compatibility**: Preserves string/list `detail` field so existing client libraries and tests (`assert "..." in response.json()["detail"]`) continue operating without breaking changes.
+- **Error Code Catalog**:
+  - `DECISION_NOT_FOUND` (404): Specified decision ID does not exist.
+  - `RESOURCE_NOT_FOUND` (404): Associated context, version, or provenance record does not exist.
+  - `VALIDATION_ERROR` (422): Malformed payload or invalid query parameters.
+  - `INVALID_LIFECYCLE_TRANSITION` (400): Disallowed state progression (e.g., advancing from `READY` or skipping states).
+  - `LLM_RUNTIME_UNAVAILABLE` (503): Local Ollama service is unreachable or stopped.
+  - `LLM_UNGROUNDED_EVIDENCE` (502): AI response cited an ungrounded or fabricated identifier.
+  - `INTERNAL_SERVER_ERROR` (500): Unhandled exception caught by global handler.
+- **Security & Hygiene**: Stack traces, environment variables, and file system paths are suppressed from API responses and logged solely server-side.
+
+### 18.4 Workspace Section Reliability & Fault Isolation
+The Day 28 frontend workspace has been hardened against partial failures:
+
+- **Section Status Contract (`SectionLoadStatus`)**:
+  - Supports discrete states: `idle`, `loading`, `success`, `empty`, `incomplete`, `unavailable`, `error`.
+- **Fault Isolation**:
+  - Each of the 9 workspace entities (Overview, Context, Recommendation, Candidate Actions, Scenarios, Constraints, Evidence, Provenance, Replay) manages its own loading and error state independently.
+  - Failure in optional or supplementary sections (e.g., AI Explanation 503 or Provenance 404) does not break or blank out the primary Decision Overview or Recommended Actions.
+- **Honest Differentiation**:
+  - **Empty State**: Successful 200 OK query returning 0 items (e.g. no scenario simulations executed).
+  - **Incomplete State**: Authentic historical record with partial data (e.g. `INCOMPLETE` replay with `MISSING_HISTORICAL_RECORD`).
+  - **Unavailable State**: Optional capability offline (e.g. local Ollama not running).
+  - **Error State**: Actionable failure with explicit retry control.
+- **Concurrency & Race Condition Guarding**:
+  - `requestSeqRef` increments on every decision selection, discarding stale responses from previous in-flight requests.
+  - Mutating operations (advancing lifecycle, executing scenarios, running replay) lock action buttons (`isSubmitting`, `isReplaying`) to prevent overlapping duplicate submissions.
+
+### 18.5 Trust & Non-Fabrication Invariants Under Failure
+1. **No Live Fallbacks for Historical Replay**: If historical inputs or snapshots are unavailable, replay returns `INCOMPLETE` with specific reason codes. It never silently substitutes live operational context.
+2. **Deterministic Calculations Intact**: Error handling and retry logic operate strictly on transport and orchestration layers. Scoring, optimization, and constraint algorithms are never relaxed or simulated on the client.
+3. **Preserved Governance Boundaries**: Failures never trigger automated approvals or status bypasses. Decisions remain in their verified state upon operation failures.
+
+### 18.6 Known Limitations
+- **Volatile Storage**: The repository's lightweight modular monolith stores decisions in memory. Restarting the backend clears decisions created during that session.
+- **Local LLM Availability**: Narrative explanations and Q&A require a local Ollama instance (`llama3.2:1b`). In environments without Ollama, AI endpoints return 503 `LLM_RUNTIME_UNAVAILABLE`, cleanly flagged as unavailable in the UI while core calculations remain fully usable.
+
+
 
 
 

@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.context import router as context_router
 from app.api.decision import router as decision_router
@@ -6,12 +7,21 @@ from app.api.demand import router as demand_router
 from app.api.inventory import router as inventory_router
 from app.api.supplier import router as supplier_router
 from app.config import get_settings
+from app.observability import (
+    ObservabilityMiddleware,
+    http_exception_handler,
+    request_validation_exception_handler,
+    unhandled_exception_handler,
+)
 
 settings = get_settings()
 
 app = FastAPI(
     title=settings.app_name,
 )
+
+# Day 29: Observability & request timing middleware
+app.add_middleware(ObservabilityMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,8 +31,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Day 29: Standardized exception handlers preserving backwards compatibility
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
+
 
 @app.get("/health")
+@app.get("/api/health")
 def health_check():
     return {
         "status": "ok",
